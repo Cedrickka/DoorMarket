@@ -23,6 +23,8 @@ workflows:
       cocoapods: default
       vars:
         FLUTTER_PROJECT_DIR: DoorMarket.Flutter/doormarket_flutter
+        XCODE_WORKSPACE: DoorMarket.Flutter/doormarket_flutter/ios/Runner.xcworkspace
+        XCODE_SCHEME: Runner
         BUNDLE_ID: com.doormarket.app
         API_BASE_URL: http://api.door-market.com
         BUILD_NAME: 1.0.0
@@ -31,10 +33,27 @@ workflows:
         bundle_identifier: com.doormarket.app
 
     scripts:
+      - name: Initialize keychain
+        script: |
+          keychain initialize
+
       - name: Flutter pub get
         script: |
           cd "$FLUTTER_PROJECT_DIR"
           flutter pub get
+
+      - name: Fetch App Store signing files
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
+
+      - name: Add certificates to keychain
+        script: |
+          keychain add-certificates
+
+      - name: Apply iOS provisioning profiles
+        script: |
+          cd "$FLUTTER_PROJECT_DIR/ios"
+          xcode-project use-profiles
 
       - name: Build iOS IPA (App Store)
         script: |
