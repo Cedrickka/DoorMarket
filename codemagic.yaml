@@ -61,7 +61,25 @@ workflows:
             --build-number="$PROJECT_BUILD_NUMBER" \
             --export-method app-store
 
+      - name: Verify IPA output
+        script: |
+          set -e
+          IPA_DIR="$FLUTTER_PROJECT_DIR/build/ios/ipa"
+          echo "Checking IPA directory: $IPA_DIR"
+          ls -la "$IPA_DIR" || true
+
+          IPA_PATH=$(find "$IPA_DIR" -maxdepth 1 -name "*.ipa" | head -n 1)
+          if [ -z "$IPA_PATH" ]; then
+            echo "No IPA found in $IPA_DIR"
+            echo "Build tree snapshot:"
+            find "$FLUTTER_PROJECT_DIR/build/ios" -maxdepth 4 -type f | head -n 200 || true
+            exit 1
+          fi
+
+          echo "IPA found: $IPA_PATH"
+
     artifacts:
+      - $CM_BUILD_DIR/DoorMarket.Flutter/doormarket_flutter/build/ios/ipa/*.ipa
       - DoorMarket.Flutter/doormarket_flutter/build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
 
