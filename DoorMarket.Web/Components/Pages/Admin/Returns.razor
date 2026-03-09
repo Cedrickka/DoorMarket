@@ -1,0 +1,646 @@
+@page "/admin/returns"
+@using System.Globalization
+@using System.Net
+@using System.Net.Http.Json
+@using MudBlazor
+@inject HttpClient Http
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject IStringLocalizer<SharedResource> SL
+
+<PageTitle>@T("Gestion des retours", "Returns management")</PageTitle>
+
+<h1 class="dm-page-h1">@T("Gestion des retours", "Returns management")</h1>
+<div class="dm-page-sub">@T("Validez, rejetez et marquez les remboursements avec traçabilite.", "Approve, reject and mark refunds with audit history.")</div>
+
+<AuthGuard>
+    @if (!_ready)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudSkeleton Height="32px" Width="240px" Class="mb-2" />
+            <MudSkeleton Height="18px" Width="420px" />
+        </MudPaper>
+    }
+    else if (!Auth.IsAdmin)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@SL["AdminOnlyAccess"]</MudAlert>
+            <MudButton Variant="Variant.Outlined" Class="mt-3" OnClick="@(() => Nav.NavigateTo("/"))">@SL["Back"]</MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Class="pa-4 mt-3 dm-content-card">
+            <div class="d-flex flex-wrap gap-2 align-items-end">
+                <MudSelect T="string" Label="@T("Statut", "Status")" Variant="Variant.Outlined" Dense="true" @bind-Value="_status">
+                    <MudSelectItem T="string" Value="@string.Empty">@SL["All"]</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Requested")">@T("Demande", "Requested")</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Approved")">@T("Approuve", "Approved")</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Rejected")">@T("Rejete", "Rejected")</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Refunded")">@T("Rembourse", "Refunded")</MudSelectItem>
+                </MudSelect>
+                <MudDatePicker Label="@SL["DateFrom"]" Variant="Variant.Outlined" @bind-Date="_from" />
+                <MudDatePicker Label="@SL["DateTo"]" Variant="Variant.Outlined" @bind-Date="_to" />
+                <MudTextField T="string" Variant="Variant.Outlined" Placeholder="@SL["Search"]" @bind-Value="_q" Immediate="true" DebounceInterval="350" />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_loading" OnClick="Reload">@SL["Apply"]</MudButton>
+            </div>
+
+            <MudDivider Class="my-3" />
+
+            @if (_loading)
+            {
+                <MudSkeleton Height="42px" />
+                <MudSkeleton Height="42px" Class="mt-2" />
+            }
+            else if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_error</MudAlert>
+            }
+            else if (_items.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@T("Aucune demande de retour pour ce filtre.", "No return request for this filter.")</MudAlert>
+            }
+            else
+            {
+                <MudTable T="AdminReturnRow" Items="_items" Dense="true" Hover="true" Bordered="true" Striped="true">
+                    <HeaderContent>
+                        <MudTh>@T("Commande", "Order")</MudTh>
+                        <MudTh>@T("Client", "Customer")</MudTh>
+                        <MudTh>@T("Statut", "Status")</MudTh>
+                        <MudTh>@T("Raison", "Reason")</MudTh>
+                        <MudTh Align="Align.Right">@T("Demande", "Requested")</MudTh>
+                        <MudTh Align="Align.Right">@T("Approuve", "Approved")</MudTh>
+                        <MudTh>@SL["CreatedAt"]</MudTh>
+                        <MudTh Align="Align.Right">@SL["Actions"]</MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="r">
+                        <MudTd>@r.OrderNumber</MudTd>
+                        <MudTd>
+                            <div>@r.CustomerName</div>
+                            <div class="dm-muted">@r.CustomerEmail</div>
+                        </MudTd>
+                        <MudTd>
+                            <MudChip T="string" Variant="Variant.Outlined" Label="true" Color="@StatusColor(r.Status)">
+                                @StatusLabel(r.Status)
+                            </MudChip>
+                        </MudTd>
+                        <MudTd>@r.Reason</MudTd>
+                        <MudTd Align="Align.Right">@Fmt(r.RequestedAmount) @r.Currency</MudTd>
+                        <MudTd Align="Align.Right">@Fmt(r.ApprovedAmount)</MudTd>
+                        <MudTd>@r.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</MudTd>
+                        <MudTd Align="Align.Right">
+                            <AdminRowActionMenu AriaLabel="@SL["Actions"]">
+                                <MudMenuItem Icon="@Icons.Material.Filled.ManageSearch"
+                                             OnClick="@(() => SelectReturn(r.Id))">
+                                    @T("Gerer", "Manage")
+                                </MudMenuItem>
+                            </AdminRowActionMenu>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+
+                <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+                    <div class="dm-muted">@SL["PageLabel"] @_page / @TotalPages()</div>
+                    <DmPager CurrentPage="_page" TotalPages="TotalPages()" OnPageChanged="OnPageChanged" />
+                </div>
+            }
+
+            @if (_selectedReturnId.HasValue)
+            {
+                <MudDivider Class="my-4" />
+                <MudText Typo="Typo.h6" Class="mb-2">@T("Traitement du retour", "Return handling")</MudText>
+
+                @if (_detailLoading)
+                {
+                    <MudSkeleton Height="120px" />
+                }
+                else if (_selectedDetail is null)
+                {
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+                        @T("Impossible de charger le detail du retour.", "Unable to load return details.")
+                    </MudAlert>
+                }
+                else
+                {
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12" md="7">
+                            <MudPaper Class="pa-3">
+                                <MudText Typo="Typo.subtitle2" Class="mb-2">@T("Detail", "Details")</MudText>
+                                <MudText Typo="Typo.body2">@T("Commande", "Order"): @_selectedDetail.OrderNumber</MudText>
+                                <MudText Typo="Typo.body2">@T("Client", "Customer"): @_selectedDetail.CustomerName (@_selectedDetail.CustomerEmail)</MudText>
+                                <MudText Typo="Typo.body2">@T("Telephone", "Phone"): @_selectedDetail.CustomerPhone</MudText>
+                                <MudText Typo="Typo.body2">@T("Statut", "Status"): @StatusLabel(_selectedDetail.Status)</MudText>
+                                <MudText Typo="Typo.body2">@T("Raison", "Reason"): @_selectedDetail.Reason</MudText>
+                                @if (!string.IsNullOrWhiteSpace(_selectedDetail.Comment))
+                                {
+                                    <MudText Typo="Typo.body2">@T("Commentaire", "Comment"): @_selectedDetail.Comment</MudText>
+                                }
+                                <MudText Typo="Typo.body2">@T("Demande", "Requested"): @Fmt(_selectedDetail.RequestedAmount) @_selectedDetail.Currency</MudText>
+                                <MudText Typo="Typo.body2">@T("Approuve", "Approved"): @Fmt(_selectedDetail.ApprovedAmount)</MudText>
+                                <MudText Typo="Typo.body2">@T("Cree le", "Created at"): @_selectedDetail.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</MudText>
+                                <MudText Typo="Typo.body2">@T("Revise le", "Reviewed at"): @FmtDate(_selectedDetail.ReviewedAtUtc)</MudText>
+                                <MudText Typo="Typo.body2">@T("Rembourse le", "Refunded at"): @FmtDate(_selectedDetail.RefundedAtUtc)</MudText>
+                                <MudText Typo="Typo.body2">@T("Par", "By"): @(_selectedDetail.ReviewedByEmail ?? "-")</MudText>
+                                @if (!string.IsNullOrWhiteSpace(_selectedDetail.AdminNote))
+                                {
+                                    <MudText Typo="Typo.body2">@T("Note admin", "Admin note"): @_selectedDetail.AdminNote</MudText>
+                                }
+                            </MudPaper>
+                        </MudItem>
+
+                        <MudItem xs="12" md="5">
+                            <MudPaper Class="pa-3">
+                                <MudText Typo="Typo.subtitle2" Class="mb-2">@T("Actions admin", "Admin actions")</MudText>
+
+                                @if (_actionError is not null)
+                                {
+                                    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mb-2">@_actionError</MudAlert>
+                                }
+
+                                <MudNumericField T="decimal?"
+                                                 Label="@T("Montant approuve", "Approved amount")"
+                                                 Variant="Variant.Outlined"
+                                                 Min="0"
+                                                 @bind-Value="_actionApprovedAmount" />
+                                <MudDatePicker Label="@T("Date remboursement", "Refunded date")"
+                                               Variant="Variant.Outlined"
+                                               Class="mt-2"
+                                               @bind-Date="_actionRefundedAt" />
+                                <MudTextField T="string"
+                                              Label="@T("Note admin", "Admin note")"
+                                              Variant="Variant.Outlined"
+                                              Class="mt-2"
+                                              Lines="3"
+                                              MaxLength="1000"
+                                              @bind-Value="_actionNote" />
+
+                                <div class="d-flex flex-wrap gap-2 mt-3">
+                                    @if (string.Equals(_selectedDetail.Status, "Requested", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <MudButton Variant="Variant.Filled" Color="Color.Success" Disabled="_actionBusy" OnClick="ApproveSelected">
+                                            @T("Approuver", "Approve")
+                                        </MudButton>
+                                        <MudButton Variant="Variant.Outlined" Color="Color.Error" Disabled="_actionBusy" OnClick="RejectSelected">
+                                            @T("Rejeter", "Reject")
+                                        </MudButton>
+                                    }
+                                    else if (string.Equals(_selectedDetail.Status, "Approved", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_actionBusy" OnClick="MarkRefundedSelected">
+                                            @T("Marquer rembourse", "Mark refunded")
+                                        </MudButton>
+                                    }
+                                    else
+                                    {
+                                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                                            @T("Aucune transition disponible pour ce statut.", "No transition available for this status.")
+                                        </MudAlert>
+                                    }
+                                </div>
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
+
+                    <MudPaper Class="pa-3 mt-3">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                            <MudText Typo="Typo.subtitle2">@T("Historique des transitions", "Transition history")</MudText>
+                            <MudButton Variant="Variant.Outlined" Disabled="_historyLoading" OnClick="ReloadHistory">@SL["Refresh"]</MudButton>
+                        </div>
+                        @if (_historyLoading)
+                        {
+                            <MudSkeleton Height="40px" />
+                        }
+                        else if (_history.Count == 0)
+                        {
+                            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                                @T("Aucun historique.", "No history.")
+                            </MudAlert>
+                        }
+                        else
+                        {
+                            <MudTable T="AdminReturnHistoryRow" Items="_history" Dense="true" Hover="true" Bordered="true" Striped="true">
+                                <HeaderContent>
+                                    <MudTh>@T("Date", "Date")</MudTh>
+                                    <MudTh>@T("Transition", "Transition")</MudTh>
+                                    <MudTh>@T("Auteur", "Author")</MudTh>
+                                    <MudTh>@T("Note", "Note")</MudTh>
+                                </HeaderContent>
+                                <RowTemplate Context="h">
+                                    <MudTd>@h.ChangedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</MudTd>
+                                    <MudTd>@StatusLabel(h.OldStatus) -> @StatusLabel(h.NewStatus)</MudTd>
+                                    <MudTd>@(h.ChangedByEmail ?? "-")</MudTd>
+                                    <MudTd>@(h.Note ?? "-")</MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        }
+                    </MudPaper>
+                }
+            }
+        </MudPaper>
+    }
+</AuthGuard>
+
+@code {
+    private bool _ready;
+    private bool _loading = true;
+    private bool _detailLoading;
+    private bool _historyLoading;
+    private bool _actionBusy;
+    private string? _error;
+    private string? _actionError;
+
+    private string _status = string.Empty;
+    private DateTime? _from = DateTime.UtcNow.AddDays(-30);
+    private DateTime? _to = DateTime.UtcNow;
+    private string _q = string.Empty;
+    private int _page = 1;
+    private const int _pageSize = 20;
+    private int _total;
+    private List<AdminReturnRow> _items = new();
+
+    private Guid? _selectedReturnId;
+    private AdminReturnDetail? _selectedDetail;
+    private List<AdminReturnHistoryRow> _history = new();
+
+    private decimal? _actionApprovedAmount;
+    private DateTime? _actionRefundedAt = DateTime.UtcNow.Date;
+    private string _actionNote = string.Empty;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        var t0 = DateTime.UtcNow;
+        while (!Auth.IsReady && (DateTime.UtcNow - t0).TotalSeconds < 5)
+        {
+            await Task.Delay(30);
+        }
+
+        _ready = true;
+        if (!Auth.IsAuthenticated || !Auth.IsAdmin)
+        {
+            StateHasChanged();
+            return;
+        }
+
+        await LoadListAsync();
+        StateHasChanged();
+    }
+
+    private async Task Reload()
+    {
+        _page = 1;
+        await LoadListAsync();
+        if (_selectedReturnId.HasValue)
+        {
+            await LoadSelectedAsync(_selectedReturnId.Value);
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task LoadListAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            var url = $"api/admin/returns?page={_page}&pageSize={_pageSize}{BuildQuery()}";
+            var res = await Http.GetFromJsonAsync<AdminReturnsPage>(url);
+            _items = res?.Items ?? new();
+            _total = res?.Total ?? 0;
+
+            if (_selectedReturnId.HasValue && !_items.Any(x => x.Id == _selectedReturnId.Value))
+            {
+                _selectedReturnId = null;
+                _selectedDetail = null;
+                _history = new();
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _items = new();
+            _total = 0;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private string BuildQuery()
+    {
+        var list = new List<string>();
+        if (!string.IsNullOrWhiteSpace(_status)) list.Add($"status={Uri.EscapeDataString(_status)}");
+        if (_from.HasValue) list.Add($"from={Uri.EscapeDataString(_from.Value.ToString("yyyy-MM-dd"))}");
+        if (_to.HasValue) list.Add($"to={Uri.EscapeDataString(_to.Value.ToString("yyyy-MM-dd"))}");
+        if (!string.IsNullOrWhiteSpace(_q)) list.Add($"q={Uri.EscapeDataString(_q)}");
+        return list.Count == 0 ? string.Empty : "&" + string.Join("&", list);
+    }
+
+    private int TotalPages() => Math.Max(1, (int)Math.Ceiling(_total / (double)_pageSize));
+
+    private async Task OnPageChanged(int page)
+    {
+        _page = Math.Clamp(page, 1, TotalPages());
+        await LoadListAsync();
+        if (_selectedReturnId.HasValue)
+        {
+            await LoadSelectedAsync(_selectedReturnId.Value);
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task SelectReturn(Guid id)
+    {
+        _selectedReturnId = id;
+        await LoadSelectedAsync(id);
+        StateHasChanged();
+    }
+
+    private async Task LoadSelectedAsync(Guid id)
+    {
+        _actionError = null;
+        _detailLoading = true;
+        _historyLoading = true;
+
+        try
+        {
+            _selectedDetail = await GetJsonOrThrowAsync<AdminReturnDetail>($"api/admin/returns/{id}");
+            ResetActionFromDetail();
+        }
+        catch (Exception ex)
+        {
+            _selectedDetail = null;
+            _actionError = ex.Message;
+        }
+        finally
+        {
+            _detailLoading = false;
+        }
+
+        await ReloadHistory();
+    }
+
+    private async Task ReloadHistory()
+    {
+        if (!_selectedReturnId.HasValue)
+        {
+            _history = new();
+            return;
+        }
+
+        _historyLoading = true;
+        try
+        {
+            _history = await GetJsonOrThrowAsync<List<AdminReturnHistoryRow>>($"api/admin/returns/{_selectedReturnId.Value}/history")
+                ?? new();
+        }
+        catch (Exception ex)
+        {
+            _history = new();
+            _actionError = ex.Message;
+        }
+        finally
+        {
+            _historyLoading = false;
+        }
+    }
+
+    private void ResetActionFromDetail()
+    {
+        if (_selectedDetail is null)
+        {
+            _actionApprovedAmount = null;
+            _actionNote = string.Empty;
+            _actionRefundedAt = DateTime.UtcNow.Date;
+            return;
+        }
+
+        _actionApprovedAmount = _selectedDetail.ApprovedAmount ?? _selectedDetail.RequestedAmount;
+        _actionNote = _selectedDetail.AdminNote ?? string.Empty;
+        _actionRefundedAt = _selectedDetail.RefundedAtUtc?.ToLocalTime().Date ?? DateTime.UtcNow.Date;
+    }
+
+    private async Task ApproveSelected()
+    {
+        if (_selectedDetail is null)
+        {
+            return;
+        }
+
+        _actionBusy = true;
+        _actionError = null;
+        try
+        {
+            var res = await Http.PostAsJsonAsync(
+                $"api/admin/returns/{_selectedDetail.Id}/approve",
+                new ApproveReturnRequest(_actionApprovedAmount, TrimToNull(_actionNote)));
+            if (!res.IsSuccessStatusCode)
+            {
+                throw await BuildApiError(res);
+            }
+
+            Snackbar.Add(T("Retour approuve.", "Return approved."), Severity.Success);
+            await LoadListAsync();
+            await LoadSelectedAsync(_selectedDetail.Id);
+        }
+        catch (Exception ex)
+        {
+            _actionError = ex.Message;
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _actionBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RejectSelected()
+    {
+        if (_selectedDetail is null)
+        {
+            return;
+        }
+
+        _actionBusy = true;
+        _actionError = null;
+        try
+        {
+            var res = await Http.PostAsJsonAsync(
+                $"api/admin/returns/{_selectedDetail.Id}/reject",
+                new RejectReturnRequest(TrimToNull(_actionNote)));
+            if (!res.IsSuccessStatusCode)
+            {
+                throw await BuildApiError(res);
+            }
+
+            Snackbar.Add(T("Retour rejete.", "Return rejected."), Severity.Success);
+            await LoadListAsync();
+            await LoadSelectedAsync(_selectedDetail.Id);
+        }
+        catch (Exception ex)
+        {
+            _actionError = ex.Message;
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _actionBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task MarkRefundedSelected()
+    {
+        if (_selectedDetail is null)
+        {
+            return;
+        }
+
+        _actionBusy = true;
+        _actionError = null;
+        try
+        {
+            var res = await Http.PostAsJsonAsync(
+                $"api/admin/returns/{_selectedDetail.Id}/mark-refunded",
+                new MarkReturnRefundedRequest(
+                    _actionApprovedAmount,
+                    _actionRefundedAt?.ToUniversalTime(),
+                    TrimToNull(_actionNote)));
+            if (!res.IsSuccessStatusCode)
+            {
+                throw await BuildApiError(res);
+            }
+
+            Snackbar.Add(T("Retour marque rembourse.", "Return marked refunded."), Severity.Success);
+            await LoadListAsync();
+            await LoadSelectedAsync(_selectedDetail.Id);
+        }
+        catch (Exception ex)
+        {
+            _actionError = ex.Message;
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _actionBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task<T?> GetJsonOrThrowAsync<T>(string url)
+    {
+        using var res = await Http.GetAsync(url);
+        if (!res.IsSuccessStatusCode)
+        {
+            throw await BuildApiError(res);
+        }
+
+        if (res.Content.Headers.ContentLength == 0)
+        {
+            return default;
+        }
+
+        return await res.Content.ReadFromJsonAsync<T>();
+    }
+
+    private async Task<Exception> BuildApiError(HttpResponseMessage res)
+    {
+        var body = await res.Content.ReadAsStringAsync();
+        return res.StatusCode switch
+        {
+            HttpStatusCode.Unauthorized => new InvalidOperationException(T("Non autorise (401).", "Unauthorized (401).")),
+            HttpStatusCode.Forbidden => new InvalidOperationException(T("Acces refuse (403).", "Forbidden (403).")),
+            HttpStatusCode.NotFound => new InvalidOperationException(T("Ressource introuvable (404).", "Resource not found (404).")),
+            HttpStatusCode.Conflict => new InvalidOperationException(string.IsNullOrWhiteSpace(body) ? T("Conflit (409).", "Conflict (409).") : body),
+            _ => new InvalidOperationException($"{T("Erreur API", "API error")} ({(int)res.StatusCode}): {body}")
+        };
+    }
+
+    private static string? TrimToNull(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string Fmt(decimal value) => value.ToString("0.00");
+    private static string Fmt(decimal? value) => value.HasValue ? value.Value.ToString("0.00") : "-";
+    private static string FmtDate(DateTime? value) => value.HasValue ? value.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "-";
+
+    private static Color StatusColor(string? status)
+    {
+        if (string.Equals(status, "Requested", StringComparison.OrdinalIgnoreCase)) return Color.Info;
+        if (string.Equals(status, "Approved", StringComparison.OrdinalIgnoreCase)) return Color.Warning;
+        if (string.Equals(status, "Rejected", StringComparison.OrdinalIgnoreCase)) return Color.Error;
+        if (string.Equals(status, "Refunded", StringComparison.OrdinalIgnoreCase)) return Color.Success;
+        return Color.Default;
+    }
+
+    private static string StatusLabel(string? status)
+    {
+        if (string.Equals(status, "Requested", StringComparison.OrdinalIgnoreCase)) return T("Demande", "Requested");
+        if (string.Equals(status, "Approved", StringComparison.OrdinalIgnoreCase)) return T("Approuve", "Approved");
+        if (string.Equals(status, "Rejected", StringComparison.OrdinalIgnoreCase)) return T("Rejete", "Rejected");
+        if (string.Equals(status, "Refunded", StringComparison.OrdinalIgnoreCase)) return T("Rembourse", "Refunded");
+        return status ?? "-";
+    }
+
+    private static bool IsEnglish()
+        => string.Equals(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "en", StringComparison.OrdinalIgnoreCase);
+
+    private static string T(string fr, string en) => IsEnglish() ? en : fr;
+
+    private sealed record ApproveReturnRequest(decimal? ApprovedAmount, string? AdminNote);
+    private sealed record RejectReturnRequest(string? AdminNote);
+    private sealed record MarkReturnRefundedRequest(decimal? ApprovedAmount, DateTime? RefundedAtUtc, string? AdminNote);
+
+    private sealed record AdminReturnsPage(List<AdminReturnRow> Items, int Total, int Page, int PageSize);
+
+    private sealed record AdminReturnRow(
+        Guid Id,
+        Guid OrderId,
+        string OrderNumber,
+        string Status,
+        string Reason,
+        decimal RequestedAmount,
+        decimal? ApprovedAmount,
+        string Currency,
+        DateTime CreatedAtUtc,
+        DateTime? ReviewedAtUtc,
+        DateTime? RefundedAtUtc,
+        string CustomerName,
+        string? CustomerEmail);
+
+    private sealed record AdminReturnDetail(
+        Guid Id,
+        Guid OrderId,
+        string OrderNumber,
+        string Status,
+        string Reason,
+        string? Comment,
+        decimal RequestedAmount,
+        decimal? ApprovedAmount,
+        string Currency,
+        string? AdminNote,
+        DateTime CreatedAtUtc,
+        DateTime? ReviewedAtUtc,
+        DateTime? RefundedAtUtc,
+        string CustomerName,
+        string CustomerPhone,
+        string? CustomerEmail,
+        string? ReviewedByEmail);
+
+    private sealed record AdminReturnHistoryRow(
+        Guid Id,
+        string OldStatus,
+        string NewStatus,
+        string? Note,
+        DateTime ChangedAtUtc,
+        string? ChangedByEmail);
+}

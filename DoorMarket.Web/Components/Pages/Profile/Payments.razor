@@ -1,0 +1,44 @@
+﻿@page "/profile/payments"
+@using MudBlazor
+@inject NavigationManager Nav
+
+<PageTitle>@SL["Payments"]</PageTitle>
+
+<h1 class="dm-page-h1">@SL["Payments"]</h1>
+<div class="dm-page-sub">@SL["PaymentsSubtitle"]</div>
+
+<AuthGuard>
+    <MudGrid Class="mt-3" Spacing="3">
+        <MudItem xs="12" md="4">
+            <MudPaper Class="pa-4" Outlined="true">
+                <MudText Typo="Typo.h6">Stripe</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">@SL["StripeCardHint"]</MudText>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudPaper Class="pa-4" Outlined="true">
+                <MudText Typo="Typo.h6">PayPal</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">@SL["PayPalExternalHint"]</MudText>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudPaper Class="pa-4" Outlined="true">
+                <MudText Typo="Typo.h6">@SL["PrepaidCard"]</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-1">@SL["PrepaidCardHint"]</MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <MudPaper Class="pa-4 mt-3">
+        <MudText Typo="Typo.body1">@SL["PaymentChoiceAtCheckout"]</MudText>
+        <MudButton Class="mt-3" Color="Color.Primary" Variant="Variant.Filled" OnClick="@(() => Nav.NavigateTo("/checkout"))">
+            @SL["GoToCheckout"]
+        </MudButton>
+    </MudPaper>
+</AuthGuard>
+
+
+
+

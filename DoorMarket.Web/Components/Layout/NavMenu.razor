@@ -1,0 +1,314 @@
+@implements IDisposable
+@using System.Globalization
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject DoorMarket.Web.Auth.TokenStore Tokens
+@inject NavigationManager Nav
+@inject HttpClient Http
+@inject MudBlazor.IDialogService Dialogs
+@inject MudBlazor.ISnackbar Snack
+@inject IStringLocalizer<SharedResource> L
+
+<nav class="dm-nav" aria-label="@MainNavigationLabel">
+    @if (!Auth.IsReady)
+    {
+        <div class="dm-nav-section">
+            <div class="dm-nav-item dm-muted">@L["Loading"]</div>
+        </div>
+    }
+    else if (!Auth.IsAuthenticated)
+    {
+        <div class="dm-nav-section">
+            <NavLink class="dm-nav-item" href="/" @onclick="NotifyNavigate" Match="NavLinkMatch.All">
+                <span class="dm-nav-ico">&#x1F3E0;</span>
+                <span>@L["Home"]</span>
+            </NavLink>
+            <NavLink class="dm-nav-item" href="/shops" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F3EA;</span>
+                <span>@L["Shops"]</span>
+            </NavLink>            <NavLink class="dm-nav-item" href="/search" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F50D;</span>
+                <span>@L["Search"]</span>
+            </NavLink>
+            <NavLink class="dm-nav-item" href="/offers" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x2B50;</span>
+                <span>@L["SpecialOffers"]</span>
+            </NavLink>
+            <NavLink class="dm-nav-item" href="/cart" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F6D2;</span>
+                <span>@L["Cart"]</span>
+            </NavLink>
+            <NavLink class="dm-nav-item" href="/help" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x2753;</span>
+                <span>@L["Help"]</span>
+            </NavLink>
+
+            <NavLink class="dm-nav-item" href="/login" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F510;</span>
+                <span>@L["SignIn"]</span>
+            </NavLink>
+            <NavLink class="dm-nav-item" href="/register" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F195;</span>
+                <span>@L["Register"]</span>
+            </NavLink>
+        </div>
+    }
+    else
+    {
+        @* CLIENT *@
+        @if (Auth.IsClient || (!Auth.IsAdmin && !Auth.IsShop))
+        {
+            <div class="dm-nav-group">@L["Client"]</div>
+
+            <NavLink class="dm-nav-item" href="/" @onclick="NotifyNavigate" Match="NavLinkMatch.All">
+                <span class="dm-nav-ico">&#x1F3E0;</span>
+                <span>@L["Home"]</span>
+            </NavLink>
+
+            <NavLink class="dm-nav-item" href="/shops" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F3EA;</span>
+                <span>@L["Shops"]</span>
+            </NavLink>            <NavLink class="dm-nav-item" href="/search" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F50D;</span>
+                <span>@L["Search"]</span>
+            </NavLink>
+
+            <NavLink class="dm-nav-item" href="/cart" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F6D2;</span>
+                <span>@L["Cart"]</span>
+            </NavLink>
+
+            <NavLink class="dm-nav-item" href="/checkout" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F4B3;</span>
+                <span>@L["Checkout"]</span>
+            </NavLink>
+
+            <NavLink class="dm-nav-item" href="/orders" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F4E6;</span>
+                <span>@L["MyOrders"]</span>
+            </NavLink>
+
+            <NavLink class="dm-nav-item" href="/returns" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F504;</span>
+                <span>@(IsEn ? "Returns" : "Retours")</span>
+            </NavLink>
+
+            <NavLink class="dm-nav-item" href="/wishlist" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x2764;</span>
+                <span>@(IsEn ? "Wishlist" : "Favoris")</span>
+            </NavLink>
+
+            <NavLink class="dm-nav-item" href="/notifications" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F514;</span>
+                <span>@L["Notifications"]</span>
+            </NavLink>
+
+            <NavLink class="dm-nav-item" href="/profile" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F464;</span>
+                <span>@L["Profile"]</span>
+            </NavLink>
+
+            <NavLink class="dm-nav-item" href="/profile/addresses" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F4CD;</span>
+                <span>@L["Addresses"]</span>
+            </NavLink>
+
+            <NavLink class="dm-nav-item" href="/profile/payments" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F4B0;</span>
+                <span>@L["Payments"]</span>
+            </NavLink>
+
+            <NavLink class="dm-nav-item" href="/support" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F4AC;</span>
+                <span>@L["Support"]</span>
+            </NavLink>
+
+        }
+
+        @* ADMIN *@
+        @if (Auth.IsAdmin)
+        {
+            <div class="dm-nav-group">@L["Administration"]</div>
+
+            <NavLink class="dm-nav-item" href="/admin/dashboard" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F4CA;</span>
+                <span>@L["AdminDashboard"]</span>
+            </NavLink>
+
+            @if (Auth.IsSuperAdmin)
+            {
+                <NavLink class="dm-nav-item" href="/admin/search-analytics" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                    <span class="dm-nav-ico">&#x1F50E;</span>
+                    <span>@SearchAnalyticsLabel</span>
+                </NavLink>
+
+                <NavLink class="dm-nav-item" href="/admin/search-rules" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                    <span class="dm-nav-ico">&#x2699;</span>
+                    <span>@SearchRulesLabel</span>
+                </NavLink>
+            }
+
+            <NavLink class="dm-nav-item" href="/admin" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F4DD;</span>
+                <span>@L["ShopApplications"]</span>
+            </NavLink>
+
+            <NavLink class="dm-nav-item" href="/admin/orders" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F4E6;</span>
+                <span>@L["AdminOrders"]</span>
+            </NavLink>
+
+            <NavLink class="dm-nav-item" href="/admin/returns" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F504;</span>
+                <span>@(IsEn ? "Returns" : "Retours")</span>
+            </NavLink>
+
+            <NavLink class="dm-nav-item" href="/admin/users" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F465;</span>
+                <span>@L["Users"]</span>
+            </NavLink>
+
+            <NavLink class="dm-nav-item" href="/admin/shops" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F3EA;</span>
+                <span>@L["Shops"]</span>
+            </NavLink>
+
+            <NavLink class="dm-nav-item" href="/admin/categories" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F5C2;</span>
+                <span>@L["Categories"]</span>
+            </NavLink>
+
+            <NavLink class="dm-nav-item" href="/admin/marketing" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F4E3;</span>
+                <span>@L["AdminMarketing"]</span>
+            </NavLink>
+
+            <NavLink class="dm-nav-item" href="/admin/product-fees" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F4B2;</span>
+                <span>@L["AdminProductFees"]</span>
+            </NavLink>
+
+            <NavLink class="dm-nav-item" href="/admin/commissions" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F3AF;</span>
+                <span>@(IsEn ? "Dynamic Commissions" : "Commissions dynamiques")</span>
+            </NavLink>
+
+            <NavLink class="dm-nav-item" href="/admin/delivery-zones" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F4CD;</span>
+                <span>@L["DeliveryZones"]</span>
+            </NavLink>
+
+            <NavLink class="dm-nav-item" href="/admin/reconciliation" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x2696;</span>
+                <span>@L["AdminReconciliation"]</span>
+            </NavLink>
+
+            <NavLink class="dm-nav-item" href="/admin/notifications" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F514;</span>
+                <span>@L["Notifications"]</span>
+            </NavLink>
+
+            <NavLink class="dm-nav-item" href="/admin/cart-recovery" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x267B;</span>
+                <span>@(IsEn ? "Cart Recovery" : "Relance panier")</span>
+            </NavLink>
+        }
+
+        @* SHOP *@
+        @if (Auth.IsShop)
+        {
+            <div class="dm-nav-group">@L["Shop"]</div>
+
+            <NavLink class="dm-nav-item" href="/shop" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F3EC;</span>
+                <span>@L["Onboarding"]</span>
+            </NavLink>
+
+            <NavLink class="dm-nav-item" href="/shop/dashboard" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F4CA;</span>
+                <span>@L["Dashboard"]</span>
+            </NavLink>
+
+            <NavLink class="dm-nav-item" href="/shop/orders" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F4E6;</span>
+                <span>@L["Orders"]</span>
+            </NavLink>
+
+            <NavLink class="dm-nav-item" href="/shop/products" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x1F6CD;</span>
+                <span>@L["Products"]</span>
+            </NavLink>
+
+        }
+
+        <div class="dm-nav-footer mt-auto">
+            <NavLink class="dm-nav-item" href="/help" @onclick="NotifyNavigate" Match="NavLinkMatch.Prefix">
+                <span class="dm-nav-ico">&#x2753;</span>
+                <span>@L["Help"]</span>
+            </NavLink>
+            <button type="button" class="dm-btn dm-btn-outline w-100" @onclick="ConfirmLogout">
+                @L["Logout"]
+            </button>
+        </div>
+    }
+</nav>
+
+@code {
+    [Parameter] public EventCallback OnNavigate { get; set; }
+
+    private bool IsEn => string.Equals(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "en", StringComparison.OrdinalIgnoreCase);
+    private string MainNavigationLabel => IsEn ? "Main navigation" : "Navigation principale";
+    private string SearchAnalyticsLabel => IsEn ? "Search Analytics" : "Analytique recherche";
+    private string SearchRulesLabel => IsEn ? "Search Rules" : "Regles recherche";
+
+    protected override void OnInitialized()
+    {
+        Auth.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        Auth.OnChange -= StateHasChanged;
+    }
+
+    private async Task NotifyNavigate()
+    {
+        if (OnNavigate.HasDelegate)
+            await OnNavigate.InvokeAsync();
+    }
+
+    private async Task ConfirmLogout()
+    {
+        var parameters = new MudBlazor.DialogParameters
+        {
+            ["ContentText"] = L["ConfirmLogoutPrompt"].Value,
+            ["ButtonText"] = L["LogoutAction"].Value,
+            ["Color"] = MudBlazor.Color.Error
+        };
+
+        var options = new MudBlazor.DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MudBlazor.MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await Dialogs.ShowAsync<DoorMarket.Web.Components.ConfirmDialog>(L["Confirmation"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+            await Logout();
+    }
+
+    private async Task Logout()
+    {
+        await Tokens.ClearAsync();
+        Http.DefaultRequestHeaders.Authorization = null;
+        Auth.SetUnauthenticated();
+
+        Snack.Add(L["LoggedOut"], MudBlazor.Severity.Info);
+        Nav.NavigateTo("/login", forceLoad: false);
+    }
+
+}
+
+

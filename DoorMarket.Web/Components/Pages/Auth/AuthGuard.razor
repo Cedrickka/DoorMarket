@@ -1,0 +1,25 @@
+﻿@inject DoorMarket.Web.Auth.AuthState Auth
+@inject NavigationManager Nav
+
+@if (!Auth.IsReady)
+{
+    <div class="dm-card">@SL["Loading"]</div>}
+else if (!Auth.IsAuthenticated)
+{<div class="dm-card">
+        <div class="dm-toast dm-toast-err">@SL["LoginToContinue"]</div>
+        <button type="button" class="dm-btn dm-btn-primary mt-3" @onclick="GoLogin">@SL["SignIn"]</button>
+    </div>
+}
+else
+{
+    @ChildContent
+}
+
+@code {
+    [Parameter] public RenderFragment ChildContent { get; set; } = default!;
+
+    private void GoLogin() => Nav.NavigateTo("/login");
+}
+
+
+

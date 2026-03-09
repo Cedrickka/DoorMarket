@@ -1,0 +1,405 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<local:LocalizedContentPage xmlns:local="clr-namespace:DoorMarket.Mobile.Localization" 
+    x:Class="DoorMarket.Mobile.Pages.HomePage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:categories="clr-namespace:DoorMarket.Application.DTOs.Categories;assembly=DoorMarket.Application"
+    xmlns:components="clr-namespace:DoorMarket.Mobile.Components"
+    xmlns:models="clr-namespace:DoorMarket.Mobile.Models"
+    xmlns:markup="clr-namespace:DoorMarket.Mobile.Markup"
+    xmlns:products="clr-namespace:DoorMarket.Application.DTOs.Products;assembly=DoorMarket.Application"
+    xmlns:shops="clr-namespace:DoorMarket.Application.DTOs.Shops;assembly=DoorMarket.Application"
+    xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+    NavigationPage.HasNavigationBar="False">
+
+    <Grid RowDefinitions="Auto,*">
+        <components:DmHeader
+            ActionCommand="{Binding CartCommand}"
+            ActionGlyph="{x:Static models:IconGlyphs.Cart}"
+            Subtitle="{markup:Translate HomeSubtitle}"
+            Title="{Binding GreetingTitle}" />
+
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="20,14,20,22" Spacing="18">
+                <components:DmSearchBar
+                    x:Name="SearchInput"
+                    Placeholder="{markup:Translate SearchProductPlaceholder}"
+                    ReturnType="Search"
+                    Completed="OnSearchCompleted" />
+
+                <components:DmCard Margin="0">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                        <Frame
+                            BackgroundColor="{StaticResource DoorOrange12}"
+                            CornerRadius="10"
+                            HasShadow="False"
+                            HeightRequest="34"
+                            Padding="8"
+                            WidthRequest="34">
+                            <Image Source="{FontImageSource FontFamily=fa-solid-900, Glyph={x:Static models:IconGlyphs.Location}, Color={StaticResource DoorOrange}, Size=13}" />
+                        </Frame>
+                        <Label
+                            Grid.Column="1"
+                            FontFamily="Inter-Medium"
+                            FontSize="14"
+                            Text="{markup:Translate DeliveryAddressHint}"
+                            VerticalOptions="Center" />
+                        <Image
+                            Grid.Column="2"
+                            Source="{FontImageSource FontFamily=fa-solid-900, Glyph={x:Static models:IconGlyphs.ChevronRight}, Color={StaticResource DoorBlue}, Size=11}"
+                            VerticalOptions="Center" />
+                    </Grid>
+                </components:DmCard>
+
+                <components:DmCard Padding="0" StrokeThickness="0" IsVisible="{Binding ShowPromotionHero}">
+                    <Grid ColumnDefinitions="*,128" HeightRequest="176">
+                        <Grid>
+                            <Grid.Background>
+                                <LinearGradientBrush EndPoint="1,1" StartPoint="0,0">
+                                    <GradientStop Color="{AppThemeBinding Light={StaticResource DmHeroStartLight}, Dark={StaticResource DmHeroStartDark}}" Offset="0" />
+                                    <GradientStop Color="{AppThemeBinding Light={StaticResource DmHeroEndLight}, Dark={StaticResource DmHeroEndDark}}" Offset="1" />
+                                </LinearGradientBrush>
+                            </Grid.Background>
+                            <VerticalStackLayout Padding="14,14,12,14" Spacing="8">
+                                <components:DmPromoBadge Text="{markup:Translate PromoHeroBadge}" />
+                                <Label
+                                    FontFamily="Inter-Bold"
+                                    FontSize="22"
+                                    Text="{Binding PromoHeroTitle}"
+                                    TextColor="White" />
+                                <Label
+                                    FontFamily="Inter-Medium"
+                                    FontSize="12"
+                                    Text="{Binding PromoHeroSubtitle}"
+                                    TextColor="#DCE9F8" />
+                                <components:DmPrimaryButton
+                                    HeightRequest="38"
+                                    HorizontalOptions="Start"
+                                    Margin="0,6,0,0"
+                                    Padding="16,0"
+                                    Clicked="OnAllPromotionsClicked"
+                                    Text="{markup:Translate ViewPromos}" />
+                            </VerticalStackLayout>
+                        </Grid>
+
+                        <Grid Grid.Column="1" Padding="8">
+                            <Border StrokeThickness="0">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="14" />
+                                </Border.StrokeShape>
+                                <Image Aspect="AspectFill" Source="{Binding PromoHeroImageUrl}" />
+                            </Border>
+                        </Grid>
+                    </Grid>
+                </components:DmCard>
+
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                    <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate PromotionsNow}" />
+                    <Button
+                        Grid.Column="1"
+                        BackgroundColor="Transparent"
+                        Clicked="OnAllPromotionsClicked"
+                        FontFamily="Inter-SemiBold"
+                        FontSize="13"
+                        HeightRequest="30"
+                        Padding="0"
+                        Text="{markup:Translate ViewAll}"
+                        TextColor="{AppThemeBinding Light={StaticResource DoorBlue}, Dark={StaticResource DmTextPrimaryDark}}" />
+                </Grid>
+
+                <CollectionView
+                    HeightRequest="218"
+                    ItemsSource="{Binding Promotions}"
+                    SelectionMode="None">
+                    <CollectionView.ItemsLayout>
+                        <LinearItemsLayout ItemSpacing="12" Orientation="Horizontal" />
+                    </CollectionView.ItemsLayout>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Frame
+                                BackgroundColor="{AppThemeBinding Light={StaticResource DmSurfaceLight}, Dark={StaticResource DmSurfaceDark}}"
+                                BorderColor="{AppThemeBinding Light={StaticResource DmBorderLight}, Dark={StaticResource DmBorderDark}}"
+                                CornerRadius="14"
+                                HasShadow="False"
+                                Padding="0"
+                                WidthRequest="192">
+                                <Frame.Behaviors>
+                                    <toolkit:TouchBehavior PressedScale="0.97" PressedOpacity="0.9" />
+                                </Frame.Behaviors>
+                                <Grid RowDefinitions="112,Auto" RowSpacing="0">
+                                    <Grid>
+                                        <Image Aspect="AspectFill" Source="{Binding MainImageUrl}" />
+                                        <Border
+                                            Margin="8"
+                                            BackgroundColor="{StaticResource DoorOrange}"
+                                            HorizontalOptions="End"
+                                            IsVisible="{Binding HasActivePromotion}"
+                                            Padding="6,2"
+                                            StrokeThickness="0"
+                                            VerticalOptions="Start">
+                                            <Border.StrokeShape>
+                                                <RoundRectangle CornerRadius="8" />
+                                            </Border.StrokeShape>
+                                            <Label
+                                                FontFamily="Inter-Bold"
+                                                FontSize="11"
+                                                Text="{Binding PromotionPercent, StringFormat='-{0:0.#}%'}"
+                                                TextColor="White" />
+                                        </Border>
+                                    </Grid>
+                                    <VerticalStackLayout Grid.Row="1" Padding="10" Spacing="6">
+                                        <Label FontFamily="Inter-SemiBold" FontSize="13" LineBreakMode="TailTruncation" Text="{Binding Name}" />
+                                        <Label Style="{StaticResource CaptionLabelStyle}" LineBreakMode="TailTruncation" Text="{Binding ShopName}" />
+                                        <HorizontalStackLayout Spacing="8">
+                                            <Label
+                                                FontFamily="Inter-Bold"
+                                                FontSize="14"
+                                                Text="{Binding EffectivePrice, StringFormat='{}{0:0.#}'}"
+                                                TextColor="{StaticResource DoorOrange}" />
+                                            <Label FontFamily="Inter-Bold" FontSize="14" Text="{Binding Currency}" TextColor="{StaticResource DoorOrange}" />
+                                            <Label
+                                                FontFamily="Inter-Regular"
+                                                FontSize="11"
+                                                IsVisible="{Binding HasActivePromotion}"
+                                                Text="{Binding Price, StringFormat='{}{0:0.#}'}"
+                                                TextColor="{AppThemeBinding Light={StaticResource DmTextSecondaryLight}, Dark={StaticResource DmTextSecondaryDark}}"
+                                                TextDecorations="Strikethrough" />
+                                        </HorizontalStackLayout>
+                                    </VerticalStackLayout>
+                                    <Grid.GestureRecognizers>
+                                        <TapGestureRecognizer CommandParameter="{Binding .}" Tapped="OnProductTapped" />
+                                    </Grid.GestureRecognizers>
+                                </Grid>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <Label
+                    IsVisible="{Binding ShowNoPromotions}"
+                    Style="{StaticResource MutedLabelStyle}"
+                    Text="{markup:Translate NoPromotionActive}" />
+
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                    <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate CategoriesTitle}" />
+                    <Button
+                        Grid.Column="1"
+                        BackgroundColor="Transparent"
+                        Clicked="OnAllCategoriesClicked"
+                        FontFamily="Inter-SemiBold"
+                        FontSize="13"
+                        HeightRequest="30"
+                        Padding="0"
+                        Text="{markup:Translate ViewAll}"
+                        TextColor="{AppThemeBinding Light={StaticResource DoorBlue}, Dark={StaticResource DmTextPrimaryDark}}" />
+                </Grid>
+
+                <CollectionView HeightRequest="106" ItemsSource="{Binding Categories}" SelectionMode="None">
+                    <CollectionView.ItemsLayout>
+                        <LinearItemsLayout ItemSpacing="10" Orientation="Horizontal" />
+                    </CollectionView.ItemsLayout>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Frame
+                                BackgroundColor="{AppThemeBinding Light={StaticResource DmSurfaceLight}, Dark={StaticResource DmSurfaceDark}}"
+                                BorderColor="{AppThemeBinding Light={StaticResource DmBorderLight}, Dark={StaticResource DmBorderDark}}"
+                                CornerRadius="14"
+                                HasShadow="False"
+                                Padding="10"
+                                WidthRequest="112">
+                                <Frame.GestureRecognizers>
+                                    <TapGestureRecognizer CommandParameter="{Binding .}" Tapped="OnCategoryTapped" />
+                                </Frame.GestureRecognizers>
+                                <VerticalStackLayout Spacing="6" VerticalOptions="Center">
+                                    <Frame
+                                        BackgroundColor="{StaticResource DoorOrange12}"
+                                        CornerRadius="10"
+                                        HasShadow="False"
+                                        HorizontalOptions="Center"
+                                        Padding="7">
+                                        <Image Source="doormarket_icon_64.png" WidthRequest="18" />
+                                    </Frame>
+                                    <Label
+                                        FontFamily="Inter-SemiBold"
+                                        FontSize="12"
+                                        HorizontalTextAlignment="Center"
+                                        LineBreakMode="TailTruncation"
+                                        Text="{Binding Name}" />
+                                </VerticalStackLayout>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <Label
+                    IsVisible="{Binding ShowNoCategories}"
+                    Style="{StaticResource MutedLabelStyle}"
+                    Text="{markup:Translate NoCategoriesAvailable}" />
+
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                    <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate PopularShops}" />
+                    <Button
+                        Grid.Column="1"
+                        BackgroundColor="Transparent"
+                        Clicked="OnAllShopsClicked"
+                        FontFamily="Inter-SemiBold"
+                        FontSize="13"
+                        HeightRequest="30"
+                        Padding="0"
+                        Text="{markup:Translate ViewAll}"
+                        TextColor="{AppThemeBinding Light={StaticResource DoorBlue}, Dark={StaticResource DmTextPrimaryDark}}" />
+                </Grid>
+
+                <CollectionView
+                    HeightRequest="198"
+                    ItemsSource="{Binding Shops}"
+                    SelectionChanged="OnShopSelected"
+                    SelectionMode="Single">
+                    <CollectionView.ItemsLayout>
+                        <LinearItemsLayout ItemSpacing="12" Orientation="Horizontal" />
+                    </CollectionView.ItemsLayout>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Frame
+                                BackgroundColor="{AppThemeBinding Light={StaticResource DmSurfaceLight}, Dark={StaticResource DmSurfaceDark}}"
+                                BorderColor="{AppThemeBinding Light={StaticResource DmBorderLight}, Dark={StaticResource DmBorderDark}}"
+                                CornerRadius="14"
+                                HasShadow="False"
+                                Padding="0"
+                                WidthRequest="196">
+                                <Frame.Behaviors>
+                                    <toolkit:TouchBehavior PressedScale="0.98" PressedOpacity="0.92" />
+                                </Frame.Behaviors>
+                                <Grid RowDefinitions="110,Auto" RowSpacing="0">
+                                    <Grid>
+                                        <Grid.Background>
+                                            <LinearGradientBrush EndPoint="1,1" StartPoint="0,0">
+                                                <GradientStop Color="{AppThemeBinding Light={StaticResource DmSurfaceAltLight}, Dark={StaticResource DmSurfaceAltDark}}" Offset="0" />
+                                                <GradientStop Color="{AppThemeBinding Light={StaticResource DmBgLight}, Dark={StaticResource DmBgDark}}" Offset="1" />
+                                            </LinearGradientBrush>
+                                        </Grid.Background>
+                                        <Image
+                                            Aspect="AspectFill"
+                                            HorizontalOptions="Center"
+                                            Source="{Binding ImageUrl}"
+                                            VerticalOptions="Center"
+                                            WidthRequest="196" />
+                                    </Grid>
+                                    <VerticalStackLayout Grid.Row="1" Padding="11" Spacing="7">
+                                        <Label FontFamily="Inter-SemiBold" FontSize="14" Text="{Binding Name}" />
+                                        <Label Style="{StaticResource CaptionLabelStyle}" Text="{Binding City}" />
+                                        <Button
+                                            BackgroundColor="{StaticResource DoorBlue}"
+                                            BorderWidth="0"
+                                            Clicked="OnShopProductsClicked"
+                                            CommandParameter="{Binding .}"
+                                            CornerRadius="10"
+                                            FontFamily="Inter-SemiBold"
+                                            FontSize="11"
+                                            HeightRequest="30"
+                                            HorizontalOptions="Start"
+                                            Padding="8,0"
+                                            Text="{markup:Translate ViewProducts}"
+                                            TextColor="White" />
+                                    </VerticalStackLayout>
+                                </Grid>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <Label
+                    IsVisible="{Binding ShowNoShops}"
+                    Style="{StaticResource MutedLabelStyle}"
+                    Text="{markup:Translate NoShopsAvailable}" />
+
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                    <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate TopProducts}" />
+                    <Button
+                        Grid.Column="1"
+                        BackgroundColor="Transparent"
+                        Clicked="OnAllProductsClicked"
+                        FontFamily="Inter-SemiBold"
+                        FontSize="13"
+                        HeightRequest="30"
+                        Padding="0"
+                        Text="{markup:Translate ViewAll}"
+                        TextColor="{StaticResource DoorBlue}" />
+                </Grid>
+
+                <CollectionView
+                    HeightRequest="{Binding ProductsGridHeight}"
+                    ItemsSource="{Binding Products}"
+                    SelectionMode="None">
+                    <CollectionView.ItemsLayout>
+                        <GridItemsLayout HorizontalItemSpacing="8" Orientation="Vertical" Span="4" VerticalItemSpacing="10" />
+                    </CollectionView.ItemsLayout>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <components:DmCard Margin="0" Padding="8" StrokeThickness="1">
+                                <components:DmCard.Behaviors>
+                                    <toolkit:TouchBehavior PressedScale="0.97" PressedOpacity="0.9" />
+                                </components:DmCard.Behaviors>
+                                <components:DmCard.GestureRecognizers>
+                                    <TapGestureRecognizer CommandParameter="{Binding .}" Tapped="OnProductTapped" />
+                                </components:DmCard.GestureRecognizers>
+                                <Grid RowDefinitions="64,Auto,Auto,Auto" RowSpacing="6">
+                                    <Border
+                                        Background="{AppThemeBinding Light={StaticResource DmSurfaceAltLight}, Dark={StaticResource DmSurfaceAltDark}}"
+                                        StrokeThickness="0"
+                                        HeightRequest="64"
+                                        WidthRequest="64"
+                                        HorizontalOptions="Center">
+                                        <Border.StrokeShape>
+                                            <RoundRectangle CornerRadius="10" />
+                                        </Border.StrokeShape>
+                                        <Image Aspect="AspectFill" Source="{Binding MainImageUrl}" />
+                                    </Border>
+                                    <Label
+                                        Grid.Row="1"
+                                        FontFamily="Inter-SemiBold"
+                                        FontSize="11"
+                                        LineBreakMode="TailTruncation"
+                                        MaxLines="2"
+                                        Text="{Binding Name}" />
+                                    <Label
+                                        Grid.Row="2"
+                                        FontFamily="Inter-Bold"
+                                        FontSize="11"
+                                        LineBreakMode="TailTruncation"
+                                        TextColor="{StaticResource DoorOrange}">
+                                        <Label.FormattedText>
+                                            <FormattedString>
+                                                <Span Text="{Binding EffectivePrice, StringFormat='{}{0:0.#}'}" />
+                                                <Span Text=" " />
+                                                <Span Text="{Binding Currency}" />
+                                            </FormattedString>
+                                        </Label.FormattedText>
+                                    </Label>
+                                    <Label
+                                        Grid.Row="3"
+                                        FontFamily="Inter-Regular"
+                                        FontSize="10"
+                                        IsVisible="{Binding HasActivePromotion}"
+                                        LineBreakMode="TailTruncation"
+                                        Text="{Binding Price, StringFormat='{markup:Translate NormalPriceFormat}'}"
+                                        TextColor="{AppThemeBinding Light={StaticResource DmTextSecondaryLight}, Dark={StaticResource DmTextSecondaryDark}}"
+                                        TextDecorations="Strikethrough" />
+                                </Grid>
+                            </components:DmCard>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <Label
+                    IsVisible="{Binding ShowNoProducts}"
+                    Style="{StaticResource MutedLabelStyle}"
+                    Text="{markup:Translate NoProductsAvailable}" />
+
+                <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</local:LocalizedContentPage>
+
+

@@ -1,0 +1,166 @@
+@page "/wishlist"
+@implements IDisposable
+
+@using MudBlazor
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject DoorMarket.Web.Services.WishlistService WishlistStore
+@inject DoorMarket.Web.Services.CartApiClient CartApi
+@inject DoorMarket.Web.Services.GuestCartService GuestCart
+
+<PageTitle>Wishlist</PageTitle>
+
+<h1 class="dm-page-h1">Wishlist</h1>
+<div class="dm-page-sub">@T("Produits sauvegardes pour plus tard", "Products saved for later")</div>
+
+<MudPaper Class="pa-4 mt-3 dm-content-card">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <MudText Typo="Typo.subtitle1">@_items.Count @T("produit(s)", "item(s)")</MudText>
+        <MudButton Variant="Variant.Outlined" Disabled="@(_items.Count == 0)" OnClick="ClearAll">@T("Vider", "Clear all")</MudButton>
+    </div>
+
+    @if (_loading)
+    {
+        <MudSkeleton Height="40px" />
+        <MudSkeleton Height="40px" Class="mt-2" />
+        <MudSkeleton Height="40px" Class="mt-2" />
+    }
+    else if (_items.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@T("Votre wishlist est vide.", "Your wishlist is empty.")</MudAlert>
+        <MudButton Variant="Variant.Outlined" Class="mt-3" OnClick="@(() => Nav.NavigateTo("/shops"))">@T("Explorer les boutiques", "Explore shops")</MudButton>
+    }
+    else
+    {
+        <MudGrid Spacing="2">
+            @foreach (var item in _items)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <article class="dm-product-card">
+                        <img src="@MediaCatalog.Product(item.MainImageUrl, item.ProductName, item.ShopName, item.ProductId)"
+                             alt="@item.ProductName"
+                             class="dm-product-thumb" />
+                        <div class="dm-product-body">
+                            <h3 class="dm-product-name">@item.ProductName</h3>
+                            <div class="dm-product-meta">@item.ShopName</div>
+                            @if (item.HasActivePromotion)
+                            {
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <div class="dm-product-price">@item.EffectivePrice.ToString("0.00") @item.Currency</div>
+                                    <div class="dm-product-meta" style="text-decoration:line-through">@item.Price.ToString("0.00") @item.Currency</div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="dm-product-price">@item.Price.ToString("0.00") @item.Currency</div>
+                            }
+
+                            <div class="dm-card-actions">
+                                <MudButton Variant="Variant.Outlined"
+                                           Class="dm-action-btn dm-action-btn-outline"
+                                           OnClick="@(() => Nav.NavigateTo($"/products/{item.ProductId}"))">
+                                    @T("Details", "Details")
+                                </MudButton>
+
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           Class="dm-action-btn dm-action-btn-primary"
+                                           OnClick="@(() => AddToCart(item))">
+                                    @T("Ajouter", "Add")
+                                </MudButton>
+
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Secondary"
+                                           Class="dm-action-btn dm-action-btn-outline"
+                                           OnClick="@(() => Remove(item.ProductId))">
+                                    @T("Retirer", "Remove")
+                                </MudButton>
+                            </div>
+                        </div>
+                    </article>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+</MudPaper>
+
+@code {
+    private bool _loading = true;
+    private List<WishlistItem> _items = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        WishlistStore.OnChange += HandleWishlistChanged;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _items = (await WishlistStore.GetItemsAsync()).ToList();
+        }
+        catch (InvalidOperationException)
+        {
+            // Local storage may be unavailable during prerender.
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task AddToCart(WishlistItem item)
+    {
+        try
+        {
+            if (Auth.IsAuthenticated)
+            {
+                await CartApi.AddItemAsync(item.ProductId, 1);
+            }
+            else
+            {
+                var price = item.HasActivePromotion ? item.EffectivePrice : item.Price;
+                await GuestCart.AddItemAsync(
+                    new GuestCartProduct(item.ProductId, item.ProductName, price, item.Currency, item.MainImageUrl),
+                    1);
+            }
+
+            Snackbar.Add(T("Produit ajoute au panier", "Product added to cart"), Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task Remove(Guid productId)
+    {
+        await WishlistStore.RemoveAsync(productId);
+        Snackbar.Add(T("Produit retire de la wishlist", "Product removed from wishlist"), Severity.Info);
+    }
+
+    private async Task ClearAll()
+    {
+        await WishlistStore.ClearAsync();
+        Snackbar.Add(T("Wishlist videe", "Wishlist cleared"), Severity.Info);
+    }
+
+    private async void HandleWishlistChanged()
+    {
+        await InvokeAsync(LoadAsync);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        WishlistStore.OnChange -= HandleWishlistChanged;
+    }
+
+    private static bool IsEnglish()
+        => string.Equals(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "en", StringComparison.OrdinalIgnoreCase);
+
+    private static string T(string fr, string en) => IsEnglish() ? en : fr;
+}

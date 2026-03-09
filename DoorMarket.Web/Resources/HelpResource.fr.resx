@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="HelpTitle" xml:space="preserve"><value>Aide &amp; Support DoorMarket</value></data>
+  <data name="HelpSubtitle" xml:space="preserve"><value>Tout ce qu’il faut pour commander, payer et suivre vos commandes.</value></data>
+  <data name="HelpTagline" xml:space="preserve"><value>Du Marché à votre Porte</value></data>
+  <data name="TocTitle" xml:space="preserve"><value>Sommaire</value></data>
+
+  <data name="TocIntro" xml:space="preserve"><value>Présentation</value></data>
+  <data name="TocHow" xml:space="preserve"><value>Comment commander</value></data>
+  <data name="TocDelivery" xml:space="preserve"><value>Livraison</value></data>
+  <data name="TocPayments" xml:space="preserve"><value>Paiements</value></data>
+  <data name="TocStatus" xml:space="preserve"><value>Statuts</value></data>
+  <data name="TocFaq" xml:space="preserve"><value>FAQ</value></data>
+  <data name="TocSupport" xml:space="preserve"><value>Support</value></data>
+
+  <data name="HelpIntroTitle" xml:space="preserve"><value>C’est quoi DoorMarket ?</value></data>
+  <data name="HelpIntroBody" xml:space="preserve"><value>DoorMarket vous permet de découvrir des produits de plusieurs boutiques, d’ajouter au panier, de choisir la livraison à votre adresse et de payer en ligne. Après paiement, la boutique traite la commande et vous suivez son statut jusqu’à la livraison.</value></data>
+
+  <data name="HelpHowTitle" xml:space="preserve"><value>Comment ça marche</value></data>
+  <data name="HelpHowStep1" xml:space="preserve"><value>Parcourez les produits (catégories, recherche, filtres).</value></data>
+  <data name="HelpHowStep2" xml:space="preserve"><value>Consultez les détails (prix, boutique, disponibilité).</value></data>
+  <data name="HelpHowStep3" xml:space="preserve"><value>Ajoutez au panier (quantité + validation).</value></data>
+  <data name="HelpHowStep4" xml:space="preserve"><value>Renseignez l’adresse de livraison pour estimer les frais.</value></data>
+  <data name="HelpHowStep5" xml:space="preserve"><value>Finalisez au checkout et payez (Stripe/PayPal/Prépayé).</value></data>
+  <data name="HelpHowStep6" xml:space="preserve"><value>Suivez le statut : Payée → Traitée → Livrée (ou Annulée).</value></data>
+  <data name="HelpHowTip" xml:space="preserve"><value>Astuce : Vous pouvez naviguer et remplir le panier sans compte. Le compte est demandé seulement au moment du checkout.</value></data>
+
+  <data name="HelpProductsTitle" xml:space="preserve"><value>Produits, boutiques et disponibilité</value></data>
+  <data name="HelpProductsBody" xml:space="preserve"><value>Les produits proviennent de boutiques partenaires. Les prix et le stock peuvent évoluer. Si un article devient indisponible, la boutique peut ajuster la commande selon les règles métier.</value></data>
+
+  <data name="HelpCartTitle" xml:space="preserve"><value>Panier &amp; commande</value></data>
+  <data name="HelpCartBody1" xml:space="preserve"><value>Vous pouvez ajouter des articles au panier même sans compte.</value></data>
+  <data name="HelpCartBody2" xml:space="preserve"><value>Le compte est demandé au checkout pour sécuriser la commande et permettre le suivi.</value></data>
+  <data name="HelpCartReason1" xml:space="preserve"><value>Sécuriser le paiement et la commande.</value></data>
+  <data name="HelpCartReason2" xml:space="preserve"><value>Enregistrer l’adresse et les infos nécessaires à la livraison.</value></data>
+  <data name="HelpCartReason3" xml:space="preserve"><value>Accéder à l’historique et au suivi des commandes.</value></data>
+
+  <data name="HelpDeliveryTitle" xml:space="preserve"><value>Livraison</value></data>
+  <data name="HelpDeliveryBody1" xml:space="preserve"><value>Les frais de livraison sont calculés selon votre adresse et l’adresse de la boutique.</value></data>
+  <data name="HelpDeliveryBody2" xml:space="preserve"><value>Si votre panier contient plusieurs boutiques, le calcul peut tenir compte de la boutique la plus éloignée.</value></data>
+  <data name="HelpDeliveryBody3" xml:space="preserve"><value>Au-delà d’un certain nombre de boutiques, un petit supplément peut s’appliquer.</value></data>
+  <data name="HelpDeliveryNote" xml:space="preserve"><value>Le total au checkout inclut : sous-total produits + frais de livraison.</value></data>
+
+  <data name="HelpPaymentsTitle" xml:space="preserve"><value>Paiements</value></data>
+  <data name="HelpStripeTitle" xml:space="preserve"><value>Paiement par carte (Stripe)</value></data>
+  <data name="HelpStripeBody" xml:space="preserve"><value>Le paiement est sécurisé et traité par Stripe. Les cartes acceptées dépendent du prestataire et de votre banque (Visa, MasterCard, etc.).</value></data>
+  <data name="HelpPayPalTitle" xml:space="preserve"><value>Paiement via PayPal</value></data>
+  <data name="HelpPayPalBody" xml:space="preserve"><value>Vous êtes redirigé vers PayPal pour confirmer. DoorMarket reçoit uniquement la confirmation de paiement.</value></data>
+  <data name="HelpPrepaidTitle" xml:space="preserve"><value>Carte prépayée DoorMarket (si activée)</value></data>
+  <data name="HelpPrepaidBody" xml:space="preserve"><value>Vous payez avec un solde ou un code prépayé selon les options disponibles. En cas d’échec, la commande peut rester en attente ou être annulée.</value></data>
+  <data name="HelpPaymentsNote" xml:space="preserve"><value>Important : DoorMarket ne doit pas stocker les informations sensibles de carte (CVC). Pour Stripe/PayPal, la saisie se fait sur des pages sécurisées.</value></data>
+
+  <data name="HelpAccountTitle" xml:space="preserve"><value>Compte &amp; sécurité</value></data>
+  <data name="HelpAccountBody" xml:space="preserve"><value>Votre compte permet de sécuriser les commandes et de retrouver vos informations.</value></data>
+  <data name="HelpAccountReason1" xml:space="preserve"><value>Suivre vos commandes et leurs statuts.</value></data>
+  <data name="HelpAccountReason2" xml:space="preserve"><value>Sauvegarder vos adresses de livraison.</value></data>
+  <data name="HelpAccountReason3" xml:space="preserve"><value>Recevoir des notifications (selon configuration).</value></data>
+  <data name="HelpAccountReason4" xml:space="preserve"><value>Accéder à l’historique des achats.</value></data>
+
+  <data name="HelpStatusTitle" xml:space="preserve"><value>Statuts de commande</value></data>
+  <data name="HelpStatusItem1" xml:space="preserve"><value>En attente : commande enregistrée, traitement en attente.</value></data>
+  <data name="HelpStatusItem2" xml:space="preserve"><value>Payée : paiement confirmé, la boutique est notifiée.</value></data>
+  <data name="HelpStatusItem3" xml:space="preserve"><value>Traitée / En préparation : la boutique prépare.</value></data>
+  <data name="HelpStatusItem4" xml:space="preserve"><value>En livraison : la commande est en route.</value></data>
+  <data name="HelpStatusItem5" xml:space="preserve"><value>Livrée : commande livrée au client.</value></data>
+  <data name="HelpStatusItem6" xml:space="preserve"><value>Annulée / Échec : annulation ou incident (paiement/stock).</value></data>
+
+  <data name="HelpShopTitle" xml:space="preserve"><value>Informations boutique (vendeur)</value></data>
+  <data name="HelpShopBody1" xml:space="preserve"><value>Lorsqu’une commande est payée, la boutique reçoit une notification par email “Commande payée en attente”.</value></data>
+  <data name="HelpShopBody2" xml:space="preserve"><value>Depuis le Dashboard Boutique, vous pouvez consulter la commande et changer le statut (En attente → Traitée → Livrée, ou Annulée si nécessaire).</value></data>
+
+  <data name="HelpFaqTitle" xml:space="preserve"><value>Questions fréquentes (FAQ)</value></data>
+  <data name="HelpFaqQ1" xml:space="preserve"><value>Puis-je voir les produits sans compte ?</value></data>
+  <data name="HelpFaqA1" xml:space="preserve"><value>Oui. Vous pouvez consulter les produits et remplir le panier. Le compte est exigé seulement au checkout.</value></data>
+  <data name="HelpFaqQ2" xml:space="preserve"><value>Pourquoi faut-il un compte au moment de payer ?</value></data>
+  <data name="HelpFaqA2" xml:space="preserve"><value>Pour sécuriser la commande, assurer le suivi et faciliter la livraison.</value></data>
+  <data name="HelpFaqQ3" xml:space="preserve"><value>Comment savoir si le paiement a réussi ?</value></data>
+  <data name="HelpFaqA3" xml:space="preserve"><value>Après paiement, vous revenez sur DoorMarket et la commande apparaît comme “Payée”.</value></data>
+  <data name="HelpFaqQ4" xml:space="preserve"><value>Comment est calculée la livraison ?</value></data>
+  <data name="HelpFaqA4" xml:space="preserve"><value>Selon la distance entre votre adresse et la boutique (ou la plus éloignée si plusieurs boutiques), avec éventuel supplément multi-boutiques.</value></data>
+  <data name="HelpFaqQ5" xml:space="preserve"><value>Est-ce que DoorMarket stocke mes informations de carte ?</value></data>
+  <data name="HelpFaqA5" xml:space="preserve"><value>Non. Stripe/PayPal traitent les paiements ; DoorMarket ne stocke pas le CVC.</value></data>
+  <data name="HelpFaqQ6" xml:space="preserve"><value>Que faire si un produit est en rupture de stock ?</value></data>
+  <data name="HelpFaqA6" xml:space="preserve"><value>La boutique peut ajuster ou annuler la commande selon les règles métier ; vous serez informé selon configuration.</value></data>
+  <data name="HelpFaqQ7" xml:space="preserve"><value>Comment changer la langue ?</value></data>
+  <data name="HelpFaqA7" xml:space="preserve"><value>Utilisez le sélecteur de langue Français / English dans le menu.</value></data>
+
+  <data name="HelpSupportTitle" xml:space="preserve"><value>Support &amp; contact</value></data>
+  <data name="HelpSupportBody" xml:space="preserve"><value>Besoin d’aide ? Contactez notre équipe.</value></data>
+  <data name="HelpSupportEmailLabel" xml:space="preserve"><value>Email :</value></data>
+  <data name="HelpSupportEmail" xml:space="preserve"><value>contact@door-market.com</value></data>
+  <data name="HelpSupportPhoneLabel" xml:space="preserve"><value>Téléphone :</value></data>
+  <data name="HelpSupportPhone" xml:space="preserve"><value>(+1) 220-279-1506</value></data>
+  <data name="HelpSupportHoursLabel" xml:space="preserve"><value>Horaires :</value></data>
+  <data name="HelpSupportHours" xml:space="preserve"><value>Lun–Sam, 8h–18h</value></data>
+  <data name="HelpSupportCta" xml:space="preserve"><value>Nous contacter</value></data>
+  <data name="HelpSupportMailTo" xml:space="preserve"><value>mailto:contact@door-market.com?subject=Support%20DoorMarket</value></data>
+  <data name="HelpSupportFormTitle" xml:space="preserve"><value>Envoyer un message</value></data>
+  <data name="HelpSupportNameLabel" xml:space="preserve"><value>Nom</value></data>
+  <data name="HelpSupportSubjectLabel" xml:space="preserve"><value>Sujet</value></data>
+  <data name="HelpSupportMessageLabel" xml:space="preserve"><value>Message</value></data>
+  <data name="HelpSupportSend" xml:space="preserve"><value>Envoyer</value></data>
+  <data name="HelpSupportSending" xml:space="preserve"><value>Envoi...</value></data>
+  <data name="HelpSupportRequired" xml:space="preserve"><value>Email et message requis.</value></data>
+  <data name="HelpSupportSent" xml:space="preserve"><value>Message envoye. Merci.</value></data>
+  <data name="HelpSupportFailed" xml:space="preserve"><value>Envoi impossible pour le moment.</value></data>
+</root>

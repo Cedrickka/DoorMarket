@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+<Shell
+    x:Class="DoorMarket.Mobile.AppShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:markup="clr-namespace:DoorMarket.Mobile.Markup"
+    xmlns:pages="clr-namespace:DoorMarket.Mobile.Pages"
+    xmlns:models="clr-namespace:DoorMarket.Mobile.Models"
+    Shell.NavBarIsVisible="False"
+    FlyoutBehavior="Disabled">
+
+    <TabBar>
+        <ShellContent Title="{markup:Translate TabHome}" ContentTemplate="{DataTemplate pages:HomePage}" Route="home">
+            <ShellContent.Icon>
+                <FontImageSource FontFamily="MaterialIcons" Glyph="{x:Static models:MaterialIcons.Home}" />
+            </ShellContent.Icon>
+        </ShellContent>
+        <ShellContent Title="{markup:Translate TabCategories}" ContentTemplate="{DataTemplate pages:CategoriesPage}" Route="categories">
+            <ShellContent.Icon>
+                <FontImageSource FontFamily="MaterialIcons" Glyph="{x:Static models:MaterialIcons.Category}" />
+            </ShellContent.Icon>
+        </ShellContent>
+        <ShellContent Title="{markup:Translate TabOrders}" ContentTemplate="{DataTemplate pages:OrdersPage}" Route="orders">
+            <ShellContent.Icon>
+                <FontImageSource FontFamily="fa-solid-900" Glyph="{x:Static models:IconGlyphs.Orders}" />
+            </ShellContent.Icon>
+        </ShellContent>
+        <ShellContent Title="{markup:Translate TabAccount}" ContentTemplate="{DataTemplate pages:ProfilePage}" Route="account">
+            <ShellContent.Icon>
+                <FontImageSource FontFamily="MaterialIcons" Glyph="{x:Static models:MaterialIcons.Person}" />
+            </ShellContent.Icon>
+        </ShellContent>
+    </TabBar>
+</Shell>
+
+

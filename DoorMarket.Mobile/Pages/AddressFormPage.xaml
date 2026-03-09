@@ -1,0 +1,79 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<local:LocalizedContentPage xmlns:local="clr-namespace:DoorMarket.Mobile.Localization"     x:Class="DoorMarket.Mobile.Pages.AddressFormPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:components="clr-namespace:DoorMarket.Mobile.Components"
+    xmlns:markup="clr-namespace:DoorMarket.Mobile.Markup"
+    xmlns:models="clr-namespace:DoorMarket.Mobile.Models"
+    NavigationPage.HasNavigationBar="False">
+
+    <Grid RowDefinitions="Auto,*">
+        <Grid
+            BackgroundColor="{StaticResource DoorBlue}"
+            ColumnDefinitions="Auto,*"
+            ColumnSpacing="16"
+            Padding="{OnPlatform iOS='24,56,24,20', Default='24,50,24,20'}">
+            <ImageButton Clicked="OnBackClicked">
+                <ImageButton.Source>
+                    <FontImageSource FontFamily="fa-solid-900" Glyph="{x:Static models:IconGlyphs.Back}" Color="White" Size="16" />
+                </ImageButton.Source>
+            </ImageButton>
+            <Label
+                x:Name="TitleLabel"
+                Grid.Column="1"
+                FontFamily="Inter-Bold"
+                FontSize="22"
+                Text="{markup:Translate AddressFormTitle}"
+                TextColor="White"
+                VerticalOptions="Center" />
+        </Grid>
+
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="24,16,24,24" Spacing="16">
+                <components:DmCard Margin="0">
+                    <VerticalStackLayout Spacing="16">
+                        <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate DeliveryInfoTitle}" />
+
+                        <components:DmInput x:Name="LabelEntry" Label="{markup:Translate AddressLabel}" Placeholder="{markup:Translate AddressLabelHome}" />
+                        <components:DmInput x:Name="FullNameEntry" Label="{markup:Translate FullNameLabel}" Placeholder="{markup:Translate FullNamePlaceholder}" />
+                        <components:DmInput x:Name="PhoneEntry" Keyboard="Telephone" Label="{markup:Translate PhoneLabel}" Placeholder="{markup:Translate PhonePlaceholder}" />
+                        <components:DmInput x:Name="CountryEntry" Label="{markup:Translate CountryLabel}" Placeholder="US" />
+                        <components:DmInput x:Name="CityEntry" Label="{markup:Translate CityLabel}" Placeholder="{markup:Translate CityPlaceholder}" />
+                        <VerticalStackLayout Spacing="6">
+                            <Label FontFamily="Inter-Medium" FontSize="13" Text="{markup:Translate DeliveryZoneTitle}" TextColor="{StaticResource DoorBlue}" />
+                            <Border
+                                Stroke="{StaticResource SoftGray}"
+                                StrokeShape="RoundRectangle 12"
+                                BackgroundColor="{StaticResource White}"
+                                Padding="12,6">
+                                <Picker x:Name="ZonePicker" Title="{markup:Translate DeliveryZonePickerTitle}" />
+                            </Border>
+                        </VerticalStackLayout>
+                        <components:DmInput x:Name="DistrictEntry" Label="{markup:Translate DistrictLabel}" Placeholder="{markup:Translate DistrictPlaceholder}" />
+                        <components:DmInput x:Name="StreetEntry" Label="{markup:Translate StreetLabel}" Placeholder="{markup:Translate StreetPlaceholder}" />
+                        <components:DmInput x:Name="LandmarkEntry" Label="{markup:Translate LandmarkLabel}" Placeholder="{markup:Translate LandmarkPlaceholder}" />
+
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <Switch x:Name="DefaultSwitch" OnColor="{StaticResource DoorOrange}" />
+                            <Label Grid.Column="1" FontFamily="Inter-Medium" Text="{markup:Translate DefaultAddressLabel}" VerticalOptions="Center" />
+                        </Grid>
+
+                        <Label
+                            x:Name="ErrorLabel"
+                            FontFamily="Inter-Medium"
+                            FontSize="13"
+                            IsVisible="False"
+                            TextColor="{StaticResource ErrorRed}" />
+
+                        <components:DmPrimaryButton Clicked="OnSaveClicked" Text="{markup:Translate Save}" />
+                    </VerticalStackLayout>
+                </components:DmCard>
+
+                <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</local:LocalizedContentPage>
+
+
+

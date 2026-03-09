@@ -1,0 +1,252 @@
+@page "/products/{Id:guid}"
+
+@using System.Net.Http.Json
+@using AppProductDto = DoorMarket.Application.DTOs.Products.ProductDto
+@using System.Globalization
+@using MudBlazor
+
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject ISnackbar Snackbar
+@inject DoorMarket.Web.Services.CartApiClient CartApi
+@inject DoorMarket.Web.Services.GuestCartService GuestCart
+@inject DoorMarket.Web.Services.WishlistService Wishlist
+@inject DoorMarket.Web.Services.RecentlyViewedService RecentlyViewed
+
+<PageTitle>@SL["ProductDetailsPageTitle"]</PageTitle>
+
+<h1 class="dm-page-h1">@SL["ProductDetailsTitle"]</h1>
+<div class="dm-page-sub">@SL["ProductDetailsSubtitle"]</div>
+
+@if (_loading)
+{
+    <MudPaper Class="pa-4 mt-3">
+        <MudSkeleton Height="280px" Class="mb-3" />
+        <MudSkeleton Height="26px" Width="220px" Class="mb-2" />
+        <MudSkeleton Height="18px" Width="320px" />
+    </MudPaper>
+}
+else if (_error is not null)
+{
+    <MudPaper Class="pa-4 mt-3">
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_error</MudAlert>
+        <MudButton Variant="Variant.Outlined" Class="mt-3" OnClick="BackToShops">@SL["BackToShops"]</MudButton>
+    </MudPaper>
+}
+else if (_product is null)
+{
+    <MudPaper Class="pa-4 mt-3">
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@SL["ProductNotFound"]</MudAlert>
+        <MudButton Variant="Variant.Outlined" Class="mt-3" OnClick="BackToShops">@SL["BackToShops"]</MudButton>
+    </MudPaper>
+}
+else
+{
+    <MudGrid Class="mt-3" Spacing="3">
+        <MudItem xs="12" md="6">
+            <img src="@MediaCatalog.Product(_product.MainImageUrl, _product.Name, _product.CategoryName, _product.Id)"
+                 alt="@_product.Name"
+                 class="dm-product-hero" />
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-4 dm-content-card">
+                <MudText Typo="Typo.h5" Class="mb-1">@_product.Name</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@_product.ShopName - @ProductCategoryLabel(_product)</MudText>
+
+                @if (_product.HasActivePromotion)
+                {
+                    <div class="mt-3">
+                        <div class="dm-product-price">@_product.EffectivePrice.ToString("0.00") @_product.Currency</div>
+                        <div class="dm-product-meta" style="text-decoration:line-through">@_product.Price.ToString("0.00") @_product.Currency</div>
+                    </div>
+                }
+                else
+                {
+                    <div class="dm-product-price mt-3">@_product.Price.ToString("0.00") @_product.Currency</div>
+                }
+
+                <MudText Typo="Typo.body2" Class="mt-2">@(_product.Description ?? SL["NoDescription"])</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">@SL["StockLabel"]: @_product.StockQty</MudText>
+
+                <div class="d-flex gap-2 flex-wrap mt-3">
+                    <MudButton Variant="Variant.Outlined" OnClick="BackToShop">@SL["ViewShop"]</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="ToggleWishlist" Disabled="@(_product is null)">
+                        @(_inWishlist ? T("Retirer de la wishlist", "Remove from wishlist") : T("Ajouter a la wishlist", "Add to wishlist"))
+                    </MudButton>
+                    <MudButton Color="Color.Primary"
+                               Variant="Variant.Filled"
+                               Disabled="@(_adding || _product.StockQty <= 0)"
+                               OnClick="AddToCart">
+                        @if (_adding)
+                        {
+                            <MudProgressCircular Indeterminate="true" Style="width:16px;height:16px" Class="me-1" />
+                            <span>@SL["Adding"]</span>
+                        }
+                        else
+                        {
+                            <span>@SL["AddToCart"]</span>
+                        }
+                    </MudButton>
+                </div>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private bool _loading = true;
+    private bool _adding;
+    private bool _inWishlist;
+    private bool _needsClientSync;
+    private string? _error;
+    private AppProductDto? _product;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            _product = await Http.GetFromJsonAsync<AppProductDto>($"api/products/{Id}");
+            _needsClientSync = _product is not null;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task AddToCart()
+    {
+        if (_product is null)
+        {
+            return;
+        }
+
+        _adding = true;
+        try
+        {
+            if (Auth.IsAuthenticated)
+            {
+                await CartApi.AddItemAsync(_product.Id, 1);
+            }
+            else
+            {
+                var price = _product.HasActivePromotion ? _product.EffectivePrice : _product.Price;
+                await GuestCart.AddItemAsync(
+                    new GuestCartProduct(_product.Id, _product.Name, price, _product.Currency, _product.MainImageUrl),
+                    1);
+            }
+            Snackbar.Add(SL["ProductAddedCart"], Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _adding = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_needsClientSync || _product is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await RecentlyViewed.AddProductAsync(ToRecentInput(_product));
+            _inWishlist = await Wishlist.ContainsAsync(_product.Id);
+            _needsClientSync = false;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (InvalidOperationException)
+        {
+            // Local storage is JS-based and may not be ready during prerender.
+        }
+    }
+
+    private async Task ToggleWishlist()
+    {
+        if (_product is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _inWishlist = await Wishlist.ToggleAsync(ToWishlistInput(_product));
+            Snackbar.Add(
+                _inWishlist ? T("Ajoute a la wishlist", "Added to wishlist") : T("Retire de la wishlist", "Removed from wishlist"),
+                Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private static bool IsEnglish()
+        => string.Equals(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "en", StringComparison.OrdinalIgnoreCase);
+
+    private static string T(string fr, string en) => IsEnglish() ? en : fr;
+
+    private static string ProductCategoryLabel(AppProductDto product)
+        => IsEnglish() && !string.IsNullOrWhiteSpace(product.CategoryNameEn) ? product.CategoryNameEn! : product.CategoryName;
+
+    private static WishlistItemInput ToWishlistInput(AppProductDto product)
+        => new(
+            product.Id,
+            product.Name,
+            product.ShopId,
+            product.ShopName,
+            product.Price,
+            product.EffectivePrice,
+            product.HasActivePromotion,
+            product.Currency,
+            product.MainImageUrl
+        );
+
+    private static RecentlyViewedProductInput ToRecentInput(AppProductDto product)
+        => new(
+            product.Id,
+            product.Name,
+            product.ShopId,
+            product.ShopName,
+            product.Price,
+            product.EffectivePrice,
+            product.HasActivePromotion,
+            product.Currency,
+            product.MainImageUrl
+        );
+
+    private void BackToShop()
+    {
+        if (_product is null)
+        {
+            BackToShops();
+            return;
+        }
+
+        Nav.NavigateTo($"/shops/{_product.ShopId}");
+    }
+
+    private void BackToShops() => Nav.NavigateTo("/shops");
+}

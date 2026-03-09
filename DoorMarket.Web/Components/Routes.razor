@@ -1,0 +1,59 @@
+﻿@implements IDisposable
+@inject DoorMarket.Web.Auth.AuthState Auth
+
+<AuthBootstrap />
+
+@if (!Auth.IsReady)
+{
+    <LayoutView Layout="@typeof(DoorMarket.Web.Components.Layout.MainLayout)">
+        <p class="dm-muted">Chargement de la session...</p>
+    </LayoutView>
+}
+else
+{
+    <Router AppAssembly="@typeof(Program).Assembly">
+        <Found Context="routeData">
+            <RouteView RouteData="@routeData" DefaultLayout="@typeof(DoorMarket.Web.Components.Layout.MainLayout)" />
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+
+        <NotFound>
+            <LayoutView Layout="@typeof(DoorMarket.Web.Components.Layout.MainLayout)">
+                <p class="dm-muted">Page introuvable.</p>
+            </LayoutView>
+        </NotFound>
+    </Router>
+}
+
+@code {
+    private static readonly TimeSpan ReadyTimeout = TimeSpan.FromSeconds(6);
+
+    protected override void OnInitialized()
+    {
+        Auth.OnChange += HandleAuthChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        await Task.Delay(ReadyTimeout);
+        if (!Auth.IsReady)
+        {
+            Auth.SetUnauthenticated();
+        }
+    }
+
+    public void Dispose()
+    {
+        Auth.OnChange -= HandleAuthChanged;
+    }
+
+    private void HandleAuthChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+}

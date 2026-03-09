@@ -1,0 +1,371 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<local:LocalizedContentPage xmlns:local="clr-namespace:DoorMarket.Mobile.Localization"     x:Class="DoorMarket.Mobile.Pages.CheckoutPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:components="clr-namespace:DoorMarket.Mobile.Components"
+    xmlns:markup="clr-namespace:DoorMarket.Mobile.Markup"
+    xmlns:models="clr-namespace:DoorMarket.Mobile.Models"
+    NavigationPage.HasNavigationBar="False">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        <Grid
+            Style="{StaticResource TopSurfaceGridStyle}"
+            ColumnDefinitions="Auto,*"
+            ColumnSpacing="16"
+            Padding="{OnPlatform iOS='24,56,24,20', Default='24,50,24,20'}">
+            <ImageButton Clicked="OnBackClicked">
+                <ImageButton.Source>
+                    <FontImageSource FontFamily="fa-solid-900" Glyph="{x:Static models:IconGlyphs.Back}" Color="{AppThemeBinding Light={StaticResource DoorBlue}, Dark={StaticResource DmTextPrimaryDark}}" Size="16" />
+                </ImageButton.Source>
+            </ImageButton>
+            <VerticalStackLayout Grid.Column="1" Spacing="8" VerticalOptions="Center">
+                <Label FontFamily="Inter-Bold" FontSize="22" Text="{markup:Translate CheckoutTitle}" TextColor="{AppThemeBinding Light={StaticResource DoorBlue}, Dark={StaticResource DmTextPrimaryDark}}" />
+                <Label FontFamily="Inter-Regular" FontSize="13" Text="{markup:Translate CheckoutSubtitle}" TextColor="{AppThemeBinding Light={StaticResource DmTextSecondaryLight}, Dark={StaticResource DmTextSecondaryDark}}" />
+            </VerticalStackLayout>
+        </Grid>
+
+        <Grid Grid.Row="1">
+            <ScrollView>
+                <VerticalStackLayout Padding="24,16,24,24" Spacing="16">
+                    <HorizontalStackLayout Spacing="8">
+                        <Frame
+                            BackgroundColor="{AppThemeBinding Light={StaticResource DoorBlue}, Dark={StaticResource DmSurfaceAltDark}}"
+                            CornerRadius="10"
+                            HasShadow="False"
+                            Padding="10,4">
+                            <Label FontFamily="Inter-SemiBold" FontSize="12" Text="{markup:Translate StepAddress}" TextColor="White" />
+                        </Frame>
+                        <Frame
+                            BackgroundColor="{AppThemeBinding Light={StaticResource DoorOrange}, Dark={StaticResource DmWarningSoftDark}}"
+                            CornerRadius="10"
+                            HasShadow="False"
+                            Padding="10,4">
+                            <Label FontFamily="Inter-SemiBold" FontSize="12" Text="{markup:Translate StepPayment}" TextColor="White" />
+                        </Frame>
+                            <Frame
+                                BackgroundColor="{StaticResource DoorBlue10}"
+                                BorderColor="{AppThemeBinding Light={StaticResource DmBorderLight}, Dark={StaticResource DmBorderDark}}"
+                                CornerRadius="10"
+                                HasShadow="False"
+                                Padding="10,4">
+                            <Label FontFamily="Inter-SemiBold" FontSize="12" Text="{markup:Translate StepConfirmation}" TextColor="{StaticResource DoorBlue}" />
+                        </Frame>
+                    </HorizontalStackLayout>
+
+                    <components:DmCard Margin="0">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                            <Frame
+                                BackgroundColor="{StaticResource DoorBlue10}"
+                                CornerRadius="12"
+                                HasShadow="False"
+                                HeightRequest="36"
+                                Padding="8"
+                                VerticalOptions="Center"
+                                WidthRequest="36">
+                                <Image Source="{FontImageSource FontFamily=fa-solid-900, Glyph={x:Static models:IconGlyphs.Cart}, Color={StaticResource DoorBlue}, Size=16}" />
+                            </Frame>
+
+                            <VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
+                                <Label FontFamily="Inter-SemiBold" FontSize="15" Text="{markup:Translate AmountToPay}" />
+                                <Label Style="{StaticResource CaptionLabelStyle}" Text="{markup:Translate AmountToPayHint}" />
+                            </VerticalStackLayout>
+
+                            <Label
+                                Grid.Column="2"
+                                Style="{StaticResource MetricValueLabelStyle}"
+                                FontSize="24"
+                                Text="{Binding HeaderTotal}"
+                                TextColor="{StaticResource DoorOrange}"
+                                VerticalOptions="Center" />
+                        </Grid>
+                    </components:DmCard>
+
+                    <components:DmCard Margin="0">
+                        <VerticalStackLayout Spacing="12">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate DeliveryAddressTitle}" />
+                                <Frame
+                                    Grid.Column="1"
+                                    BackgroundColor="{StaticResource DoorBlue10}"
+                                    CornerRadius="10"
+                                    HasShadow="False"
+                                    IsVisible="{Binding HasSelectedAddress}"
+                                    Padding="8,2"
+                                    VerticalOptions="Center">
+                                    <Label
+                                        FontFamily="Inter-SemiBold"
+                                        FontSize="12"
+                                        Text="{markup:Translate SelectedBadge}"
+                                        TextColor="{StaticResource DoorBlue}" />
+                                </Frame>
+                            </Grid>
+
+                            <Picker
+                                x:Name="AddressPicker"
+                                ItemDisplayBinding="{Binding Label}"
+                                ItemsSource="{Binding Addresses}"
+                                SelectedItem="{Binding SelectedAddress, Mode=TwoWay}" />
+
+                            <Label
+                                IsVisible="{Binding ShowNoAddresses}"
+                                Style="{StaticResource MutedLabelStyle}"
+                                Text="{markup:Translate NoAddressesAvailable}" />
+
+                            <components:DmSecondaryButton
+                                Clicked="OnManageAddressesClicked"
+                                HeightRequest="44"
+                                Text="{markup:Translate ManageAddresses}" />
+
+                            <Frame
+                                BackgroundColor="{StaticResource DoorBlue10}"
+                                CornerRadius="12"
+                                HasShadow="False"
+                                IsVisible="{Binding HasSelectedAddress}"
+                                Padding="12,10">
+                                <VerticalStackLayout Spacing="6">
+                                    <Label FontFamily="Inter-SemiBold" FontSize="15" Text="{Binding SelectedAddressName}" />
+                                    <Label Style="{StaticResource CaptionLabelStyle}" Text="{Binding SelectedAddressPhone}" />
+                                    <Label Style="{StaticResource CaptionLabelStyle}" Text="{Binding SelectedAddressLine}" />
+                                    <Label Style="{StaticResource CaptionLabelStyle}" Text="{Binding SelectedAddressCityCountry}" />
+                                    <Label Style="{StaticResource CaptionLabelStyle}" Text="{Binding SelectedDeliveryZoneLabel, StringFormat='{markup:Translate ZoneLabelFormat}'}" />
+                                </VerticalStackLayout>
+                            </Frame>
+
+                            <Frame
+                                BackgroundColor="{StaticResource DoorOrange12}"
+                                BorderColor="{StaticResource DoorOrange}"
+                                CornerRadius="12"
+                                HasShadow="False"
+                                IsVisible="{Binding NeedsZoneSelection}"
+                                Padding="12,10">
+                                <Label
+                                    FontFamily="Inter-Medium"
+                                    FontSize="12"
+                                    Text="{markup:Translate ZoneRequiredHint}"
+                                    TextColor="{StaticResource DoorOrange}" />
+                            </Frame>
+                        </VerticalStackLayout>
+                    </components:DmCard>
+
+                    <components:DmCard Margin="0">
+                        <VerticalStackLayout Spacing="12">
+                            <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate SummaryTitle}" />
+
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label Style="{StaticResource SummaryRowLabelStyle}" Text="{markup:Translate SubtotalLabel}" />
+                                <Label Grid.Column="1" Style="{StaticResource SummaryValueLabelStyle}" Text="{Binding SubtotalText}" />
+                            </Grid>
+
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label Style="{StaticResource SummaryRowLabelStyle}" Text="{markup:Translate PromoDiscountLabel}" />
+                                <Label Grid.Column="1" Style="{StaticResource SummaryValueLabelStyle}" Text="{Binding DiscountText}" />
+                            </Grid>
+
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label Style="{StaticResource SummaryRowLabelStyle}" Text="{markup:Translate DeliveryLabel}" />
+                                <Label Grid.Column="1" Style="{StaticResource SummaryValueLabelStyle}" Text="{Binding DeliveryText}" />
+                            </Grid>
+
+                            <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding HasPromoCode}">
+                                <Label Style="{StaticResource CaptionLabelStyle}" Text="{markup:Translate PromoCodeTitle}" />
+                                <Frame
+                                    Grid.Column="1"
+                                    BackgroundColor="{StaticResource DoorOrange12}"
+                                    CornerRadius="10"
+                                    HasShadow="False"
+                                    Padding="8,2"
+                                    VerticalOptions="Center">
+                                    <Label
+                                        FontFamily="Inter-SemiBold"
+                                        FontSize="12"
+                                        Text="{Binding PromoCodeLabel}"
+                                        TextColor="{StaticResource DoorOrange}" />
+                                </Frame>
+                            </Grid>
+
+                            <BoxView BackgroundColor="{AppThemeBinding Light={StaticResource DmBorderLight}, Dark={StaticResource DmBorderDark}}" HeightRequest="1" />
+
+                            <Frame
+                                BackgroundColor="{StaticResource DoorBlue10}"
+                                CornerRadius="12"
+                                HasShadow="False"
+                                Padding="12,10">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <Label FontFamily="Inter-Bold" FontSize="16" Text="{markup:Translate TotalLabel}" />
+                                    <Label
+                                        Grid.Column="1"
+                                        FontFamily="Inter-Bold"
+                                        FontSize="18"
+                                        Text="{Binding TotalText}"
+                                        TextColor="{StaticResource DoorOrange}" />
+                                </Grid>
+                            </Frame>
+                        </VerticalStackLayout>
+                    </components:DmCard>
+
+                    <components:DmCard Margin="0">
+                        <VerticalStackLayout Spacing="12">
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                                <Frame
+                                    BackgroundColor="{StaticResource DoorBlue10}"
+                                    CornerRadius="12"
+                                    HasShadow="False"
+                                    HeightRequest="36"
+                                    Padding="8"
+                                    VerticalOptions="Center"
+                                    WidthRequest="36">
+                                    <Image Source="{FontImageSource FontFamily=fa-solid-900, Glyph={x:Static models:IconGlyphs.Orders}, Color={StaticResource DoorBlue}, Size=16}" />
+                                </Frame>
+
+                                <VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
+                                    <Label FontFamily="Inter-SemiBold" FontSize="15" Text="{markup:Translate PaymentTitle}" />
+                                    <Label Style="{StaticResource MutedLabelStyle}" Text="{Binding PaymentMethodLabel}" />
+                                </VerticalStackLayout>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                                <Frame
+                                    BackgroundColor="{Binding PayPalCardBackgroundColor}"
+                                    BorderColor="{Binding PayPalCardBorderColor}"
+                                    CornerRadius="12"
+                                    HasShadow="False"
+                                    Padding="12,10">
+                                    <Frame.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnPayPalSelected" />
+                                    </Frame.GestureRecognizers>
+                                    <Grid RowDefinitions="Auto,Auto" RowSpacing="6">
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                            <Label FontFamily="Inter-SemiBold" FontSize="14" Text="{markup:Translate PayPalLabel}" TextColor="{Binding PayPalCardTextColor}" />
+                                            <Image
+                                                Grid.Column="1"
+                                                IsVisible="{Binding IsPayPalSelected}"
+                                                Source="{FontImageSource FontFamily=fa-solid-900, Glyph={x:Static models:IconGlyphs.Check}, Color=White, Size=12}" />
+                                        </Grid>
+                                        <Label
+                                            Grid.Row="1"
+                                            FontFamily="Inter-Regular"
+                                            FontSize="12"
+                                            Text="{markup:Translate PayPalHint}"
+                                            TextColor="{Binding PayPalCardTextColor}" />
+                                    </Grid>
+                                </Frame>
+
+                                <Frame
+                                    Grid.Column="1"
+                                    BackgroundColor="{Binding PrepaidCardBackgroundColor}"
+                                    BorderColor="{Binding PrepaidCardBorderColor}"
+                                    CornerRadius="12"
+                                    HasShadow="False"
+                                    Padding="12,10">
+                                    <Frame.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnPrepaidSelected" />
+                                    </Frame.GestureRecognizers>
+                                    <Grid RowDefinitions="Auto,Auto" RowSpacing="6">
+                                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                            <Label FontFamily="Inter-SemiBold" FontSize="14" Text="{markup:Translate PrepaidCardLabel}" TextColor="{Binding PrepaidCardTextColor}" />
+                                            <Image
+                                                Grid.Column="1"
+                                                IsVisible="{Binding IsPrepaidSelected}"
+                                                Source="{FontImageSource FontFamily=fa-solid-900, Glyph={x:Static models:IconGlyphs.Check}, Color=White, Size=12}" />
+                                        </Grid>
+                                        <Label
+                                            Grid.Row="1"
+                                            FontFamily="Inter-Regular"
+                                            FontSize="12"
+                                            Text="{markup:Translate PrepaidHint}"
+                                            TextColor="{Binding PrepaidCardTextColor}" />
+                                    </Grid>
+                                </Frame>
+                            </Grid>
+
+                            <Frame
+                                BackgroundColor="{Binding CardPreviewBackgroundColor}"
+                                CornerRadius="14"
+                                HasShadow="False"
+                                IsVisible="{Binding IsPrepaidSelected}"
+                                Padding="14"
+                                BorderColor="{Binding CardPreviewBorderColor}">
+                                <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="10">
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <Label
+                                            FontFamily="Inter-Medium"
+                                            FontSize="12"
+                                            Text="{markup:Translate PrepaidCardLabel}"
+                                            TextColor="{Binding CardPreviewSecondaryTextColor}" />
+                                        <Label
+                                            Grid.Column="1"
+                                            FontFamily="Inter-Bold"
+                                            FontSize="12"
+                                            HorizontalTextAlignment="End"
+                                            Text="{Binding CardPreviewBrand}"
+                                            TextColor="{Binding CardPreviewTextColor}" />
+                                    </Grid>
+
+                                    <Label
+                                        Grid.Row="1"
+                                        FontFamily="Inter-Bold"
+                                        FontSize="22"
+                                        CharacterSpacing="1"
+                                        Text="{Binding CardPreviewMaskedNumber}"
+                                        TextColor="{Binding CardPreviewTextColor}" />
+
+                                    <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
+                                        <Label
+                                            FontFamily="Inter-Medium"
+                                            FontSize="12"
+                                            Text="{Binding CardPreviewHolder}"
+                                            TextColor="{Binding CardPreviewSecondaryTextColor}" />
+                                        <Label
+                                            Grid.Column="1"
+                                            FontFamily="Inter-SemiBold"
+                                            FontSize="12"
+                                            Text="{markup:Translate CardExpiryExample}"
+                                            TextColor="{Binding CardPreviewSecondaryTextColor}" />
+                                    </Grid>
+                                </Grid>
+                            </Frame>
+
+                            <components:DmInput
+                                IsVisible="{Binding IsPrepaidSelected}"
+                                Label="{markup:Translate PrepaidCardNumberLabel}"
+                                Placeholder="4111 1111 1111 1111"
+                                Text="{Binding PrepaidCardCode, Mode=TwoWay}" />
+
+                            <Label
+                                IsVisible="{Binding IsPrepaidSelected}"
+                                Style="{StaticResource CaptionLabelStyle}"
+                                Text="{Binding PrepaidCodeHintText}"
+                                TextColor="{Binding PrepaidCodeHintColor}" />
+                        </VerticalStackLayout>
+                    </components:DmCard>
+                </VerticalStackLayout>
+            </ScrollView>
+
+            <ActivityIndicator
+                HorizontalOptions="Center"
+                IsRunning="{Binding IsBusy}"
+                IsVisible="{Binding IsBusy}"
+                VerticalOptions="Center" />
+        </Grid>
+
+        <Grid Grid.Row="2" Style="{StaticResource BottomSurfaceGridStyle}" ColumnDefinitions="Auto,*" ColumnSpacing="12" Padding="{OnPlatform iOS='24,12,24,32', Default='24,12'}" RowDefinitions="Auto,Auto" RowSpacing="8">
+            <Label
+                Grid.ColumnSpan="2"
+                IsVisible="{Binding HasPlaceOrderHint}"
+                Style="{StaticResource CaptionLabelStyle}"
+                Text="{Binding PlaceOrderHintText}"
+                TextColor="{Binding PlaceOrderHintColor}" />
+            <VerticalStackLayout Grid.Row="1" Spacing="2" VerticalOptions="Center">
+                <Label Style="{StaticResource SummaryRowLabelStyle}" Text="{markup:Translate TotalLabel}" />
+                <Label Style="{StaticResource MetricValueLabelStyle}" FontSize="22" Text="{Binding TotalText}" TextColor="{StaticResource DoorOrange}" />
+            </VerticalStackLayout>
+            <components:DmPrimaryButton
+                Grid.Column="1"
+                Grid.Row="1"
+                Clicked="OnPlaceOrderClicked"
+                IsEnabled="{Binding CanPlaceOrder}"
+                Text="{Binding PlaceOrderButtonText}" />
+        </Grid>
+    </Grid>
+</local:LocalizedContentPage>
+

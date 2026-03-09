@@ -1,0 +1,233 @@
+@page "/register"
+@using System.Net.Http.Json
+@using System.Globalization
+@using MudBlazor
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>@SL["RegisterPageTitle"]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-6">
+    <MudPaper Class="pa-5" Elevation="2">
+        <MudText Typo="Typo.h5" Style="font-weight:900">@SL["RegisterTitle"]</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+            @SL["RegisterSubtitle"]
+        </MudText>
+
+        <MudForm @ref="_form">
+            <MudTextField T="string"
+                          Label="@SL["Email"]"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          Immediate="true"
+                          @bind-Value="_email" />
+
+            <MudTextField T="string"
+                          Label="@SL["PhoneOptional"]"
+                          Variant="Variant.Outlined"
+                          Immediate="true"
+                          Class="mt-3"
+                          @bind-Value="_phone" />
+
+            <MudTextField T="string"
+                          Label="@SL["Password"]"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          InputType="@PasswordInputType"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@PasswordIcon"
+                          OnAdornmentClick="TogglePasswordVisibility"
+                          Immediate="true"
+                          Class="mt-3"
+                          @bind-Value="_password" />
+
+            <MudTextField T="string"
+                          Label="@SL["ConfirmPassword"]"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          InputType="@ConfirmPasswordInputType"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@ConfirmPasswordIcon"
+                          OnAdornmentClick="ToggleConfirmPasswordVisibility"
+                          Immediate="true"
+                          Class="mt-3"
+                          @bind-Value="_confirmPassword" />
+
+            <MudCheckBox T="bool" @bind-Checked="_rememberMe" Color="Color.Primary" Class="mt-3">
+                @SL["KeepSession"]
+            </MudCheckBox>
+
+            <MudButton Color="Color.Primary"
+                       Variant="Variant.Filled"
+                       Class="mt-4"
+                       FullWidth="true"
+                       Disabled="_loading"
+                       OnClick="DoRegister">
+                @if (_loading)
+                {
+                    <MudProgressCircular Indeterminate="true" Style="width:16px;height:16px" Class="me-2" />
+                    <span>@SL["Creating"]</span>
+                }
+                else
+                {
+                    <span>@SL["CreateAccountAction"]</span>
+                }
+            </MudButton>
+
+            <MudButton Variant="Variant.Outlined"
+                       FullWidth="true"
+                       Class="mt-2"
+                       Disabled="_loading"
+                       OnClick="@(() => Nav.NavigateTo(BuildLoginUrl()))">
+                @SL["AlreadyRegisteredLogin"]
+            </MudButton>
+        </MudForm>
+
+        <MudDivider Class="my-4" />
+        <MudText Typo="Typo.caption" Class="dm-muted dm-auth-legal">
+            @T("En creant un compte, vous acceptez nos", "By creating an account, you agree to our")
+            <MudLink Href="/terms" Class="ms-1 me-1">@T("Conditions d'utilisation", "Terms of Service")</MudLink>
+            @T("et notre", "and our")
+            <MudLink Href="/privacy" Class="ms-1">@T("Politique de confidentialite", "Privacy Policy")</MudLink>.
+        </MudText>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private MudForm? _form;
+
+    private string _email = string.Empty;
+    private string? _phone;
+    private string _password = string.Empty;
+    private string _confirmPassword = string.Empty;
+    private bool _showPassword;
+    private bool _showConfirmPassword;
+    private bool _rememberMe = true;
+    private bool _loading;
+    private string? _returnUrl;
+    private InputType PasswordInputType => _showPassword ? InputType.Text : InputType.Password;
+    private InputType ConfirmPasswordInputType => _showConfirmPassword ? InputType.Text : InputType.Password;
+    private string PasswordIcon => _showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility;
+    private string ConfirmPasswordIcon => _showConfirmPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility;
+
+    protected override void OnInitialized()
+    {
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        if (Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query).TryGetValue("returnUrl", out var returnUrl))
+        {
+            var candidate = returnUrl.ToString();
+            if (IsSafeReturnUrl(candidate))
+            {
+                _returnUrl = NormalizeReturnUrl(candidate);
+            }
+        }
+    }
+
+    private async Task DoRegister()
+    {
+        if (_loading)
+        {
+            return;
+        }
+
+        if (_form is not null)
+        {
+            await _form.Validate();
+            if (!_form.IsValid)
+            {
+                Snackbar.Add(SL["RequiredFieldsWarning"], Severity.Warning);
+                return;
+            }
+        }
+
+        if (!string.Equals(_password, _confirmPassword, StringComparison.Ordinal))
+        {
+            Snackbar.Add(SL["PasswordMismatch"], Severity.Warning);
+            return;
+        }
+
+        if (_password.Length < 6)
+        {
+            Snackbar.Add(SL["PasswordMinLength"], Severity.Warning);
+            return;
+        }
+
+        _loading = true;
+
+        try
+        {
+            var req = new RegisterRequest(
+                Email: _email.Trim(),
+                Phone: string.IsNullOrWhiteSpace(_phone) ? null : _phone.Trim(),
+                Password: _password);
+
+            var res = await Http.PostAsJsonAsync("api/auth/register", req);
+            if (!res.IsSuccessStatusCode)
+            {
+                var body = await res.Content.ReadAsStringAsync();
+                throw new InvalidOperationException(
+                    string.IsNullOrWhiteSpace(body)
+                        ? SL["RegisterFailed"]
+                        : body);
+            }
+
+            Snackbar.Add(SL["AccountCreatedCheckEmail"], Severity.Success);
+            var target = $"/verify-email?email={Uri.EscapeDataString(_email.Trim())}";
+            if (!string.IsNullOrWhiteSpace(_returnUrl))
+            {
+                target += $"&returnUrl={Uri.EscapeDataString(_returnUrl)}";
+            }
+
+            Nav.NavigateTo(target, forceLoad: false);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private sealed record RegisterRequest(string Email, string? Phone, string Password);
+
+    private string BuildLoginUrl()
+        => string.IsNullOrWhiteSpace(_returnUrl)
+            ? "/login"
+            : $"/login?returnUrl={Uri.EscapeDataString(_returnUrl)}";
+
+    private static bool IsSafeReturnUrl(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        if (Uri.TryCreate(value, UriKind.Relative, out _))
+        {
+            return value.StartsWith("/");
+        }
+
+        return false;
+    }
+
+    private static string NormalizeReturnUrl(string value)
+        => value.StartsWith("/") ? value : "/" + value;
+
+    private void TogglePasswordVisibility()
+        => _showPassword = !_showPassword;
+
+    private void ToggleConfirmPasswordVisibility()
+        => _showConfirmPassword = !_showConfirmPassword;
+
+    private static bool IsEn =>
+        string.Equals(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "en", StringComparison.OrdinalIgnoreCase);
+
+    private static string T(string fr, string en) => IsEn ? en : fr;
+}
+
+
+

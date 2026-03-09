@@ -1,0 +1,589 @@
+﻿@page "/profile"
+@using System.Net.Http.Json
+@using System.Net.Http.Headers
+@using System.Globalization
+@using Microsoft.AspNetCore.Components.Forms
+@using DoorMarket.Application.DTOs.Me
+@using MudBlazor
+@inject HttpClient Http
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject DoorMarket.Web.Auth.TokenStore Tokens
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>@SL["Profile"]</PageTitle>
+
+<h1 class="dm-page-h1">@SL["Profile"]</h1>
+<div class="dm-page-sub">@SL["ProfileSubtitle"]</div>
+
+<AuthGuard>
+    @if (_loading)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudSkeleton Height="24px" Width="220px" />
+            <MudSkeleton Height="14px" Width="180px" Class="mt-2" />
+            <MudSkeleton Height="80px" Class="mt-3" />
+        </MudPaper>}
+    else if (_error is not null)
+    {<MudPaper Class="pa-4 mt-3">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_error</MudAlert>
+        </MudPaper>}
+    else
+    {<MudGrid Class="mt-3" Spacing="3">
+            <MudItem xs="12" md="5">
+                <MudPaper Class="pa-4">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+                        <MudAvatar Size="Size.Large" Image="@ProfileImageSrc" />
+                        <div>
+                            <MudText Typo="Typo.h6">@(_me?.Email ?? Auth.Email ?? SL["Client"].Value)</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@SL["RoleLabel"] : @(_me?.Role ?? Auth.Role ?? SL["Client"].Value)</MudText>
+                            <InputFile OnChange="OnPhotoSelected" accept=".png,.jpg,.jpeg,.webp" class="mt-2" />
+                            @if (_pendingPhoto is not null)
+                            {
+                                <MudText Typo="Typo.caption" Class="mt-1">@SL["SelectedFile"] : <b>@_pendingPhoto.Name</b></MudText>
+                            }
+                            @if (_uploadingPhoto)
+                            {
+                                <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mt-2" />
+                            }
+                        </div>
+                    </MudStack>
+
+                    <MudDivider Class="my-3" />
+
+                    <MudTextField T="string"
+                                  Label="@SL["Phone"]"
+                                  Variant="Variant.Outlined"
+                                  Value="_phone"
+                                  ValueChanged="OnPhoneChanged" />
+
+                    @if (_phoneOtpPending)
+                    {
+                        <MudTextField T="string"
+                                      Label="@SL["OtpCodeLabel"]"
+                                      Variant="Variant.Outlined"
+                                      Class="mt-3"
+                                      @bind-Value="_phoneOtpCode" />
+                        <MudStack Row="true" Spacing="1" Class="mt-2">
+                            <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                                       Disabled="_saving"
+                                       OnClick="ConfirmPhoneOtpAsync">
+                                @SL["OtpVerifyAction"]
+                            </MudButton>
+                            <MudButton Color="Color.Default" Variant="Variant.Outlined"
+                                       Disabled="_saving"
+                                       OnClick="ResendPhoneOtpAsync">
+                                @SL["ResendCode"]
+                            </MudButton>
+                        </MudStack>
+                    }
+
+                    @if (IsClientRole)
+                    {
+                        <MudDivider Class="my-3" />
+                        <MudText Typo="Typo.h6" Class="mb-2">@SL["PasswordUpdateTitle"]</MudText>
+                        <MudTextField T="string"
+                                      Label="@SL["NewPasswordLabel"]"
+                                      Variant="Variant.Outlined"
+                                      InputType="@NewPasswordInputType"
+                                      Adornment="Adornment.End"
+                                      AdornmentIcon="@NewPasswordIcon"
+                                      OnAdornmentClick="ToggleNewPasswordVisibility"
+                                      @bind-Value="_newPassword" />
+                        <MudTextField T="string"
+                                      Label="@SL["ConfirmPasswordLabel"]"
+                                      Variant="Variant.Outlined"
+                                      InputType="@ConfirmPasswordInputType"
+                                      Adornment="Adornment.End"
+                                      AdornmentIcon="@ConfirmPasswordIcon"
+                                      OnAdornmentClick="ToggleConfirmPasswordVisibility"
+                                      Class="mt-2"
+                                      @bind-Value="_confirmPassword" />
+
+                        @if (_passwordOtpPending)
+                        {
+                            <MudTextField T="string"
+                                          Label="@SL["OtpCodeLabel"]"
+                                          Variant="Variant.Outlined"
+                                          Class="mt-3"
+                                          @bind-Value="_passwordOtpCode" />
+                            <MudStack Row="true" Spacing="1" Class="mt-2">
+                                <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                                           Disabled="_saving"
+                                           OnClick="ConfirmPasswordOtpAsync">
+                                    @SL["OtpVerifyAction"]
+                                </MudButton>
+                                <MudButton Color="Color.Default" Variant="Variant.Outlined"
+                                           Disabled="_saving"
+                                           OnClick="ResendPasswordOtpAsync">
+                                    @SL["ResendCode"]
+                                </MudButton>
+                            </MudStack>
+                        }
+                    }
+
+                    <MudButton Class="mt-3" Color="Color.Primary" Variant="Variant.Filled"
+                               Disabled="_saving || _uploadingPhoto || _phoneOtpPending || _passwordOtpPending"
+                               OnClick="UpdateProfileAsync">
+                        @if (_saving || _uploadingPhoto)
+                        {
+                            <MudProgressCircular Indeterminate="true" Style="width:16px;height:16px" Class="me-1" />
+                            <span>@SL["Saving"]</span>
+                        }
+                        else
+                        {
+                            <span>@SL["UpdateProfile"]</span>
+                        }
+                    </MudButton>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" md="7">
+                <MudPaper Class="pa-4 mb-3">
+                    <MudText Typo="Typo.h6" Class="mb-2">@T("Fidelite", "Loyalty")</MudText>
+                    @if (_loyaltyWallet is null)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">@T("Fidelite indisponible.", "Loyalty unavailable.")</MudText>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.h5" Color="Color.Warning">@_loyaltyWallet.PointsBalance pts</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">@_loyaltyWallet.WalletCurrency @_loyaltyWallet.WalletValue.ToString("0.00")</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
+                            @T("Gagnes", "Earned"): @_loyaltyWallet.LifetimeEarned | @T("Utilises", "Spent"): @_loyaltyWallet.LifetimeSpent
+                        </MudText>
+
+                        @if (_loyaltyHistory.Count > 0)
+                        {
+                            <MudDivider Class="my-2" />
+                            @foreach (var row in _loyaltyHistory.Take(3))
+                            {
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="dm-muted">@(!string.IsNullOrWhiteSpace(row.Note) ? row.Note : row.SourceType)</span>
+                                    <strong style="color:@(row.PointsDelta >= 0 ? "#2e7d32" : "#c62828")">
+                                        @(row.PointsDelta >= 0 ? "+" : "")@row.PointsDelta
+                                    </strong>
+                                </div>
+                            }
+                        }
+                    }
+                </MudPaper>
+
+                <MudPaper Class="pa-4">
+                    <MudText Typo="Typo.h6" Class="mb-2">@SL["ClientMenu"]</MudText>
+                    <div class="d-grid gap-2">
+                        <MudButton Variant="Variant.Outlined" OnClick="@(() => Nav.NavigateTo("/shops"))">@SL["Shops"]</MudButton>
+                        <MudButton Variant="Variant.Outlined" OnClick="@(() => Nav.NavigateTo("/cart"))">@SL["Cart"]</MudButton>
+                        <MudButton Variant="Variant.Outlined" OnClick="@(() => Nav.NavigateTo("/orders"))">@SL["MyOrders"]</MudButton>
+                        <MudButton Variant="Variant.Outlined" OnClick="@(() => Nav.NavigateTo("/returns"))">@(IsEnglish() ? "Returns" : "Retours")</MudButton>
+                        <MudButton Variant="Variant.Outlined" OnClick="@(() => Nav.NavigateTo("/profile/addresses"))">@SL["MyAddresses"]</MudButton>
+                        <MudButton Variant="Variant.Outlined" OnClick="@(() => Nav.NavigateTo("/profile/payments"))">@SL["Payments"]</MudButton>
+                        <MudButton Variant="Variant.Outlined" OnClick="@(() => Nav.NavigateTo("/support"))">@SL["Support"]</MudButton>
+                    </div>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</AuthGuard>
+
+@code {
+    private bool _loading = true;
+    private bool _saving;
+    private bool _uploadingPhoto;
+    private string? _error;
+    private MeDto? _me;
+    private string? _phone;
+    private bool _phoneOtpPending;
+    private string _phoneOtpCode = string.Empty;
+    private string _newPassword = string.Empty;
+    private string _confirmPassword = string.Empty;
+    private bool _passwordOtpPending;
+    private string _passwordOtpCode = string.Empty;
+    private string? _profileImageUrl;
+    private LoyaltyWalletView? _loyaltyWallet;
+    private List<LoyaltyLedgerView> _loyaltyHistory = new();
+    private IBrowserFile? _pendingPhoto;
+    private bool _pendingPasswordAfterPhone;
+    private bool _showNewPassword;
+    private bool _showConfirmPassword;
+
+    private bool IsClientRole => string.Equals(_me?.Role, "Client", StringComparison.OrdinalIgnoreCase);
+    private string ProfileImageSrc => string.IsNullOrWhiteSpace(_profileImageUrl) ? "/favicon.png" : _profileImageUrl!;
+    private static bool IsEnglish()
+        => string.Equals(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "en", StringComparison.OrdinalIgnoreCase);
+    private static string T(string fr, string en) => IsEnglish() ? en : fr;
+    private InputType NewPasswordInputType => _showNewPassword ? InputType.Text : InputType.Password;
+    private InputType ConfirmPasswordInputType => _showConfirmPassword ? InputType.Text : InputType.Password;
+    private string NewPasswordIcon => _showNewPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility;
+    private string ConfirmPasswordIcon => _showConfirmPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        while (!Auth.IsReady)
+        {
+            await Task.Delay(30);
+        }
+
+        if (!Auth.IsAuthenticated)
+        {
+            _loading = false;
+            StateHasChanged();
+            return;
+        }
+
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            _me = await Http.GetFromJsonAsync<MeDto>("api/me");
+            _phone = _me?.Phone;
+            _profileImageUrl = _me?.ProfileImageUrl;
+            _loyaltyWallet = await Http.GetFromJsonAsync<LoyaltyWalletView>("api/loyalty/me");
+            _loyaltyHistory = await Http.GetFromJsonAsync<List<LoyaltyLedgerView>>("api/loyalty/me/history?page=1&pageSize=5") ?? new();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _loyaltyWallet = null;
+            _loyaltyHistory = new();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private Task OnPhoneChanged(string value)
+    {
+        _phone = value;
+        return Task.CompletedTask;
+    }
+
+    private async Task UpdateProfileAsync()
+    {
+        if (_saving || _uploadingPhoto)
+        {
+            return;
+        }
+
+        if (_phoneOtpPending || _passwordOtpPending)
+        {
+            Snackbar.Add(SL["OtpPendingMessage"], Severity.Info);
+            return;
+        }
+
+        var phoneChanged = !string.Equals(_phone?.Trim() ?? string.Empty, _me?.Phone ?? string.Empty, StringComparison.Ordinal);
+        var passwordRequested = !string.IsNullOrWhiteSpace(_newPassword) || !string.IsNullOrWhiteSpace(_confirmPassword);
+        var photoRequested = _pendingPhoto is not null;
+
+        if (!phoneChanged && !passwordRequested && !photoRequested)
+        {
+            Snackbar.Add(SL["NoChanges"], Severity.Info);
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            if (photoRequested)
+            {
+                await UploadPhotoAsync();
+            }
+
+            if (IsClientRole)
+            {
+                if (phoneChanged)
+                {
+                    _pendingPasswordAfterPhone = passwordRequested;
+                    await RequestPhoneChangeInternalAsync();
+                    return;
+                }
+
+                if (passwordRequested)
+                {
+                    await RequestPasswordChangeInternalAsync();
+                    return;
+                }
+            }
+            else
+            {
+                if (phoneChanged)
+                {
+                    await UpdatePhoneInternalAsync();
+                }
+            }
+
+            if (photoRequested && !phoneChanged && !passwordRequested)
+            {
+                Snackbar.Add(SL["ProfileUpdated"], Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task ConfirmPhoneOtpAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_phoneOtpCode))
+        {
+            Snackbar.Add(SL["OtpRequired"], Severity.Warning);
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            var res = await Http.PostAsJsonAsync("api/me/confirm-phone-change", new ConfirmPhoneChangeRequest(_phoneOtpCode.Trim()));
+            if (!res.IsSuccessStatusCode)
+            {
+                var body = await res.Content.ReadAsStringAsync();
+                throw new InvalidOperationException(string.IsNullOrWhiteSpace(body) ? SL["UpdateFailed"] : body);
+            }
+
+            _phoneOtpPending = false;
+            _phoneOtpCode = string.Empty;
+            await LoadAsync();
+
+            if (_pendingPasswordAfterPhone)
+            {
+                _pendingPasswordAfterPhone = false;
+                await RequestPasswordChangeInternalAsync();
+                return;
+            }
+
+            Snackbar.Add(SL["ProfileUpdated"], Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task RequestPasswordChangeInternalAsync(bool isResend = false)
+    {
+        if (string.IsNullOrWhiteSpace(_newPassword))
+        {
+            throw new InvalidOperationException(SL["PasswordRequired"]);
+        }
+
+        if (!string.Equals(_newPassword, _confirmPassword, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(SL["PasswordMismatch"]);
+        }
+
+        var res = await Http.PostAsJsonAsync("api/me/request-password-change", new RequestPasswordChangeRequest(_newPassword));
+        if (!res.IsSuccessStatusCode)
+        {
+            var body = await res.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(body) ? SL["UpdateFailed"] : body);
+        }
+
+        _passwordOtpPending = true;
+        Snackbar.Add(isResend ? SL["OtpResent"] : SL["OtpProfilePasswordMessage"], Severity.Info);
+    }
+
+    private async Task RequestPhoneChangeInternalAsync(bool isResend = false)
+    {
+        var res = await Http.PostAsJsonAsync("api/me/request-phone-change", new RequestPhoneChangeRequest(_phone));
+        if (!res.IsSuccessStatusCode)
+        {
+            var body = await res.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(body) ? SL["UpdateFailed"] : body);
+        }
+
+        _phoneOtpPending = true;
+        Snackbar.Add(isResend ? SL["OtpResent"] : SL["OtpProfilePhoneMessage"], Severity.Info);
+    }
+
+    private async Task UpdatePhoneInternalAsync()
+    {
+        var res = await Http.PutAsJsonAsync("api/me", new UpdateMeRequest(_phone));
+        if (!res.IsSuccessStatusCode)
+        {
+            var body = await res.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(body) ? SL["UpdateFailed"] : body);
+        }
+
+        Snackbar.Add(SL["ProfileUpdated"], Severity.Success);
+        await LoadAsync();
+    }
+
+    private async Task ConfirmPasswordOtpAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_passwordOtpCode))
+        {
+            Snackbar.Add(SL["OtpRequired"], Severity.Warning);
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            var res = await Http.PostAsJsonAsync("api/me/confirm-password-change", new ConfirmPasswordChangeRequest(_passwordOtpCode.Trim()));
+            if (!res.IsSuccessStatusCode)
+            {
+                var body = await res.Content.ReadAsStringAsync();
+                throw new InvalidOperationException(string.IsNullOrWhiteSpace(body) ? SL["UpdateFailed"] : body);
+            }
+
+            _passwordOtpPending = false;
+            _passwordOtpCode = string.Empty;
+            _newPassword = string.Empty;
+            _confirmPassword = string.Empty;
+            Snackbar.Add(SL["PasswordUpdated"], Severity.Success);
+
+            await Tokens.ClearAsync();
+            Http.DefaultRequestHeaders.Authorization = null;
+            Auth.SetUnauthenticated();
+            Nav.NavigateTo("/login", forceLoad: false);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task ResendPhoneOtpAsync()
+    {
+        if (_saving)
+        {
+            return;
+        }
+
+        try
+        {
+            await RequestPhoneChangeInternalAsync(isResend: true);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task ResendPasswordOtpAsync()
+    {
+        if (_saving)
+        {
+            return;
+        }
+
+        try
+        {
+            await RequestPasswordChangeInternalAsync(isResend: true);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task OnPhotoSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null)
+        {
+            return;
+        }
+
+        if (file.Size > 10_000_000)
+        {
+            Snackbar.Add(SL["ImageTooLarge"], Severity.Warning);
+            return;
+        }
+
+        _pendingPhoto = file;
+        Snackbar.Add(string.Format(SL["SelectedFileSnackbar"].Value, file.Name), Severity.Info);
+    }
+
+    private async Task UploadPhotoAsync()
+    {
+        if (_pendingPhoto is null)
+        {
+            return;
+        }
+
+        _uploadingPhoto = true;
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            await using var stream = _pendingPhoto.OpenReadStream(10_000_000);
+            var fileContent = new StreamContent(stream);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(_pendingPhoto.ContentType);
+            content.Add(fileContent, "file", _pendingPhoto.Name);
+
+            var res = await Http.PostAsync("api/me/upload-photo", content);
+            if (!res.IsSuccessStatusCode)
+            {
+                var body = await res.Content.ReadAsStringAsync();
+                throw new InvalidOperationException(string.IsNullOrWhiteSpace(body) ? SL["UpdateFailed"] : body);
+            }
+
+            var payload = await res.Content.ReadFromJsonAsync<ProfileImageUploadResponse>();
+            _profileImageUrl = payload?.Url ?? _profileImageUrl;
+            _pendingPhoto = null;
+            Snackbar.Add(SL["ProfileUpdated"], Severity.Success);
+        }
+        finally
+        {
+            _uploadingPhoto = false;
+        }
+    }
+
+    private void ToggleNewPasswordVisibility()
+        => _showNewPassword = !_showNewPassword;
+
+    private void ToggleConfirmPasswordVisibility()
+        => _showConfirmPassword = !_showConfirmPassword;
+
+    private sealed record LoyaltyWalletView(
+        Guid UserId,
+        int PointsBalance,
+        int LifetimeEarned,
+        int LifetimeSpent,
+        decimal WalletValue,
+        string WalletCurrency,
+        DateTime? LastEarnedAtUtc);
+
+    private sealed record LoyaltyLedgerView(
+        Guid Id,
+        string SourceType,
+        string SourceId,
+        int PointsDelta,
+        decimal WalletValueDelta,
+        string WalletCurrency,
+        string Note,
+        DateTime CreatedAtUtc);
+}
+
+
+
+
+
+
+

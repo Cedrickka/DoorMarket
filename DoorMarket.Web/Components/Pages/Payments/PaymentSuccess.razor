@@ -1,0 +1,103 @@
+@page "/payment/success"
+@using System.Net.Http.Json
+@using MudBlazor
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+<PageTitle>@SL["Payment"]</PageTitle>
+
+<h1 class="dm-page-h1">@SL["Payment"]</h1>
+<div class="dm-page-sub">@SL["PaymentConfirmationInProgress"]</div>
+
+<MudPaper Class="pa-4 mt-3">
+    @if (_state == "loading")
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-3">@SL["ConfirmingPayment"]</MudAlert>
+        <MudProgressLinear Indeterminate="true" />
+    }
+    else if (_state == "paid")
+    {
+        <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Class="mb-3">@SL["PaymentConfirmedProcessingOrder"]</MudAlert>
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-3">@SL["PaymentPendingServerConfirmation"]</MudAlert>
+    }
+
+    @if (_orderId is not null)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary">@SL["Order"] : <b>#@ShortId(_orderId.Value)</b></MudText>
+    }
+
+    <MudDivider Class="my-3" />
+
+    <div class="d-flex gap-2 flex-wrap">
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="GoMyOrders">@SL["MyOrders"]</MudButton>
+        <MudButton Variant="Variant.Outlined" OnClick="GoHome">@SL["Home"]</MudButton>
+    </div>
+</MudPaper>
+
+@code {
+    [SupplyParameterFromQuery] public Guid? orderId { get; set; }
+    [SupplyParameterFromQuery] public string? token { get; set; }
+    [SupplyParameterFromQuery] public string? PayerID { get; set; }
+
+    private Guid? _orderId;
+    private string _state = "loading"; // loading | paid | pending
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _orderId = orderId;
+
+        if (_orderId is null)
+        {
+            _state = "pending";
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            try
+            {
+                var captureRes = await Http.PostAsJsonAsync("api/payments/paypal/capture", new PayPalCaptureRequest(_orderId.Value, token));
+                if (!captureRes.IsSuccessStatusCode)
+                {
+                    _state = "pending";
+                }
+            }
+            catch
+            {
+                _state = "pending";
+            }
+        }
+
+        _state = "loading";
+        for (var i = 0; i < 10; i++)
+        {
+            try
+            {
+                var order = await Http.GetFromJsonAsync<OrderMini>($"api/orders/{_orderId}");
+                if (order?.PaymentStatus == "Paid")
+                {
+                    _state = "paid";
+                    return;
+                }
+            }
+            catch
+            {
+            }
+
+            await Task.Delay(2000);
+        }
+
+        _state = "pending";
+    }
+
+    private void GoMyOrders() => Nav.NavigateTo("/orders");
+    private void GoHome() => Nav.NavigateTo("/");
+
+    private static string ShortId(Guid id) => id.ToString("N")[..8];
+
+    private sealed record OrderMini(Guid Id, string PaymentStatus);
+    private sealed record PayPalCaptureRequest(Guid OrderId, string PayPalOrderId);
+}

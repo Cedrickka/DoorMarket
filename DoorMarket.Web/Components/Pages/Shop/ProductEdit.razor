@@ -1,0 +1,634 @@
+﻿@page "/shop/products/{Id:guid}"
+
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Forms
+@using System.Globalization
+@using MudBlazor
+
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject ISnackbar Snackbar
+
+<h1 class="dm-page-h1">@SL["EditProductTitle"]</h1>
+<div class="dm-page-sub">@SL["EditProductSubtitle"]</div>
+
+<AuthGuard>
+    @if (!_bootstrapped || _loadingProduct)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudSkeleton Height="28px" Width="260px" Class="mb-2" />
+            <MudSkeleton Height="18px" Width="420px" Class="mb-4" />
+            <MudSkeleton Height="52px" />
+            <MudSkeleton Height="52px" Class="mt-2" />
+            <MudSkeleton Height="52px" Class="mt-2" />
+        </MudPaper>}
+    else
+    {<MudGrid Class="mt-3" Spacing="3">
+            <MudItem xs="12" lg="8">
+                <MudPaper Class="pa-4 dm-content-card">
+                    <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                        <div>
+                            <MudText Typo="Typo.h6" Class="mb-1">@SL["ProductInfo"]</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@SL["FillRequiredFieldsHint"]</MudText>
+                        </div>
+
+                        <MudChip T="string" Variant="Variant.Outlined" Color="Color.Primary" Label="true">V1</MudChip>
+                    </div>
+
+                    <MudDivider Class="my-3" />
+
+                    @if (_error is not null)
+                    {
+                        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mb-3">
+                            @_error
+                        </MudAlert>
+                    }
+
+                    <MudForm @ref="_form">
+                        <MudTextField T="string"
+                                      Label="@SL["ProductNameRequired"]"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      Immediate="true"
+                                      @bind-Value="_model.Name"
+                                      Validation="@(new Func<string?, IEnumerable<string>>(ValidateName))" />
+
+                        <MudTextField T="string"
+                                      Label="@SL["Description"]"
+                                      Variant="Variant.Outlined"
+                                      Lines="4"
+                                      Immediate="true"
+                                      @bind-Value="_model.Description"
+                                      Class="mt-3" />
+
+                        <MudGrid Class="mt-1" Spacing="2">
+                            <MudItem xs="12" md="6">
+                                @if (_loadingCategories)
+                                {
+                                    <MudSkeleton Height="56px" />
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">@SL["LoadingCategories"]</MudText>}
+                                else
+                                {<MudSelect T="Guid?"
+                                               Label="@SL["Category"]"
+                                               Variant="Variant.Outlined"
+                                               @bind-Value="_selectedCategoryId">
+                                        @foreach (var c in _categories)
+                                        {
+                                            <MudSelectItem Value="@( (Guid?)c.Id )">@CategoryLabel(c)</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                }
+                            </MudItem>
+
+                            <MudItem xs="12" md="3">
+                                <MudSelect T="string"
+                                           Label="@SL["CurrencyRequired"]"
+                                           Variant="Variant.Outlined"
+                                           Required="true"
+                                           @bind-Value="_model.Currency">
+                                    <MudSelectItem Value="@("USD")">USD</MudSelectItem>
+                                    <MudSelectItem Value="@("CDF")">CDF</MudSelectItem>
+                                </MudSelect>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@SL["CurrencyHint"]</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" md="3">
+                                <MudNumericField T="decimal"
+                                                 Label="@SL["PriceRequired"]"
+                                                 Variant="Variant.Outlined"
+                                                 Required="true"
+                                                 Min="0"
+                                                 Immediate="true"
+                                                 @bind-Value="_model.Price"
+                                                 Validation="@(new Func<decimal, IEnumerable<string>>(ValidatePrice))" />
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudGrid Class="mt-1" Spacing="2">
+                            <MudItem xs="12" md="4">
+                                <MudNumericField T="int"
+                                                 Label="@SL["StockRequired"]"
+                                                 Variant="Variant.Outlined"
+                                                 Required="true"
+                                                 Min="0"
+                                                 Immediate="true"
+                                                 @bind-Value="_model.StockQty"
+                                                 Validation="@(new Func<int, IEnumerable<string>>(ValidateStock))" />
+                            </MudItem>
+
+                            <MudItem xs="12" md="8">
+                                <MudSwitch T="bool"
+                                           Color="Color.Success"
+                                           @bind-Value="_model.IsActive"
+                                           Label="@SL["ActiveVisible"]"
+                                           Class="mt-2" />
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudDivider Class="my-3" />
+
+                        <MudText Typo="Typo.subtitle2" Class="mb-1">@SL["Promotion"]</MudText>
+                        <MudSwitch T="bool"
+                                   Color="Color.Warning"
+                                   @bind-Value="_model.IsPromotionEnabled"
+                                   Label="@SL["EnablePromotion"]" />
+
+                        @if (_model.IsPromotionEnabled)
+                        {
+                            <MudGrid Class="mt-1" Spacing="2">
+                                <MudItem xs="12" md="3">
+                                    <MudNumericField T="decimal?"
+                                                     Label="@SL["PromoPriceRequired"]"
+                                                     Variant="Variant.Outlined"
+                                                     Min="0"
+                                                     Immediate="true"
+                                                     @bind-Value="_model.PromotionPrice" />
+                                </MudItem>
+                                <MudItem xs="12" md="3">
+                                    <MudNumericField T="decimal?"
+                                                     Label="@SL["PromoPercent"]"
+                                                     Variant="Variant.Outlined"
+                                                     Min="@(0m)"
+                                                     Max="@(99.99m)"
+                                                     Immediate="true"
+                                                     @bind-Value="_model.PromotionPercent" />
+                                </MudItem>
+                                <MudItem xs="12" md="3">
+                                    <MudDatePicker Label="@SL["PromoStartOptional"]"
+                                                   Variant="Variant.Outlined"
+                                                   Date="_model.PromotionStartUtc"
+                                                   DateChanged="OnPromotionStartChanged" />
+                                </MudItem>
+                                <MudItem xs="12" md="3">
+                                    <MudDatePicker Label="@SL["PromoEndOptional"]"
+                                                   Variant="Variant.Outlined"
+                                                   Date="_model.PromotionEndUtc"
+                                                   DateChanged="OnPromotionEndChanged" />
+                                </MudItem>
+                            </MudGrid>
+
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">@SL["PromoHint"]</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Primary" Class="mt-1">
+                                @SL["PromoEstimatedPrice"] @EstimatePromotionPriceDisplay()
+                            </MudText>
+                        }
+
+                        <div class="mt-3">
+                            <MudText Typo="Typo.subtitle2" Class="mb-1">@SL["ProductImage"]</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@SL["ProductImageHint"]</MudText>
+                            <InputFile OnChange="OnImageFileSelected" accept=".png,.jpg,.jpeg,.webp" class="mt-2" />
+                            @if (_uploadingImage)
+                            {
+                                <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mt-2" />
+                            }
+                        </div>
+
+                        <MudTextField T="string"
+                                      Label="@SL["MainImageUrlOptional"]"
+                                      Variant="Variant.Outlined"
+                                      Immediate="true"
+                                      @bind-Value="_model.MainImageUrl"
+                                      Class="mt-2" />
+
+                        <img src="@PreviewImageUrl()"
+                             alt="@SL["ProductPreviewAlt"]"
+                             class="dm-product-hero mt-2" />
+
+                        <MudDivider Class="my-3" />
+
+                        <div class="d-flex gap-2 flex-wrap">
+                            <MudButton Variant="Variant.Outlined" Disabled="@(_saving || _uploadingImage)" OnClick="Cancel">@SL["Cancel"]</MudButton>
+
+                            <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="@(_saving || _uploadingImage)"
+                                       OnClick="Save">
+                                @if (_saving)
+                                {
+                                    <MudProgressCircular Indeterminate="true" Style="width:16px;height:16px" Class="me-2" />
+                                    <span>@SL["Saving"]</span>}
+                                else
+                                {<span>@SL["Save"]</span>
+                                }
+                            </MudButton>
+                        </div>
+
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">@SL["DefaultImageNote"]</MudText>
+                    </MudForm>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" lg="4">
+                <MudPaper Class="pa-4 dm-content-card">
+                    <MudText Typo="Typo.h6" Class="mb-2">@SL["DoorMarketTips"]</MudText>
+
+                    <MudList T="string" Dense="true">
+                        <MudListItem>@SL["TipProductName"]</MudListItem>
+                        <MudListItem>@SL["TipStockUpToDate"]</MudListItem>
+                        <MudListItem>@SL["TipCategories"]</MudListItem>
+                        <MudListItem>@SL["TipPriceCurrency"]</MudListItem>
+                    </MudList>
+
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-3">@SL["ProTipTopProducts"]</MudAlert>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</AuthGuard>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private bool _bootstrapped;
+    private bool _loadingProduct = true;
+
+    private MudForm? _form;
+
+    private string? _error;
+    private bool _saving = false;
+    private bool _uploadingImage = false;
+
+    private bool _loadingCategories = true;
+    private List<CategoryDto> _categories = new();
+
+    private ProductFormModel _model = new();
+    private Guid? _selectedCategoryId;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var t0 = DateTime.UtcNow;
+        while (!Auth.IsReady && (DateTime.UtcNow - t0).TotalSeconds < 6)
+            await Task.Delay(30);
+
+        if (!Auth.IsReady)
+        {
+            Auth.SetUnauthenticated();
+        }
+
+        if (!Auth.IsAuthenticated)
+        {
+            _bootstrapped = true;
+            _loadingProduct = false;
+            StateHasChanged();
+            return;
+        }
+
+        if (!Auth.IsShop && !Auth.IsAdmin)
+        {
+            Nav.NavigateTo("/", forceLoad: false);
+            return;
+        }
+
+        _bootstrapped = true;
+        await LoadInitialDataAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        _loadingCategories = true;
+
+        try
+        {
+            var list = await Http.GetFromJsonAsync<List<CategoryDto>>("api/categories");
+            _categories = list ?? new();
+        }
+        catch
+        {
+            _categories = new();
+        }
+        finally
+        {
+            _loadingCategories = false;
+        }
+    }
+    private async Task LoadInitialDataAsync()
+    {
+        _loadingProduct = true;
+        _error = null;
+
+        try
+        {
+            await LoadCategoriesAsync();
+
+            var product = await Http.GetFromJsonAsync<ProductDetailDto>($"api/products/{Id}");
+            if (product is null)
+            {
+                throw new InvalidOperationException(SL["ProductNotFound"]);
+            }
+
+            _selectedCategoryId = product.CategoryId;
+            _model = new ProductFormModel
+            {
+                Name = product.Name,
+                Description = product.Description,
+                Currency = string.IsNullOrWhiteSpace(product.Currency) ? "USD" : product.Currency,
+                Price = product.Price,
+                IsPromotionEnabled = product.IsPromotionEnabled,
+                PromotionPrice = product.PromotionPrice,
+                PromotionPercent = product.PromotionPercent,
+                PromotionStartUtc = product.PromotionStartUtc?.ToLocalTime(),
+                PromotionEndUtc = product.PromotionEndUtc?.ToLocalTime(),
+                StockQty = product.StockQty,
+                IsActive = product.IsActive,
+                MainImageUrl = product.MainImageUrl
+            };
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loadingProduct = false;
+        }
+    }
+
+    private async Task Save()
+    {
+        _error = null;
+
+        if (_form is not null)
+        {
+            await _form.Validate();
+            if (!_form.IsValid)
+            {
+                Snackbar.Add(SL["FixRequiredFields"], Severity.Warning);
+                return;
+            }
+        }
+
+        if (_selectedCategoryId is null)
+        {
+            Snackbar.Add(SL["SelectCategory"], Severity.Warning);
+            return;
+        }
+
+        if (_model.IsPromotionEnabled)
+        {
+            if (!_model.PromotionPrice.HasValue && !_model.PromotionPercent.HasValue)
+            {
+                Snackbar.Add(SL["PromoPriceOrPercentRequired"], Severity.Warning);
+                return;
+            }
+
+            if (_model.PromotionPercent.HasValue &&
+                (_model.PromotionPercent.Value <= 0m || _model.PromotionPercent.Value >= 100m))
+            {
+                Snackbar.Add(SL["PromoPercentRange"], Severity.Warning);
+                return;
+            }
+
+            if (_model.PromotionPrice.HasValue && _model.PromotionPrice.Value <= 0m)
+            {
+                Snackbar.Add(SL["PromoPricePositive"], Severity.Warning);
+                return;
+            }
+
+            if (_model.PromotionPrice.HasValue && _model.PromotionPrice.Value >= _model.Price)
+            {
+                Snackbar.Add(SL["PromoPriceLessThanNormal"], Severity.Warning);
+                return;
+            }
+
+            if (_model.PromotionStartUtc.HasValue &&
+                _model.PromotionEndUtc.HasValue &&
+                _model.PromotionStartUtc > _model.PromotionEndUtc)
+            {
+                Snackbar.Add(SL["PromoStartBeforeEnd"], Severity.Warning);
+                return;
+            }
+        }
+
+        _saving = true;
+
+        try
+        {
+            var req = new ProductUpsertRequest(
+                CategoryId: _selectedCategoryId!.Value,
+                Name: (_model.Name ?? "").Trim(),
+                Description: (_model.Description ?? "").Trim(),
+                Currency: _model.Currency,
+                Price: _model.Price,
+                IsPromotionEnabled: _model.IsPromotionEnabled,
+                PromotionPrice: _model.IsPromotionEnabled ? ResolvePromotionPrice() : null,
+                PromotionStartUtc: _model.IsPromotionEnabled ? ToUtcOrNull(_model.PromotionStartUtc, endOfDay: false) : null,
+                PromotionEndUtc: _model.IsPromotionEnabled ? ToUtcOrNull(_model.PromotionEndUtc, endOfDay: true) : null,
+                StockQty: _model.StockQty,
+                IsActive: _model.IsActive,
+                MainImageUrl: string.IsNullOrWhiteSpace(_model.MainImageUrl) ? null : _model.MainImageUrl.Trim(),
+                PromotionPercent: _model.IsPromotionEnabled ? _model.PromotionPercent : null
+            );
+
+            var res = await Http.PutAsJsonAsync($"api/products/mine/{Id}", req);
+
+            if (!res.IsSuccessStatusCode)
+            {
+                var body = await res.Content.ReadAsStringAsync();
+                throw new InvalidOperationException($"{SL["ApiError"]} ({(int)res.StatusCode}) : {body}");
+            }
+
+            Snackbar.Add(SL["ProductUpdatedSuccess"], Severity.Success);
+            Nav.NavigateTo("/shop/products");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private string PreviewImageUrl()
+        => MediaCatalog.Product(_model.MainImageUrl, _model.Name, SelectedCategoryName(), Id);
+
+    private static bool IsEnglish()
+        => string.Equals(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "en", StringComparison.OrdinalIgnoreCase);
+
+    private static string CategoryLabel(CategoryDto category)
+        => IsEnglish() && !string.IsNullOrWhiteSpace(category.NameEn) ? category.NameEn! : category.Name;
+
+    private string? SelectedCategoryName()
+        => _categories.FirstOrDefault(x => x.Id == _selectedCategoryId)?.Name;
+
+    private void Cancel() => Nav.NavigateTo("/shop/products");
+
+    // ----- Validations (simples, sans DataAnnotations) -----
+
+    private IEnumerable<string> ValidateName(string? v)
+    {
+        if (string.IsNullOrWhiteSpace(v)) yield return SL["NameRequired"];
+        else if (v.Trim().Length < 2) yield return SL["NameMinLength"];
+    }
+
+    private IEnumerable<string>ValidatePrice(decimal v)
+    {
+        if (v<= 0) yield return SL["PricePositive"];
+    }
+
+    private IEnumerable<string>ValidateStock(int v)
+    {
+        if (v< 0) yield return SL["StockNonNegative"];
+    }
+
+    private Task OnPromotionStartChanged(DateTime? value)
+    {
+        _model.PromotionStartUtc = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnPromotionEndChanged(DateTime? value)
+    {
+        _model.PromotionEndUtc = value;
+        return Task.CompletedTask;
+    }
+
+    private decimal? ResolvePromotionPrice()
+    {
+        if (_model.PromotionPrice.HasValue)
+        {
+            return _model.PromotionPrice.Value;
+        }
+
+        if (!_model.PromotionPercent.HasValue)
+        {
+            return null;
+        }
+
+        return decimal.Round(
+            _model.Price * (1m - (_model.PromotionPercent.Value / 100m)),
+            2,
+            MidpointRounding.AwayFromZero);
+    }
+
+    private string EstimatePromotionPriceDisplay()
+    {
+        var price = ResolvePromotionPrice();
+        if (!price.HasValue)
+        {
+            return "--";
+        }
+
+        return $"{price.Value:0.##} {_model.Currency}";
+    }
+
+    private static DateTime? ToUtcOrNull(DateTime? value, bool endOfDay = false)
+    {
+        if (!value.HasValue)
+        {
+            return null;
+        }
+
+        var dt = value.Value;
+        if (endOfDay && dt.TimeOfDay == TimeSpan.Zero)
+        {
+            dt = dt.Date.AddDays(1).AddTicks(-1);
+        }
+
+        if (dt.Kind == DateTimeKind.Utc)
+        {
+            return dt;
+        }
+
+        if (dt.Kind == DateTimeKind.Unspecified)
+        {
+            dt = DateTime.SpecifyKind(dt, DateTimeKind.Local);
+        }
+
+        return dt.ToUniversalTime();
+    }
+
+    private async Task OnImageFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null)
+        {
+            return;
+        }
+
+        _uploadingImage = true;
+        _error = null;
+
+        try
+        {
+            await using var stream = file.OpenReadStream(10_000_000);
+            using var form = new MultipartFormDataContent();
+            using var fileContent = new StreamContent(stream);
+            fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+            form.Add(fileContent, "file", file.Name);
+
+            var res = await Http.PostAsync("api/products/upload-image", form);
+            if (!res.IsSuccessStatusCode)
+            {
+                var body = await res.Content.ReadAsStringAsync();
+                throw new InvalidOperationException(string.Format(SL["UploadImageFailed"].Value, (int)res.StatusCode, body));
+            }
+
+            var uploaded = await res.Content.ReadFromJsonAsync<ProductImageUploadResponse>();
+            if (uploaded is null || string.IsNullOrWhiteSpace(uploaded.Url))
+            {
+                throw new InvalidOperationException(SL["ImageUrlInvalid"]);
+            }
+
+            _model.MainImageUrl = uploaded.Url;
+            Snackbar.Add(SL["ImageUploadedSuccess"], Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _uploadingImage = false;
+            StateHasChanged();
+        }
+    }
+
+    // ----- Models/DTO placeholders : garde les tiens si déjà existants -----
+
+    public class ProductFormModel
+    {
+        public string Name { get; set; } = "";
+        public string? Description { get; set; }
+        public string Currency { get; set; } = "USD";
+        public decimal Price { get; set; } = 0;
+        public bool IsPromotionEnabled { get; set; }
+        public decimal? PromotionPrice { get; set; }
+        public decimal? PromotionPercent { get; set; }
+        public DateTime? PromotionStartUtc { get; set; }
+        public DateTime? PromotionEndUtc { get; set; }
+        public int StockQty { get; set; } = 0;
+        public bool IsActive { get; set; } = true;
+        public string? MainImageUrl { get; set; }
+    }
+
+    // Si tu as déjà ces types ailleurs, supprime ceux-ci et garde tes @using
+    public record ProductUpsertRequest(
+        Guid CategoryId,
+        string Name,
+        string Description,
+        string Currency,
+        decimal Price,
+        bool IsPromotionEnabled,
+        decimal? PromotionPrice,
+        DateTime? PromotionStartUtc,
+        DateTime? PromotionEndUtc,
+        int StockQty,
+        bool IsActive,
+        string? MainImageUrl,
+        decimal? PromotionPercent = null);
+    public record CategoryDto(Guid Id, string Name, string? NameEn);
+    public record ProductImageUploadResponse(string Url, string FileName, string ContentType, long SizeBytes);
+}
+
+
+
+
+
+
+

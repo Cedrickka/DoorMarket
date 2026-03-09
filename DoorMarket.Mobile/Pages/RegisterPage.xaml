@@ -1,0 +1,108 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<local:LocalizedContentPage xmlns:local="clr-namespace:DoorMarket.Mobile.Localization"     x:Class="DoorMarket.Mobile.Pages.RegisterPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:components="clr-namespace:DoorMarket.Mobile.Components"
+    xmlns:markup="clr-namespace:DoorMarket.Mobile.Markup"
+    NavigationPage.HasNavigationBar="False">
+
+    <Grid RowDefinitions="Auto,*">
+        <Grid Padding="24,56,24,24">
+            <Grid.Background>
+                <LinearGradientBrush EndPoint="1,1" StartPoint="0,0">
+                    <GradientStop Color="{StaticResource DoorBlue}" Offset="0" />
+                    <GradientStop Color="#0C3F78" Offset="1" />
+                </LinearGradientBrush>
+            </Grid.Background>
+
+            <VerticalStackLayout Spacing="8">
+                <Image
+                    HorizontalOptions="Start"
+                    Source="doormarket_logo_mobile_small.png"
+                    WidthRequest="190" />
+                <Label
+                    FontFamily="Inter-Medium"
+                    FontSize="14"
+                    Text="{markup:Translate RegisterIntro}"
+                    TextColor="White" />
+            </VerticalStackLayout>
+
+            <Border
+                HorizontalOptions="End"
+                VerticalOptions="Start"
+                HeightRequest="34"
+                WidthRequest="58"
+                BackgroundColor="#26FFFFFF"
+                StrokeThickness="0">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="10" />
+                </Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnLanguageTapped" />
+                </Border.GestureRecognizers>
+                <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="2" HorizontalOptions="Center" VerticalOptions="Center">
+                    <Image
+                        Source="{Binding CurrentLanguageFlagImage}"
+                        HeightRequest="12"
+                        WidthRequest="18" />
+                    <Label
+                        Grid.Column="1"
+                        FontFamily="Inter-SemiBold"
+                        FontSize="11"
+                        Text="▾"
+                        TextColor="White"
+                        VerticalTextAlignment="Center" />
+                </Grid>
+            </Border>
+        </Grid>
+
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="24" Spacing="16">
+                <components:DmCard Margin="0">
+                    <VerticalStackLayout Spacing="16">
+                        <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate RegisterTitle}" />
+
+                        <components:DmInput
+                            x:Name="EmailEntry"
+                            Keyboard="Email"
+                            Label="{markup:Translate EmailLabel}"
+                            Placeholder="{markup:Translate EmailPlaceholder}" />
+
+                        <components:DmInput
+                            x:Name="PhoneEntry"
+                            Keyboard="Telephone"
+                            Label="{markup:Translate PhoneOptionalLabel}"
+                            Placeholder="{markup:Translate PhonePlaceholder}" />
+
+                        <components:DmInput
+                            x:Name="PasswordEntry"
+                            IsPassword="True"
+                            Label="{markup:Translate PasswordLabel}"
+                            Placeholder="{markup:Translate PasswordRegisterPlaceholder}" />
+
+                        <components:DmInput
+                            x:Name="ConfirmPasswordEntry"
+                            IsPassword="True"
+                            Label="{markup:Translate ConfirmLabel}"
+                            Placeholder="{markup:Translate ConfirmPlaceholder}" />
+
+                        <Label
+                            x:Name="ErrorLabel"
+                            FontFamily="Inter-Medium"
+                            FontSize="13"
+                            IsVisible="False"
+                            TextColor="{StaticResource ErrorRed}" />
+
+                        <components:DmPrimaryButton Clicked="OnRegisterClicked" Text="{markup:Translate RegisterAction}" />
+                        <components:DmSecondaryButton Clicked="OnBackClicked" Text="{markup:Translate AlreadyHaveAccount}" />
+                    </VerticalStackLayout>
+                </components:DmCard>
+
+                <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</local:LocalizedContentPage>
+
+
+

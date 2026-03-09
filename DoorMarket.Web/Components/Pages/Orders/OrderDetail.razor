@@ -1,0 +1,586 @@
+@page "/orders/{Id:guid}"
+
+@using System.Net.Http.Json
+@using MudBlazor
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+
+<PageTitle>@SL["Order"]</PageTitle>
+
+<h1 class="dm-page-h1">@SL["Order"]</h1>
+<div class="dm-page-sub">@SL["OrderDetailSubtitle"]</div>
+
+<AuthGuard>
+    @if (!_bootstrapped)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudSkeleton Height="26px" Width="260px" Class="mb-2" />
+            <MudSkeleton Height="18px" Width="420px" Class="mb-4" />
+            <MudSkeleton Height="140px" />
+        </MudPaper>
+    }
+    else if (_loading)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudSkeleton Height="44px" />
+            <MudSkeleton Height="44px" Class="mt-2" />
+            <MudSkeleton Height="44px" Class="mt-2" />
+        </MudPaper>
+    }
+    else if (_error is not null)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_error</MudAlert>
+            <div class="d-flex gap-2 mt-3 flex-wrap">
+                <MudButton Variant="Variant.Outlined" OnClick="Back">@SL["Back"]</MudButton>
+                <MudButton Variant="Variant.Outlined" OnClick="Reload">@SL["Retry"]</MudButton>
+            </div>
+        </MudPaper>
+    }
+    else if (_order is null)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@SL["OrderNotFound"]</MudAlert>
+            <MudButton Variant="Variant.Outlined" Class="mt-3" OnClick="Back">@SL["Back"]</MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        <MudGrid Class="mt-3" Spacing="3">
+            <MudItem xs="12" lg="8">
+                <MudPaper Class="pa-4">
+                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                        <div>
+                            <MudText Typo="Typo.h6" Class="mb-1">@SL["Order"] #@ShortId(_order.Id)</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                @SL["CreatedAt"] : @_order.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                            </MudText>
+                        </div>
+
+                        <div class="d-flex gap-2 flex-wrap align-items-center">
+                            <MudChip T="string" Variant="Variant.Filled"
+                                     Color="@PaymentColor(_order.PaymentStatus)" Label="true">
+                                @SL["Payment"]: @_order.PaymentStatus
+                            </MudChip>
+
+                            <MudChip T="string" Variant="Variant.Outlined"
+                                     Color="@StatusColor(_order.Status)" Label="true">
+                                @_order.Status
+                            </MudChip>
+                        </div>
+                    </div>
+
+                    <MudDivider Class="my-3" />
+
+                    <MudText Typo="Typo.subtitle1" Class="mb-2">@SL["Items"]</MudText>
+
+                    <MudTable Items="_order.Items" Dense="true" Hover="true" Bordered="true" Striped="true">
+                        <HeaderContent>
+                            <MudTh>@SL["Product"]</MudTh>
+                            <MudTh Align="right">@SL["QtyShort"]</MudTh>
+                            <MudTh Align="right">@SL["UnitPriceLabel"]</MudTh>
+                            <MudTh Align="right">@SL["Total"]</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd>@context.ProductName</MudTd>
+                            <MudTd Align="Align.Right">@context.Qty</MudTd>
+                            <MudTd Align="Align.Right">@context.UnitPrice.ToString("0.00") @_order.Currency</MudTd>
+                            <MudTd Align="Align.Right">@context.LineTotal.ToString("0.00") @_order.Currency</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+
+                    <MudDivider Class="my-3" />
+
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12" sm="6">
+                            <MudPaper Outlined="true" Class="pa-3">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@SL["Subtotal"]</MudText>
+                                <MudText Typo="Typo.h6">@_order.Subtotal.ToString("0.00") @_order.Currency</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudPaper Outlined="true" Class="pa-3">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@SL["Total"]</MudText>
+                                <MudText Typo="Typo.h6">@_order.TotalAmount.ToString("0.00") @_order.Currency</MudText>
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" lg="4">
+                <MudPaper Class="pa-4">
+                    <MudText Typo="Typo.subtitle1" Class="mb-2">@SL["Actions"]</MudText>
+
+                    <div class="d-grid gap-2">
+                        <MudButton Variant="Variant.Outlined" OnClick="Back">@SL["Back"]</MudButton>
+
+                        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                                   Disabled="@(!_canPay || _paying)"
+                                   OnClick="PayStripeCheckout">@SL["PayWithStripe"]</MudButton>
+
+                        <MudButton Color="Color.Secondary" Variant="Variant.Outlined"
+                                   Disabled="@(!_canPay || _paying)"
+                                   OnClick="PayPayPalCheckout">@SL["PayWithPayPal"]</MudButton>
+
+                        <MudSelect T="string"
+                                   Label="Operateur Mobile Money"
+                                   Variant="Variant.Outlined"
+                                   Value="_mobileMoneyProvider"
+                                   ValueChanged="OnMobileMoneyProviderChanged"
+                                   Disabled="@(!_canPay || _paying)">
+                            <MudSelectItem T="string" Value="@("AIRTEL")">Airtel Money</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("ORANGE")">Orange Money</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("MPESA")">M-Pesa</MudSelectItem>
+                        </MudSelect>
+
+                        <MudTextField T="string"
+                                      Label="Numero Mobile Money"
+                                      Variant="Variant.Outlined"
+                                      Immediate="true"
+                                      Value="_mobileMoneyPhone"
+                                      ValueChanged="OnMobileMoneyPhoneChanged"
+                                      Disabled="@(!_canPay || _paying)"
+                                      Class="mt-1" />
+
+                        <MudButton Color="Color.Info" Variant="Variant.Outlined"
+                                   Disabled="@(!_canPay || _paying || string.IsNullOrWhiteSpace(NormalizePhone(_mobileMoneyPhone)))"
+                                   OnClick="PayMobileMoneyInitiate">Payer Mobile Money</MudButton>
+
+                        <MudButton Variant="Variant.Outlined"
+                                   Disabled="@(!_canPay || _paying || string.IsNullOrWhiteSpace(_mobileMoneyTransactionId))"
+                                   OnClick="PayMobileMoneyConfirm">Confirmer Mobile Money</MudButton>
+
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Info"
+                                   Disabled="@(!_canRequestReturn || _loading)"
+                                   OnClick="OpenReturns">
+                            @T("Demander un retour", "Request return")
+                        </MudButton>
+
+                        <MudTextField T="string"
+                                      Label="@SL["PrepaidCode"]"
+                                      Variant="Variant.Outlined"
+                                      Immediate="true"
+                                      Value="_prepaidCardCode"
+                                      ValueChanged="OnPrepaidChanged"
+                                      Disabled="@(!_canPay || _paying)"
+                                      Class="mt-1" />
+
+                        <MudButton Variant="Variant.Outlined"
+                                   Disabled="@(!_canPay || _paying || !IsValidPrepaidInput(_prepaidCardCode))"
+                                   OnClick="PayPrepaid">@SL["PayWithVoucher"]</MudButton>
+
+                        <MudButton Variant="Variant.Outlined"
+                                   Disabled="@(_loading)"
+                                   OnClick="Reload">@SL["Refresh"]</MudButton>
+                    </div>
+
+                    @if (_order.PaymentStatus == "Pending")
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">@SL["PaymentPendingHint"]</MudText>
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</AuthGuard>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private bool _bootstrapped;
+    private bool _loading = true;
+    private string? _error;
+
+    private bool _paying;
+    private string _prepaidCardCode = string.Empty;
+    private string _mobileMoneyProvider = "AIRTEL";
+    private string _mobileMoneyPhone = string.Empty;
+    private string? _mobileMoneyTransactionId;
+    private OrderDetailView? _order;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        while (!Auth.IsReady)
+            await Task.Delay(30);
+
+        if (!Auth.IsAuthenticated)
+        {
+            _bootstrapped = true;
+            StateHasChanged();
+            return;
+        }
+
+        _bootstrapped = true;
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!_bootstrapped) return;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            _order = await Http.GetFromJsonAsync<OrderDetailView>($"api/orders/{Id}");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _order = null;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task Reload() => await LoadAsync();
+
+    private void Back() => Nav.NavigateTo("/orders");
+    private void OpenReturns() => Nav.NavigateTo($"/returns?orderId={Id}");
+
+    private bool _canPay =>
+        _order is not null &&
+        (_order.PaymentStatus == "Unpaid" || _order.PaymentStatus == "Failed");
+
+    private bool _canRequestReturn =>
+        _order is not null &&
+        string.Equals(_order.PaymentStatus, "Paid", StringComparison.OrdinalIgnoreCase) &&
+        (string.Equals(_order.Status, "Delivered", StringComparison.OrdinalIgnoreCase) ||
+         string.Equals(_order.Status, "Completed", StringComparison.OrdinalIgnoreCase));
+
+    private async Task PayStripeCheckout()
+    {
+        if (_order is null) return;
+
+        var confirm = await Dialog.ShowMessageBox(
+            title: SL["Payment"],
+            markupMessage: (MarkupString)$"{SL["LaunchStripeForOrder"]} <b>#{ShortId(_order.Id)}</b> ?",
+            yesText: SL["PayWithStripe"],
+            cancelText: SL["Cancel"]);
+
+        if (confirm != true) return;
+
+        _paying = true;
+
+        try
+        {
+            var res = await Http.PostAsync($"api/payments/stripe/checkout-session?orderId={_order.Id}", content: null);
+            if (!res.IsSuccessStatusCode)
+            {
+                var body = await res.Content.ReadAsStringAsync();
+                throw new InvalidOperationException($"{SL["ApiError"]} ({(int)res.StatusCode}) : {body}");
+            }
+
+            var data = await res.Content.ReadFromJsonAsync<CheckoutResp>();
+            if (data is null || string.IsNullOrWhiteSpace(data.Url))
+                throw new InvalidOperationException(SL["StripeUrlInvalid"]);
+
+            Snackbar.Add(SL["RedirectingToStripe"], Severity.Info);
+            Nav.NavigateTo(data.Url, forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _paying = false;
+        }
+    }
+
+    private Task OnPrepaidChanged(string value)
+    {
+        _prepaidCardCode = value ?? string.Empty;
+        return Task.CompletedTask;
+    }
+
+    private Task OnMobileMoneyProviderChanged(string value)
+    {
+        _mobileMoneyProvider = string.IsNullOrWhiteSpace(value) ? "AIRTEL" : value.Trim().ToUpperInvariant();
+        return Task.CompletedTask;
+    }
+
+    private Task OnMobileMoneyPhoneChanged(string value)
+    {
+        _mobileMoneyPhone = value ?? string.Empty;
+        return Task.CompletedTask;
+    }
+
+    private async Task PayPayPalCheckout()
+    {
+        if (_order is null)
+        {
+            return;
+        }
+
+        var confirm = await Dialog.ShowMessageBox(
+            title: SL["Payment"],
+            markupMessage: (MarkupString)$"{SL["LaunchPayPalForOrder"]} <b>#{ShortId(_order.Id)}</b> ?",
+            yesText: SL["Continue"],
+            cancelText: SL["Cancel"]);
+
+        if (confirm != true)
+        {
+            return;
+        }
+
+        _paying = true;
+
+        try
+        {
+            var res = await Http.PostAsync($"api/payments/paypal/create-order?orderId={_order.Id}", content: null);
+            if (!res.IsSuccessStatusCode)
+            {
+                var body = await res.Content.ReadAsStringAsync();
+                throw new InvalidOperationException($"{SL["ApiError"]} ({(int)res.StatusCode}) : {body}");
+            }
+
+            var data = await res.Content.ReadFromJsonAsync<CheckoutResp>();
+            if (data is null || string.IsNullOrWhiteSpace(data.Url))
+            {
+                throw new InvalidOperationException(SL["PayPalUrlInvalid"]);
+            }
+
+            Nav.NavigateTo(data.Url, forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _paying = false;
+        }
+    }
+
+    private async Task PayPrepaid()
+    {
+        if (_order is null)
+        {
+            return;
+        }
+
+        var normalized = NormalizePrepaidPayload(_prepaidCardCode);
+        if (!IsValidPrepaidInput(normalized))
+        {
+            Snackbar.Add(SL["PrepaidCodeInvalid"], Severity.Warning);
+            return;
+        }
+
+        _paying = true;
+
+        try
+        {
+            var res = await Http.PostAsJsonAsync("api/payments/prepaid/pay", new PrepaidPayRequest(_order.Id, normalized));
+            if (!res.IsSuccessStatusCode)
+            {
+                var body = await res.Content.ReadAsStringAsync();
+                throw new InvalidOperationException($"{SL["PrepaidPaymentFailed"]}: {body}");
+            }
+
+            var payResult = await res.Content.ReadFromJsonAsync<PrepaidPayResponse>();
+            if (payResult is not null && !string.IsNullOrWhiteSpace(payResult.Message))
+            {
+                Snackbar.Add(payResult.Message, Severity.Success);
+            }
+
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _paying = false;
+        }
+    }
+
+    private async Task PayMobileMoneyInitiate()
+    {
+        if (_order is null)
+        {
+            return;
+        }
+
+        var phone = NormalizePhone(_mobileMoneyPhone);
+        if (string.IsNullOrWhiteSpace(phone))
+        {
+            Snackbar.Add("Numero Mobile Money requis.", Severity.Warning);
+            return;
+        }
+
+        _paying = true;
+        try
+        {
+            var res = await Http.PostAsJsonAsync(
+                "api/payments/mobile-money/initiate",
+                new MobileMoneyInitiateRequest(_order.Id, _mobileMoneyProvider, phone, null));
+            if (!res.IsSuccessStatusCode)
+            {
+                var body = await res.Content.ReadAsStringAsync();
+                throw new InvalidOperationException($"{SL["ApiError"]} ({(int)res.StatusCode}) : {body}");
+            }
+
+            var data = await res.Content.ReadFromJsonAsync<MobileMoneyInitiateResponse>();
+            if (data is null)
+            {
+                throw new InvalidOperationException("Reponse Mobile Money invalide.");
+            }
+
+            _mobileMoneyTransactionId = data.TransactionId;
+            if (!string.IsNullOrWhiteSpace(data.CheckoutUrl))
+            {
+                Nav.NavigateTo(data.CheckoutUrl, forceLoad: true);
+                return;
+            }
+
+            Snackbar.Add(data.Message ?? "Paiement Mobile Money initie.", Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _paying = false;
+        }
+    }
+
+    private async Task PayMobileMoneyConfirm()
+    {
+        if (_order is null || string.IsNullOrWhiteSpace(_mobileMoneyTransactionId))
+        {
+            Snackbar.Add("Transaction Mobile Money introuvable.", Severity.Warning);
+            return;
+        }
+
+        _paying = true;
+        try
+        {
+            var res = await Http.PostAsJsonAsync(
+                "api/payments/mobile-money/confirm",
+                new MobileMoneyConfirmRequest(_order.Id, _mobileMoneyProvider, _mobileMoneyTransactionId));
+            if (!res.IsSuccessStatusCode)
+            {
+                var body = await res.Content.ReadAsStringAsync();
+                throw new InvalidOperationException($"{SL["ApiError"]} ({(int)res.StatusCode}) : {body}");
+            }
+
+            var data = await res.Content.ReadFromJsonAsync<MobileMoneyConfirmResponse>();
+            if (data is not null && !string.IsNullOrWhiteSpace(data.Message))
+            {
+                Snackbar.Add(data.Message, data.Paid ? Severity.Success : Severity.Warning);
+            }
+
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _paying = false;
+        }
+    }
+
+    private static string NormalizePrepaidPayload(string? value)
+    {
+        return (value ?? string.Empty).Trim().ToUpperInvariant().Replace(" ", string.Empty, StringComparison.Ordinal);
+    }
+
+    private static string NormalizePhone(string? value)
+    {
+        return (value ?? string.Empty)
+            .Trim()
+            .Replace(" ", string.Empty, StringComparison.Ordinal)
+            .Replace("-", string.Empty, StringComparison.Ordinal)
+            .Replace("(", string.Empty, StringComparison.Ordinal)
+            .Replace(")", string.Empty, StringComparison.Ordinal);
+    }
+
+    private static bool IsValidPrepaidInput(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        var normalized = value.Trim().ToUpperInvariant();
+        if (!normalized.StartsWith("DM-", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (normalized.Length < 8 || normalized.Length > 40)
+        {
+            return false;
+        }
+
+        return normalized.All(c => char.IsLetterOrDigit(c) || c == '-');
+    }
+
+    private static string ShortId(Guid id) => id.ToString("N")[..8];
+
+    private static Color PaymentColor(string paymentStatus) => paymentStatus switch
+    {
+        "Paid" => Color.Success,
+        "Pending" => Color.Warning,
+        "Failed" => Color.Error,
+        _ => Color.Default
+    };
+
+    private static Color StatusColor(string status) => status switch
+    {
+        "Created" => Color.Info,
+        "Paid" => Color.Success,
+        "Preparing" => Color.Warning,
+        "Ready" => Color.Success,
+        "Completed" => Color.Success,
+        "Cancelled" => Color.Error,
+        _ => Color.Default
+    };
+
+    private static string T(string fr, string en)
+        => string.Equals(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "en", StringComparison.OrdinalIgnoreCase)
+            ? en
+            : fr;
+
+    private sealed record CheckoutResp(string Url, string? SessionId, string? CheckoutId);
+    private sealed record PrepaidPayRequest(Guid OrderId, string VoucherCode);
+    private sealed record PrepaidPayResponse(bool Paid, Guid OrderId, string PaymentStatus, string Message);
+    private sealed record MobileMoneyInitiateRequest(Guid OrderId, string Provider, string PhoneNumber, string? CallbackUrl);
+    private sealed record MobileMoneyInitiateResponse(string Provider, string TransactionId, string Status, string? CheckoutUrl, string? Message);
+    private sealed record MobileMoneyConfirmRequest(Guid OrderId, string Provider, string TransactionId);
+    private sealed record MobileMoneyConfirmResponse(bool Paid, Guid OrderId, string PaymentStatus, string Provider, string TransactionId, string? RawStatus, string? Message);
+    private sealed record OrderItemView(Guid ProductId, string ProductName, int Qty, decimal UnitPrice, decimal LineTotal, string Currency);
+
+    private sealed record OrderDetailView(
+        Guid Id,
+        string Status,
+        string PaymentStatus,
+        decimal Subtotal,
+        decimal DeliveryFee,
+        decimal Discount,
+        decimal TotalAmount,
+        string Currency,
+        DateTime CreatedAtUtc,
+        IReadOnlyList<OrderItemView> Items
+    );
+}

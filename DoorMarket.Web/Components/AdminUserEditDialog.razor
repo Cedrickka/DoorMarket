@@ -1,0 +1,74 @@
+﻿@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.h6" Class="mb-1">Modifier utilisateur</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">@_model.Email</MudText>
+
+        <MudTextField T="string" Label="Telephone" Variant="Variant.Outlined" @bind-Value="_model.Phone" />
+        <MudSelect T="string" Label="Role" Variant="Variant.Outlined" Class="mt-2" @bind-Value="_model.Role">
+            <MudSelectItem Value="@("Admin")">Admin</MudSelectItem>
+            <MudSelectItem Value="@("Shop")">Shop</MudSelectItem>
+            <MudSelectItem Value="@("Client")">Client</MudSelectItem>
+            @if (string.Equals(_model.Role, "SuperAdmin", StringComparison.OrdinalIgnoreCase))
+            {
+                <MudSelectItem Value="@("SuperAdmin")">SuperAdmin</MudSelectItem>
+            }
+        </MudSelect>
+        <MudSwitch T="bool" Color="Color.Primary" Class="mt-2" @bind-Value="_model.IsActive">Utilisateur actif</MudSwitch>
+        <MudTextField T="string"
+                      Label="Nouveau mot de passe (optionnel)"
+                      Variant="Variant.Outlined"
+                      InputType="InputType.Password"
+                      Class="mt-2"
+                      @bind-Value="_model.NewPassword" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" OnClick="Cancel">Annuler</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Enregistrer</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public EditUserModel Model { get; set; } = new();
+
+    private EditUserModel _model = new();
+
+    protected override void OnParametersSet()
+    {
+        _model = new EditUserModel
+        {
+            Id = Model.Id,
+            Email = Model.Email,
+            Phone = Model.Phone,
+            Role = string.IsNullOrWhiteSpace(Model.Role) ? "Client" : Model.Role,
+            IsActive = Model.IsActive,
+            NewPassword = string.Empty
+        };
+    }
+
+    private void Submit()
+    {
+        if (!string.IsNullOrWhiteSpace(_model.NewPassword) && _model.NewPassword.Trim().Length < 6)
+        {
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(_model));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    public sealed class EditUserModel
+    {
+        public Guid Id { get; set; }
+        public string Email { get; set; } = string.Empty;
+        public string? Phone { get; set; }
+        public string Role { get; set; } = "Client";
+        public bool IsActive { get; set; } = true;
+        public string? NewPassword { get; set; }
+    }
+}
+

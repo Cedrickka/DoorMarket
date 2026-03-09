@@ -1,0 +1,149 @@
+﻿@using MudBlazor
+@using Microsoft.AspNetCore.Components.Forms
+@using DoorMarket.Web.Utils
+@using DoorMarket.Web.Models
+@using System.Net.Http.Headers
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.h6" Class="mb-1">Modifier boutique</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">Mise a jour des informations principales.</MudText>
+
+        <MudTextField T="string" Label="Nom" Variant="Variant.Outlined" @bind-Value="_model.Name" />
+        <MudTextField T="string" Label="Ville" Variant="Variant.Outlined" Class="mt-2" @bind-Value="_model.City" />
+        <MudTextField T="string" Label="Code pays" Variant="Variant.Outlined" Class="mt-2" @bind-Value="_model.CountryTag" />
+
+        <MudDivider Class="my-3" />
+
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Image boutique</MudText>
+        <img src="@ImagePreview" alt="@_model.Name" style="width:100%;max-height:180px;object-fit:cover;border-radius:12px;" />
+
+        <MudFileUpload T="IBrowserFile"
+                       FilesChanged="OnImagePicked"
+                       Class="mt-3">
+            <ActivatorContent>
+                <MudButton Variant="Variant.Outlined">Choisir une image</MudButton>
+            </ActivatorContent>
+        </MudFileUpload>
+
+        @if (_model.ImageFile is not null)
+        {
+            <MudText Typo="Typo.caption" Class="mt-2">Fichier selectionne : <b>@_model.ImageFile.Name</b></MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" OnClick="Cancel">Annuler</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit">Enregistrer</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public AdminShopEditModel Model { get; set; } = new();
+
+    private AdminShopEditModel _model = new();
+
+    private static readonly HashSet<string> AllowedImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".jpg", ".jpeg", ".png", ".webp"
+    };
+
+    private string ImagePreview => MediaCatalog.Shop(_model.ImageUrl, _model.Name, _model.Id);
+
+    protected override void OnParametersSet()
+    {
+        _model = new AdminShopEditModel
+        {
+            Id = Model.Id,
+            Name = Model.Name,
+            CountryTag = Model.CountryTag,
+            City = Model.City,
+            ImageUrl = Model.ImageUrl
+        };
+    }
+
+    private void OnImagePicked(IBrowserFile file)
+    {
+        if (file is null)
+        {
+            return;
+        }
+
+        if (file.Size > 10_000_000)
+        {
+            return;
+        }
+
+        var ext = System.IO.Path.GetExtension(file.Name) ?? string.Empty;
+        if (!AllowedImageExtensions.Contains(ext))
+        {
+            return;
+        }
+
+        _model.ImageFile = file;
+    }
+
+    private async Task Submit()
+    {
+        if (string.IsNullOrWhiteSpace(_model.Name) ||
+            string.IsNullOrWhiteSpace(_model.City) ||
+            string.IsNullOrWhiteSpace(_model.CountryTag))
+        {
+            return;
+        }
+
+        _model.CountryTag = _model.CountryTag.Trim().ToUpperInvariant();
+
+        if (_model.ImageFile is not null)
+        {
+            try
+            {
+                _model.ImageUrl = await UploadImageAsync(_model.Id, _model.ImageFile);
+                _model.ImageFile = null;
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add(ex.Message, Severity.Error);
+                return;
+            }
+        }
+
+        MudDialog.Close(DialogResult.Ok(_model));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task<string> UploadImageAsync(Guid shopId, IBrowserFile file)
+    {
+        using var content = new MultipartFormDataContent();
+        await using var stream = file.OpenReadStream(10_000_000);
+        var fileContent = new StreamContent(stream);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+        content.Add(fileContent, "file", file.Name);
+
+        var res = await Http.PostAsync($"api/shops/admin/{shopId}/image", content);
+        if (!res.IsSuccessStatusCode)
+        {
+            var body = await res.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(string.IsNullOrWhiteSpace(body) ? "Echec upload image." : body);
+        }
+
+        var payload = await res.Content.ReadFromJsonAsync<AdminShopImageUploadResponse>();
+        if (payload is null || string.IsNullOrWhiteSpace(payload.Url))
+        {
+            throw new InvalidOperationException("Echec upload image.");
+        }
+
+        return payload.Url;
+    }
+
+    private sealed record AdminShopImageUploadResponse(string Url, string FileName, string ContentType, long SizeBytes);
+
+}
+
+
+

@@ -1,0 +1,127 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentView
+    x:Class="DoorMarket.Mobile.Components.DmHeader"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Name="Root">
+
+    <Grid
+        BackgroundColor="{AppThemeBinding Light={StaticResource DmHeaderBgLight}, Dark={StaticResource DmHeaderBgDark}}"
+        Padding="{OnPlatform iOS='24,54,24,20', Default='24,42,24,20'}"
+        RowDefinitions="Auto,Auto"
+        RowSpacing="12">
+
+        <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="10">
+            <Border
+                HeightRequest="40"
+                WidthRequest="40"
+                BackgroundColor="#26FFFFFF"
+                IsVisible="{Binding HasBack, Source={x:Reference Root}}"
+                StrokeThickness="0"
+                VerticalOptions="Center">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="12" />
+                </Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding BackCommand, Source={x:Reference Root}}" />
+                </Border.GestureRecognizers>
+                <Label
+                    FontFamily="{Binding BackFontFamily, Source={x:Reference Root}}"
+                    FontSize="18"
+                    HorizontalTextAlignment="Center"
+                    Text="{Binding BackGlyph, Source={x:Reference Root}}"
+                    TextColor="{AppThemeBinding Light={StaticResource DmHeaderTextLight}, Dark={StaticResource DmHeaderTextDark}}"
+                    VerticalTextAlignment="Center" />
+            </Border>
+
+            <Border
+                Grid.Column="1"
+                HeightRequest="44"
+                WidthRequest="44"
+                BackgroundColor="{StaticResource DoorOrange}"
+                StrokeThickness="0">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="12" />
+                </Border.StrokeShape>
+                <Image Margin="8" Source="doormarket_icon_64.png" />
+            </Border>
+
+            <Label
+                Grid.Column="2"
+                FontFamily="Inter-Bold"
+                FontSize="24"
+                Text="DoorMarket"
+                TextColor="{AppThemeBinding Light={StaticResource DmHeaderTextLight}, Dark={StaticResource DmHeaderTextDark}}"
+                VerticalOptions="Center" />
+
+            <Border
+                Grid.Column="3"
+                HeightRequest="36"
+                WidthRequest="58"
+                BackgroundColor="#26FFFFFF"
+                StrokeThickness="0"
+                VerticalOptions="Center">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="10" />
+                </Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnLanguageTapped" />
+                </Border.GestureRecognizers>
+                <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="2" HorizontalOptions="Center" VerticalOptions="Center">
+                    <Image
+                        Source="{Binding CurrentLanguageFlagImage, Source={x:Reference Root}}"
+                        HeightRequest="12"
+                        WidthRequest="18" />
+                    <Label
+                        Grid.Column="1"
+                        FontFamily="Inter-SemiBold"
+                        FontSize="11"
+                        Text="▾"
+                        TextColor="{AppThemeBinding Light={StaticResource DmHeaderTextLight}, Dark={StaticResource DmHeaderTextDark}}"
+                        VerticalTextAlignment="Center" />
+                </Grid>
+            </Border>
+
+            <Border
+                Grid.Column="4"
+                HeightRequest="40"
+                WidthRequest="40"
+                BackgroundColor="#26FFFFFF"
+                IsVisible="{Binding HasAction, Source={x:Reference Root}}"
+                StrokeThickness="0"
+                VerticalOptions="Center">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="12" />
+                </Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding ActionCommand, Source={x:Reference Root}}" CommandParameter="{Binding ActionCommandParameter, Source={x:Reference Root}}" />
+                </Border.GestureRecognizers>
+                <Label
+                    FontFamily="{Binding ActionFontFamily, Source={x:Reference Root}}"
+                    FontSize="18"
+                    HorizontalTextAlignment="Center"
+                    Text="{Binding ActionGlyph, Source={x:Reference Root}}"
+                    TextColor="{AppThemeBinding Light={StaticResource DmHeaderTextLight}, Dark={StaticResource DmHeaderTextDark}}"
+                    VerticalTextAlignment="Center" />
+            </Border>
+        </Grid>
+
+        <VerticalStackLayout Grid.Row="1" Spacing="4">
+            <Label
+                FontFamily="Inter-SemiBold"
+                FontSize="22"
+                IsVisible="{Binding HasTitle, Source={x:Reference Root}}"
+                Text="{Binding Title, Source={x:Reference Root}}"
+                TextColor="{AppThemeBinding Light={StaticResource DmHeaderTextLight}, Dark={StaticResource DmHeaderTextDark}}" />
+            <Label
+                FontFamily="Inter-Regular"
+                FontSize="13"
+                IsVisible="{Binding HasSubtitle, Source={x:Reference Root}}"
+                Text="{Binding Subtitle, Source={x:Reference Root}}"
+                TextColor="{AppThemeBinding Light=#D9E5F8, Dark=#B8C8DF}" />
+        </VerticalStackLayout>
+    </Grid>
+</ContentView>
+
+
+

@@ -1,0 +1,1983 @@
+@page "/admin/marketing"
+@using System.Net
+@using System.Net.Http.Json
+@using MudBlazor
+
+@inject HttpClient Http
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+
+<div class="dm-page-header">
+    <div class="dm-page-title-wrap">
+        <h1 class="dm-page-h1">@SL["AdminMarketing"]</h1>
+        <div class="dm-page-sub">@SL["AdminMarketingSubtitle"]</div>
+    </div>
+</div>
+
+<AuthGuard>
+    @if (!_ready)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudSkeleton Height="32px" Width="220px" Class="mb-2" />
+            <MudSkeleton Height="18px" Width="380px" />
+        </MudPaper>
+    }
+    else if (!Auth.IsAdmin)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@SL["AdminOnlyAccess"]</MudAlert>
+            <MudButton Variant="Variant.Outlined" Class="mt-3" OnClick="@(() => Nav.NavigateTo("/shop/dashboard"))">@SL["Back"]</MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        <MudGrid Class="mt-3 dm-equal-grid" Spacing="3">
+            <MudItem xs="12" md="4">
+                <MudPaper Class="pa-4 dm-content-card dm-page-shell">
+                    <MudText Typo="Typo.h6" Class="mb-2">@(_editingId is null ? SL["MarketingCreateTitle"] : SL["Edit"])</MudText>
+
+                    <MudTextField T="string" Label="@SL["Title"]" Variant="Variant.Outlined" @bind-Value="_model.Title" />
+                    <MudTextField T="string" Label="@SL["Subtitle"]" Variant="Variant.Outlined" Class="mt-2" @bind-Value="_model.Subtitle" />
+                    <MudTextField T="string" Label="@SL["ImageUrl"]" Variant="Variant.Outlined" Class="mt-2" @bind-Value="_model.ImageUrl" />
+                    <MudTextField T="string" Label="@SL["TargetUrl"]" Variant="Variant.Outlined" Class="mt-2" @bind-Value="_model.TargetUrl" />
+
+                    <MudTextField T="string" Label="@SL["Language"]" Variant="Variant.Outlined" Class="mt-2" HelperText="fr / en" @bind-Value="_model.Language" />
+                    <MudTextField T="string" Label="@SL["City"]" Variant="Variant.Outlined" Class="mt-2" @bind-Value="_model.City" />
+                    <MudTextField T="string" Label="@SL["Zone"]" Variant="Variant.Outlined" Class="mt-2" @bind-Value="_model.Zone" />
+
+                    <MudSelect T="Guid?" Label="@SL["Categories"]" Variant="Variant.Outlined" Class="mt-2" @bind-Value="_model.CategoryId">
+                        <MudSelectItem T="Guid?" Value="@(null)">@SL["All"]</MudSelectItem>
+                        @foreach (var cat in _categories)
+                        {
+                            <MudSelectItem T="Guid?" Value="cat.Id">@cat.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudSelect T="Guid?" Label="@SL["Shop"]" Variant="Variant.Outlined" Class="mt-2" @bind-Value="_model.ShopId">
+                        <MudSelectItem T="Guid?" Value="@(null)">@SL["All"]</MudSelectItem>
+                        @foreach (var shop in _shops)
+                        {
+                            <MudSelectItem T="Guid?" Value="shop.Id">@shop.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudDatePicker Label="@SL["StartDate"]" Variant="Variant.Outlined" Class="mt-2" @bind-Date="_model.StartAtUtc" />
+                    <MudDatePicker Label="@SL["EndDate"]" Variant="Variant.Outlined" Class="mt-2" @bind-Date="_model.EndAtUtc" />
+
+                    <MudNumericField T="int" Label="@SL["SortOrder"]" Variant="Variant.Outlined" Class="mt-2" @bind-Value="_model.SortOrder" />
+
+                    <MudSwitch T="bool" Color="Color.Primary" Class="mt-2" @bind-Checked="_model.IsActive">
+                        @SL["Active"]
+                    </MudSwitch>
+
+                    <div class="d-flex gap-2 mt-3">
+                        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="_saving || string.IsNullOrWhiteSpace(_model.Title)" OnClick="SaveAsync">
+                            @SL["Save"]
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" Disabled="_saving" OnClick="ResetForm">@SL["Clear"]</MudButton>
+                    </div>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" md="8">
+                <MudPaper Class="pa-4 dm-content-card dm-page-shell">
+                    <MudText Typo="Typo.h6" Class="mb-2">@SL["MarketingList"]</MudText>
+                    <MudGrid Class="mb-2" Spacing="2">
+                        <MudItem xs="12" md="5">
+                            <MudTextField T="string" Label="@SL["Search"]" Variant="Variant.Outlined" Dense="true" @bind-Value="_q" />
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudSelect T="string" Label="@Tr("Statut", "Status")" Variant="Variant.Outlined" Dense="true" @bind-Value="_statusFilter">
+                                <MudSelectItem T="string" Value="@string.Empty">@Tr("Tous", "All")</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("live")">@Tr("Actif", "Live")</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("planned")">@Tr("Planifie", "Planned")</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("expired")">@Tr("Expire", "Expired")</MudSelectItem>
+                                <MudSelectItem T="string" Value="@("inactive")">@Tr("Inactif", "Inactive")</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" md="3" Class="d-flex align-items-end">
+                            <div class="dm-marketing-actions-row">
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           Size="Size.Small"
+                                           StartIcon="@Icons.Material.Filled.FilterAlt"
+                                           OnClick="ApplyFilters">
+                                    @Tr("Filtrer", "Filter")
+                                </MudButton>
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Secondary"
+                                           Size="Size.Small"
+                                           StartIcon="@Icons.Material.Filled.AutoMode"
+                                           Disabled="_saving"
+                                           OnClick="RunAutomationAsync">
+                                    @Tr("Auto", "Automation")
+                                </MudButton>
+                            </div>
+                        </MudItem>
+                    </MudGrid>
+
+                    @if (_summary is not null)
+                    {
+                        <MudGrid Class="mb-3" Spacing="2">
+                            <MudItem xs="6" md="3">
+                                <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                                    <MudText Typo="Typo.caption">@Tr("Actif", "Live")</MudText>
+                                    <MudText Typo="Typo.h6">@_summary.Live</MudText>
+                                </MudPaper>
+                            </MudItem>
+                            <MudItem xs="6" md="3">
+                                <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                                    <MudText Typo="Typo.caption">@Tr("Planifie", "Planned")</MudText>
+                                    <MudText Typo="Typo.h6">@_summary.Planned</MudText>
+                                </MudPaper>
+                            </MudItem>
+                            <MudItem xs="6" md="3">
+                                <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                                    <MudText Typo="Typo.caption">@Tr("Expire", "Expired")</MudText>
+                                    <MudText Typo="Typo.h6">@_summary.Expired</MudText>
+                                </MudPaper>
+                            </MudItem>
+                            <MudItem xs="6" md="3">
+                                <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                                    <MudText Typo="Typo.caption">CTR</MudText>
+                                    <MudText Typo="Typo.h6">@Fmt(_summary.CtrPercent)%</MudText>
+                                </MudPaper>
+                            </MudItem>
+                        </MudGrid>
+                    }
+
+                    @if (_loading)
+                    {
+                        <MudSkeleton Height="42px" />
+                        <MudSkeleton Height="42px" Class="mt-2" />
+                    }
+                    else if (_error is not null)
+                    {
+                        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_error</MudAlert>
+                    }
+                    else if (_items.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@SL["NoMarketingBanners"]</MudAlert>
+                    }
+                    else
+                    {
+                        <MudTable Items="_items" Dense="true" Hover="true" Bordered="true" Striped="true">
+                            <HeaderContent>
+                                <MudTh>@SL["Title"]</MudTh>
+                                <MudTh>@SL["Status"]</MudTh>
+                                <MudTh>@SL["Period"]</MudTh>
+                                <MudTh>@SL["Targeting"]</MudTh>
+                                <MudTh>@SL["Stats"]</MudTh>
+                                <MudTh Align="Align.Right">@SL["Actions"]</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd>@context.Title</MudTd>
+                                <MudTd>
+                                    <span class="@GetStatusBadgeCss(context)">@ResolveStatusLabel(context)</span>
+                                </MudTd>
+                                <MudTd>@BuildPeriod(context)</MudTd>
+                                <MudTd>@BuildTargeting(context)</MudTd>
+                                <MudTd>@($"{context.Impressions} / {context.Clicks} ({Fmt(Ctr(context))}%)")</MudTd>
+                                <MudTd Align="Align.Right">
+                                    <AdminRowActionMenu Disabled="_saving" AriaLabel="@SL["Actions"]">
+                                        <MudMenuItem Icon="@Icons.Material.Filled.Edit"
+                                                     OnClick="@(() => StartEdit(context))">
+                                            @SL["Edit"]
+                                        </MudMenuItem>
+                                        <MudMenuItem Icon="@Icons.Material.Filled.Delete"
+                                                     OnClick="@(() => DeleteAsync(context))">
+                                            @SL["Delete"]
+                                        </MudMenuItem>
+                                    </AdminRowActionMenu>
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <MudPaper Class="pa-4 dm-content-card dm-page-shell mt-4">
+            <div class="d-flex flex-wrap align-items-end justify-space-between gap-2">
+                <MudText Typo="Typo.h6">@Tr("Automatisation des campagnes et ROI", "Campaign automation and ROI")</MudText>
+                <div class="d-flex gap-2">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_campaignBusy" OnClick="RunCampaignSchedulerAsync">
+                        @Tr("Executer l'automatisation campagne", "Run campaign automation")
+                    </MudButton>
+                    <MudMenu Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                        <ActivatorContent>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Disabled="_campaignBusy" StartIcon="@Icons.Material.Filled.MoreHoriz">
+                                @Tr("Actions", "Actions")
+                            </MudButton>
+                        </ActivatorContent>
+                        <ChildContent>
+                            <MudMenuItem OnClick="ExportCampaignRoiCsv">@Tr("Exporter ROI CSV", "Export ROI CSV")</MudMenuItem>
+                            <MudMenuItem OnClick="ExportCampaignKpiCsv">@Tr("Exporter KPI CSV", "Export KPI CSV")</MudMenuItem>
+                            <MudMenuItem OnClick="ExportCampaignDashboardCsv">@Tr("Exporter dashboard CSV", "Export dashboard CSV")</MudMenuItem>
+                        </ChildContent>
+                    </MudMenu>
+                </div>
+            </div>
+
+            <MudGrid Class="mt-2" Spacing="2">
+                <MudItem xs="12" md="3">
+                    <MudDatePicker Label="@Tr("ROI du", "ROI from")" Variant="Variant.Outlined" @bind-Date="_campaignFrom" />
+                </MudItem>
+                <MudItem xs="12" md="3">
+                    <MudDatePicker Label="@Tr("ROI au", "ROI to")" Variant="Variant.Outlined" @bind-Date="_campaignTo" />
+                </MudItem>
+                <MudItem xs="12" md="3">
+                    <MudSelect T="string" Label="@Tr("Statut campagne", "Campaign status")" Variant="Variant.Outlined" @bind-Value="_campaignStatusFilter">
+                        <MudSelectItem T="string" Value="@string.Empty">@Tr("Tous", "All")</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("draft")">@Tr("Brouillon", "Draft")</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("active")">@Tr("Actif", "Active")</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("paused")">@Tr("En pause", "Paused")</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("completed")">@Tr("Termine", "Completed")</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="3" Class="d-flex align-items-end">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Disabled="_campaignBusy" OnClick="@(() => LoadCampaignAnalyticsAsync())">
+                        @Tr("Actualiser les donnees campagne", "Refresh campaign data")
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+
+            <MudGrid Class="mt-1" Spacing="2">
+                <MudItem xs="12" md="3">
+                    <MudTextField T="string" Label="@Tr("Nom campagne", "Campaign name")" Variant="Variant.Outlined" Dense="true" @bind-Value="_campaignQ" />
+                </MudItem>
+                <MudItem xs="12" md="3">
+                    <MudSelect T="Guid?" Label="@Tr("Segment de cohorte", "Cohort segment")" Variant="Variant.Outlined" Dense="true" @bind-Value="_campaignSegmentId">
+                        <MudSelectItem T="Guid?" Value="@(null)">@Tr("Tous", "All")</MudSelectItem>
+                        @foreach (var segment in _campaignSegments)
+                        {
+                            <MudSelectItem T="Guid?" Value="segment.Id">@segment.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="2">
+                    <MudSelect T="string" Label="@Tr("Canal", "Channel")" Variant="Variant.Outlined" Dense="true" @bind-Value="_campaignChannelFilter">
+                        <MudSelectItem T="string" Value="@string.Empty">@Tr("Tous", "All")</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("email")">Email</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("push")">Push</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("inapp")">InApp</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("multi")">@Tr("Multi-canal", "Multi-channel")</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="2">
+                    <MudNumericField T="int?" Label="@Tr("Min envoye", "Min sent")" Variant="Variant.Outlined" Dense="true" Min="0" @bind-Value="_campaignMinSent" />
+                </MudItem>
+                <MudItem xs="12" md="2">
+                    <MudNumericField T="decimal?" Label="@Tr("ROI min %", "Min ROI %")" Variant="Variant.Outlined" Dense="true" @bind-Value="_campaignMinRoi" />
+                </MudItem>
+            </MudGrid>
+
+            @if (_campaignSummary is not null)
+            {
+                <MudGrid Class="mt-2 mb-3" Spacing="2">
+                    <MudItem xs="6" md="2">
+                        <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                            <MudText Typo="Typo.caption">@Tr("Campagnes", "Campaigns")</MudText>
+                            <MudText Typo="Typo.h6">@_campaignSummary.TotalCampaigns</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="6" md="2">
+                        <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                            <MudText Typo="Typo.caption">@Tr("Actives sur la periode", "Active in window")</MudText>
+                            <MudText Typo="Typo.h6">@_campaignSummary.ActiveInWindow</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="6" md="2">
+                        <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                            <MudText Typo="Typo.caption">@Tr("Executions", "Runs")</MudText>
+                            <MudText Typo="Typo.h6">@_campaignSummary.RunsCount</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="6" md="2">
+                        <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                            <MudText Typo="Typo.caption">@Tr("Envoyes", "Sent")</MudText>
+                            <MudText Typo="Typo.h6">@_campaignSummary.SentCount</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="6" md="2">
+                        <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                            <MudText Typo="Typo.caption">@Tr("Revenu", "Revenue")</MudText>
+                            <MudText Typo="Typo.h6">@Fmt(_campaignSummary.RevenueAttributed)</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="6" md="2">
+                        <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                            <MudText Typo="Typo.caption">@Tr("ROI", "ROI")</MudText>
+                            <MudText Typo="Typo.h6">@Fmt(_campaignSummary.RoiPercent)%</MudText>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            }
+
+            @if (_campaignSummary is not null)
+            {
+                <MudPaper Class="pa-3 dm-content-card mb-2">
+                    <MudText Typo="Typo.subtitle1" Class="mb-2">@Tr("Insights ROI avances", "Advanced ROI insights")</MudText>
+                    <MudGrid Spacing="2" Class="mb-2">
+                        <MudItem xs="6" md="3">
+                            <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                                <MudText Typo="Typo.caption">@Tr("Succes livraison", "Delivery success")</MudText>
+                                <MudText Typo="Typo.h6">@Fmt(CampaignDeliverySuccessRate)%</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="6" md="3">
+                            <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                                <MudText Typo="Typo.caption">@Tr("Revenu / envoi", "Revenue / sent")</MudText>
+                                <MudText Typo="Typo.h6">@Fmt(CampaignAverageRevenuePerSent)</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="6" md="3">
+                            <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                                <MudText Typo="Typo.caption">@Tr("Cout / envoi", "Cost / sent")</MudText>
+                                <MudText Typo="Typo.h6">@Fmt(CampaignAverageCostPerSent)</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="6" md="3">
+                            <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                                <MudText Typo="Typo.caption">@Tr("Tendance ROI", "ROI trend")</MudText>
+                                <MudText Typo="Typo.h6">@CampaignRoiTrendLabel</MudText>
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
+
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12" md="6">
+                            <MudText Typo="Typo.body2" Class="mb-1">@Tr("Top campagnes ROI", "Top ROI campaigns")</MudText>
+                            @if (TopRoiCampaigns.Count == 0)
+                            {
+                                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@Tr("Aucune campagne eligible pour l'instant.", "No qualifying campaign yet.")</MudAlert>
+                            }
+                            else
+                            {
+                                <MudTable T="CampaignRoiRow" Items="TopRoiCampaigns" Dense="true" Hover="true" Bordered="true">
+                                    <HeaderContent>
+                                        <MudTh>@Tr("Campagne", "Campaign")</MudTh>
+                                        <MudTh>@Tr("Envoyes", "Sent")</MudTh>
+                                        <MudTh Align="Align.Right">@Tr("Revenu", "Revenue")</MudTh>
+                                        <MudTh Align="Align.Right">@Tr("ROI", "ROI")</MudTh>
+                                    </HeaderContent>
+                                    <RowTemplate Context="r">
+                                        <MudTd>@r.CampaignName</MudTd>
+                                        <MudTd>@r.SentCount</MudTd>
+                                        <MudTd Align="Align.Right">@Fmt(r.RevenueAttributed)</MudTd>
+                                        <MudTd Align="Align.Right">@Fmt(r.RoiPercent)%</MudTd>
+                                    </RowTemplate>
+                                </MudTable>
+                            }
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudText Typo="Typo.body2" Class="mb-1">@Tr("Surveillance (ROI faible)", "Watchlist (low ROI)")</MudText>
+                            @if (LowRoiCampaigns.Count == 0)
+                            {
+                                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@Tr("Aucune campagne eligible pour l'instant.", "No qualifying campaign yet.")</MudAlert>
+                            }
+                            else
+                            {
+                                <MudTable T="CampaignRoiRow" Items="LowRoiCampaigns" Dense="true" Hover="true" Bordered="true">
+                                    <HeaderContent>
+                                        <MudTh>@Tr("Campagne", "Campaign")</MudTh>
+                                        <MudTh>@Tr("Envoyes", "Sent")</MudTh>
+                                        <MudTh Align="Align.Right">@Tr("Revenu", "Revenue")</MudTh>
+                                        <MudTh Align="Align.Right">@Tr("ROI", "ROI")</MudTh>
+                                    </HeaderContent>
+                                    <RowTemplate Context="r">
+                                        <MudTd>@r.CampaignName</MudTd>
+                                        <MudTd>@r.SentCount</MudTd>
+                                        <MudTd Align="Align.Right">@Fmt(r.RevenueAttributed)</MudTd>
+                                        <MudTd Align="Align.Right">@Fmt(r.RoiPercent)%</MudTd>
+                                    </RowTemplate>
+                                </MudTable>
+                            }
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(_campaignError))
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mb-2">@_campaignError</MudAlert>
+            }
+
+            @if (_campaignBusy)
+            {
+                <MudSkeleton Height="40px" />
+                <MudSkeleton Height="40px" Class="mt-2" />
+            }
+            else
+            {
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" md="6">
+                        <MudPaper Class="pa-3 dm-content-card">
+                            <MudText Typo="Typo.subtitle1" Class="mb-2">@Tr("Liste campagnes", "Campaign list")</MudText>
+                            @if (_campaigns.Count == 0)
+                            {
+                                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@Tr("Aucune campagne trouvee.", "No campaigns found.")</MudAlert>
+                            }
+                            else
+                            {
+                                <MudTable T="MarketingCampaignRow" Items="_campaigns.Take(12)" Dense="true" Hover="true" Bordered="true" Striped="true">
+                                    <HeaderContent>
+                                        <MudTh>@Tr("Campagne", "Campaign")</MudTh>
+                                        <MudTh>@Tr("Statut", "Status")</MudTh>
+                                        <MudTh>@Tr("Segment", "Segment")</MudTh>
+                                        <MudTh>@Tr("Coupon", "Coupon")</MudTh>
+                                        <MudTh>@Tr("Derniere execution", "Last run")</MudTh>
+                                        <MudTh Align="Align.Right">@Tr("Actions", "Actions")</MudTh>
+                                    </HeaderContent>
+                                    <RowTemplate Context="c">
+                                        <MudTd>@c.Name</MudTd>
+                                        <MudTd>@c.Status</MudTd>
+                                        <MudTd>@(string.IsNullOrWhiteSpace(c.SegmentName) ? "-" : c.SegmentName)</MudTd>
+                                        <MudTd>@(string.IsNullOrWhiteSpace(c.CouponCode) ? "-" : c.CouponCode)</MudTd>
+                                        <MudTd>@(c.LastRunAtUtc?.ToString("yyyy-MM-dd HH:mm") ?? "-")</MudTd>
+                                        <MudTd Align="Align.Right">
+                                            <AdminRowActionMenu Disabled="_campaignBusy" AriaLabel="@Tr("Actions", "Actions")">
+                                                <MudMenuItem Icon="@Icons.Material.Filled.PlayArrow"
+                                                             OnClick="@(() => RunCampaignNowAsync(c.Id))">
+                                                    @Tr("Executer", "Run now")
+                                                </MudMenuItem>
+                                            </AdminRowActionMenu>
+                                        </MudTd>
+                                    </RowTemplate>
+                                </MudTable>
+                            }
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudPaper Class="pa-3 dm-content-card">
+                            <MudText Typo="Typo.subtitle1" Class="mb-2">@Tr("ROI campagnes", "Campaign ROI")</MudText>
+                            @if (_campaignRoiRows.Count == 0)
+                            {
+                                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@Tr("Aucune donnee ROI sur la periode selectionnee.", "No ROI data found in selected period.")</MudAlert>
+                            }
+                            else
+                            {
+                                <MudTable T="CampaignRoiRow" Items="_campaignRoiRows.Take(12)" Dense="true" Hover="true" Bordered="true" Striped="true">
+                                    <HeaderContent>
+                                        <MudTh>@Tr("Campagne", "Campaign")</MudTh>
+                                        <MudTh>@Tr("Segment", "Segment")</MudTh>
+                                        <MudTh>@Tr("Canaux", "Channels")</MudTh>
+                                        <MudTh>@Tr("Executions", "Runs")</MudTh>
+                                        <MudTh>@Tr("Envoyes", "Sent")</MudTh>
+                                        <MudTh Align="Align.Right">@Tr("Revenu", "Revenue")</MudTh>
+                                        <MudTh Align="Align.Right">@Tr("Cout", "Cost")</MudTh>
+                                        <MudTh Align="Align.Right">@Tr("ROI", "ROI")</MudTh>
+                                    </HeaderContent>
+                                    <RowTemplate Context="r">
+                                        <MudTd>@r.CampaignName</MudTd>
+                                        <MudTd>@(string.IsNullOrWhiteSpace(r.SegmentName) ? "-" : r.SegmentName)</MudTd>
+                                        <MudTd>@r.Channels</MudTd>
+                                        <MudTd>@r.RunsCount</MudTd>
+                                        <MudTd>@r.SentCount</MudTd>
+                                        <MudTd Align="Align.Right">@Fmt(r.RevenueAttributed)</MudTd>
+                                        <MudTd Align="Align.Right">@Fmt(r.DiscountCost)</MudTd>
+                                        <MudTd Align="Align.Right">@Fmt(r.RoiPercent)%</MudTd>
+                                    </RowTemplate>
+                                </MudTable>
+                            }
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+
+                <MudPaper Class="pa-3 dm-content-card mt-2">
+                    <MudText Typo="Typo.subtitle1" Class="mb-2">@Tr("ROI cohorte par segment", "Cohort ROI by segment")</MudText>
+                    @if (_campaignCohorts.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@Tr("Aucune donnee cohorte pour ces filtres.", "No cohort data found for selected filters.")</MudAlert>
+                    }
+                    else
+                    {
+                        <MudTable T="CampaignCohortRow" Items="_campaignCohorts.Take(20)" Dense="true" Hover="true" Bordered="true" Striped="true">
+                            <HeaderContent>
+                                <MudTh>@Tr("Segment", "Segment")</MudTh>
+                                <MudTh>@Tr("Campagnes", "Campaigns")</MudTh>
+                                <MudTh>@Tr("Executions", "Runs")</MudTh>
+                                <MudTh>@Tr("Envoyes", "Sent")</MudTh>
+                                <MudTh Align="Align.Right">@Tr("Revenu", "Revenue")</MudTh>
+                                <MudTh Align="Align.Right">@Tr("Cout", "Cost")</MudTh>
+                                <MudTh Align="Align.Right">@Tr("ROI", "ROI")</MudTh>
+                                <MudTh Align="Align.Right">@Tr("Part envois", "Sent share")</MudTh>
+                                <MudTh Align="Align.Right">@Tr("Part revenu", "Revenue share")</MudTh>
+                            </HeaderContent>
+                            <RowTemplate Context="c">
+                                <MudTd>@c.SegmentName</MudTd>
+                                <MudTd>@c.CampaignCount</MudTd>
+                                <MudTd>@c.RunsCount</MudTd>
+                                <MudTd>@c.SentCount</MudTd>
+                                <MudTd Align="Align.Right">@Fmt(c.RevenueAttributed)</MudTd>
+                                <MudTd Align="Align.Right">@Fmt(c.DiscountCost)</MudTd>
+                                <MudTd Align="Align.Right">@Fmt(c.RoiPercent)%</MudTd>
+                                <MudTd Align="Align.Right">@Fmt(c.ShareSentPercent)%</MudTd>
+                                <MudTd Align="Align.Right">@Fmt(c.ShareRevenuePercent)%</MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                </MudPaper>
+
+                <MudPaper Class="pa-3 dm-content-card mt-2">
+                    <div class="d-flex flex-wrap align-items-center justify-space-between gap-2 mb-2">
+                        <MudText Typo="Typo.subtitle1">@Tr("Suivi ROI continu", "Continuous ROI tracking")</MudText>
+                        <MudSelect T="string" Label="@Tr("Granularite", "Granularity")" Variant="Variant.Outlined" Dense="true" @bind-Value="_campaignTimeSeriesGranularity">
+                            <MudSelectItem T="string" Value="@("day")">@Tr("Jour", "Day")</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("week")">@Tr("Semaine", "Week")</MudSelectItem>
+                        </MudSelect>
+                    </div>
+
+                    @if (_campaignTimeSeries.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@Tr("Aucune serie temporelle disponible pour ces filtres.", "No timeseries data available for selected filters.")</MudAlert>
+                    }
+                    else
+                    {
+                        <MudTable T="CampaignTimeSeriesPointRow" Items="_campaignTimeSeries" Dense="true" Hover="true" Bordered="true" Striped="true">
+                            <HeaderContent>
+                                <MudTh>@Tr("Debut periode", "Period start")</MudTh>
+                                <MudTh>@Tr("Executions", "Runs")</MudTh>
+                                <MudTh>@Tr("Envoyes", "Sent")</MudTh>
+                                <MudTh Align="Align.Right">@Tr("Revenu", "Revenue")</MudTh>
+                                <MudTh Align="Align.Right">@Tr("Cout", "Cost")</MudTh>
+                                <MudTh Align="Align.Right">@Tr("ROI", "ROI")</MudTh>
+                            </HeaderContent>
+                            <RowTemplate Context="t">
+                                <MudTd>@t.PeriodStartUtc.ToString("yyyy-MM-dd")</MudTd>
+                                <MudTd>@t.RunsCount</MudTd>
+                                <MudTd>@t.SentCount</MudTd>
+                                <MudTd Align="Align.Right">@Fmt(t.RevenueAttributed)</MudTd>
+                                <MudTd Align="Align.Right">@Fmt(t.DiscountCost)</MudTd>
+                                <MudTd Align="Align.Right">@Fmt(t.RoiPercent)%</MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                </MudPaper>
+
+                <MudPaper Class="pa-3 dm-content-card mt-2">
+                    <div class="d-flex flex-wrap align-items-center justify-space-between gap-2 mb-2">
+                        <MudText Typo="Typo.subtitle1">@Tr("ROI experimentations par type d'execution", "Experiment ROI by run type")</MudText>
+                        <div class="d-flex gap-2">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Info" Disabled="_campaignBusy" OnClick="ExportCampaignExperimentsCsv">
+                                @Tr("Exporter experimentations CSV", "Export experiments CSV")
+                            </MudButton>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Disabled="_campaignBusy" OnClick="ExportCampaignExperimentInsightsCsv">
+                                @Tr("Exporter insights A/B CSV", "Export A/B insights CSV")
+                            </MudButton>
+                        </div>
+                    </div>
+
+                    @if (_campaignExperiments.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@Tr("Aucune donnee experimentale pour ces filtres.", "No experiment data available for selected filters.")</MudAlert>
+                    }
+                    else
+                    {
+                        <MudTable T="CampaignExperimentRow" Items="_campaignExperiments" Dense="true" Hover="true" Bordered="true" Striped="true">
+                            <HeaderContent>
+                                <MudTh>@Tr("Experience", "Experiment")</MudTh>
+                                <MudTh>@Tr("Campagnes", "Campaigns")</MudTh>
+                                <MudTh>@Tr("Executions", "Runs")</MudTh>
+                                <MudTh>@Tr("Envoyes", "Sent")</MudTh>
+                                <MudTh Align="Align.Right">@Tr("Revenu", "Revenue")</MudTh>
+                                <MudTh Align="Align.Right">@Tr("Cout", "Cost")</MudTh>
+                                <MudTh Align="Align.Right">@Tr("ROI", "ROI")</MudTh>
+                                <MudTh Align="Align.Right">@Tr("Livraison", "Delivery")</MudTh>
+                                <MudTh>@Tr("Derniere execution", "Last run")</MudTh>
+                            </HeaderContent>
+                            <RowTemplate Context="e">
+                                <MudTd>@e.Experiment</MudTd>
+                                <MudTd>@e.CampaignsCount</MudTd>
+                                <MudTd>@e.RunsCount</MudTd>
+                                <MudTd>@e.SentCount</MudTd>
+                                <MudTd Align="Align.Right">@Fmt(e.RevenueAttributed)</MudTd>
+                                <MudTd Align="Align.Right">@Fmt(e.DiscountCost)</MudTd>
+                                <MudTd Align="Align.Right">@Fmt(e.RoiPercent)%</MudTd>
+                                <MudTd Align="Align.Right">@Fmt(e.DeliveryRatePercent)%</MudTd>
+                                <MudTd>@e.LastRunAtUtc.ToString("yyyy-MM-dd HH:mm")</MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+
+                    @if (_campaignExperimentInsights is null)
+                    {
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-2">@Tr("Les insights uplift A/B ne sont pas encore disponibles.", "A/B uplift insights are not available yet.")</MudAlert>
+                    }
+                    else
+                    {
+                        <MudPaper Class="pa-3 mt-2 dm-content-card">
+                            <MudText Typo="Typo.subtitle2" Class="mb-2">@Tr("Analyse automatique uplift A/B", "Automatic A/B uplift analysis")</MudText>
+                            <MudGrid Spacing="2" Class="mb-2">
+                                <MudItem xs="6" md="2">
+                                    <MudPaper Class="pa-2 dm-kpi-card dm-admin-kpi-card">
+                                        <MudText Typo="Typo.caption">@Tr("Confiance", "Confidence")</MudText>
+                                        <MudText Typo="Typo.h6">@_campaignExperimentInsights.Confidence</MudText>
+                                    </MudPaper>
+                                </MudItem>
+                                <MudItem xs="6" md="2">
+                                    <MudPaper Class="pa-2 dm-kpi-card dm-admin-kpi-card">
+                                        <MudText Typo="Typo.caption">@Tr("Gagnant", "Winner")</MudText>
+                                        <MudText Typo="Typo.h6">@_campaignExperimentInsights.WinnerExperiment</MudText>
+                                    </MudPaper>
+                                </MudItem>
+                                <MudItem xs="6" md="2">
+                                    <MudPaper Class="pa-2 dm-kpi-card dm-admin-kpi-card">
+                                        <MudText Typo="Typo.caption">@Tr("Uplift ROI", "ROI uplift")</MudText>
+                                        <MudText Typo="Typo.h6">@Fmt(_campaignExperimentInsights.UpliftRoiPct)%</MudText>
+                                    </MudPaper>
+                                </MudItem>
+                                <MudItem xs="6" md="3">
+                                    <MudPaper Class="pa-2 dm-kpi-card dm-admin-kpi-card">
+                                        <MudText Typo="Typo.caption">@Tr("Uplift revenu/envoi", "Revenue/sent uplift")</MudText>
+                                        <MudText Typo="Typo.h6">@Fmt(_campaignExperimentInsights.UpliftRevenuePerSentPct)%</MudText>
+                                    </MudPaper>
+                                </MudItem>
+                                <MudItem xs="6" md="3">
+                                    <MudPaper Class="pa-2 dm-kpi-card dm-admin-kpi-card">
+                                        <MudText Typo="Typo.caption">@Tr("Delta livraison", "Delivery delta")</MudText>
+                                        <MudText Typo="Typo.h6">@Fmt(_campaignExperimentInsights.DeliveryDeltaPct)%</MudText>
+                                    </MudPaper>
+                                </MudItem>
+                            </MudGrid>
+
+                            @if (_campaignExperimentInsights.Baseline is not null && _campaignExperimentInsights.Variant is not null)
+                            {
+                                <MudText Typo="Typo.body2" Class="mb-1">
+                                    @Tr(
+                                        $"Reference: {_campaignExperimentInsights.Baseline.Experiment} ({_campaignExperimentInsights.Baseline.SentCount} envoyes, ROI {Fmt(_campaignExperimentInsights.Baseline.RoiPercent)}%) | Variante: {_campaignExperimentInsights.Variant.Experiment} ({_campaignExperimentInsights.Variant.SentCount} envoyes, ROI {Fmt(_campaignExperimentInsights.Variant.RoiPercent)}%)",
+                                        $"Baseline: {_campaignExperimentInsights.Baseline.Experiment} ({_campaignExperimentInsights.Baseline.SentCount} sent, ROI {Fmt(_campaignExperimentInsights.Baseline.RoiPercent)}%) | Variant: {_campaignExperimentInsights.Variant.Experiment} ({_campaignExperimentInsights.Variant.SentCount} sent, ROI {Fmt(_campaignExperimentInsights.Variant.RoiPercent)}%)")
+                                </MudText>
+                            }
+
+                            @if (_campaignExperimentInsights.Recommendations is null || _campaignExperimentInsights.Recommendations.Count == 0)
+                            {
+                                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@Tr("Aucune recommandation generee pour l'instant.", "No recommendation generated yet.")</MudAlert>
+                            }
+                            else
+                            {
+                                <MudTable T="CampaignActionRecommendationRow" Items="_campaignExperimentInsights.Recommendations" Dense="true" Hover="true" Bordered="true" Striped="true">
+                                    <HeaderContent>
+                                        <MudTh>@Tr("Priorite", "Priority")</MudTh>
+                                        <MudTh>@Tr("Action", "Action")</MudTh>
+                                        <MudTh>@Tr("Justification", "Rationale")</MudTh>
+                                        <MudTh>@Tr("Conseil execution", "Execution hint")</MudTh>
+                                    </HeaderContent>
+                                    <RowTemplate Context="r">
+                                        <MudTd>@r.Priority</MudTd>
+                                        <MudTd>@r.Action</MudTd>
+                                        <MudTd>@r.Rationale</MudTd>
+                                        <MudTd>@r.ExecutionHint</MudTd>
+                                    </RowTemplate>
+                                </MudTable>
+                            }
+                        </MudPaper>
+                    }
+                </MudPaper>
+            }
+        </MudPaper>
+
+        <MudPaper Class="pa-4 dm-content-card mt-4">
+            <div class="d-flex flex-wrap align-items-end justify-space-between gap-2">
+                <MudText Typo="Typo.h6">@Tr("Segmentation RFM et automatisation des scenarios", "RFM segmentation and scenario automation")</MudText>
+                <div class="d-flex gap-2">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Disabled="_rfmBusy" OnClick="@(() => LoadRfmInsightsAsync())">
+                        @Tr("Actualiser insights RFM", "Refresh RFM insights")
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Disabled="_rfmBusy" OnClick="BootstrapRfmSegmentsAsync">
+                        @Tr("Initialiser segments RFM", "Bootstrap RFM segments")
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_rfmBusy" OnClick="RunScenarioAutomationAsync">
+                        @Tr("Executer scenarios", "Run scenarios")
+                    </MudButton>
+                </div>
+            </div>
+
+            <MudGrid Class="mt-2" Spacing="2">
+                <MudItem xs="12" md="3">
+                    <MudNumericField T="int" Label="@Tr("Fenetre (jours)", "Window days")" Variant="Variant.Outlined" Min="30" Max="365" @bind-Value="_rfmWindowDays" />
+                </MudItem>
+                <MudItem xs="12" md="3">
+                    <MudSwitch T="bool" Color="Color.Primary" @bind-Value="_scenarioIncludeWelcome">
+                        @Tr("Inclure bienvenue", "Include welcome")
+                    </MudSwitch>
+                </MudItem>
+                <MudItem xs="12" md="3">
+                    <MudSwitch T="bool" Color="Color.Primary" @bind-Value="_scenarioIncludeWinback">
+                        @Tr("Inclure reconquete", "Include winback")
+                    </MudSwitch>
+                </MudItem>
+                <MudItem xs="12" md="3">
+                    <MudSwitch T="bool" Color="Color.Primary" @bind-Value="_scenarioIncludeChurnRisk">
+                        @Tr("Inclure risque churn", "Include churn risk")
+                    </MudSwitch>
+                </MudItem>
+                <MudItem xs="12" md="3">
+                    <MudSwitch T="bool" Color="Color.Primary" @bind-Value="_scenarioSplitChannelsToCampaigns">
+                        @Tr("Decouper scenarios par canal", "Split scenarios by channel")
+                    </MudSwitch>
+                </MudItem>
+            </MudGrid>
+
+            <MudGrid Class="mt-1" Spacing="2">
+                <MudItem xs="12" md="10">
+                    <MudTextField T="string"
+                                  Label="@Tr("Criteres JSON segment dynamique", "Dynamic segment criteria JSON")"
+                                  Variant="Variant.Outlined"
+                                  Lines="3"
+                                  @bind-Value="_segmentPreviewCriteriaJson" />
+                </MudItem>
+                <MudItem xs="12" md="2" Class="d-flex align-items-end">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Info" Disabled="_segmentPreviewBusy" OnClick="PreviewDynamicSegmentAsync">
+                        @Tr("Previsualiser segment", "Preview segment")
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+
+            @if (!string.IsNullOrWhiteSpace(_rfmError))
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mb-2">@_rfmError</MudAlert>
+            }
+            @if (!string.IsNullOrWhiteSpace(_segmentPreviewError))
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mb-2">@_segmentPreviewError</MudAlert>
+            }
+
+            @if (_rfmBusy)
+            {
+                <MudSkeleton Height="40px" />
+                <MudSkeleton Height="40px" Class="mt-2" />
+            }
+            else if (_rfmInsights is not null)
+            {
+                <MudGrid Class="mt-2 mb-3" Spacing="2">
+                    <MudItem xs="6" md="2">
+                        <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                            <MudText Typo="Typo.caption">@Tr("Clients", "Clients")</MudText>
+                            <MudText Typo="Typo.h6">@_rfmInsights.TotalActiveClients</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="6" md="2">
+                        <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                            <MudText Typo="Typo.caption">@Tr("Avec commandes payees", "With paid orders")</MudText>
+                            <MudText Typo="Typo.h6">@_rfmInsights.ClientsWithPaidOrder</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="6" md="2">
+                        <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                            <MudText Typo="Typo.caption">@Tr("Sans commande payee", "Without paid orders")</MudText>
+                            <MudText Typo="Typo.h6">@_rfmInsights.ClientsWithoutPaidOrder</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    @foreach (var tag in _rfmInsights.Tags.Take(3))
+                    {
+                        <MudItem xs="6" md="2">
+                            <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                                <MudText Typo="Typo.caption">@tag.Tag</MudText>
+                                <MudText Typo="Typo.h6">@tag.Count (@Fmt(tag.SharePercent)%)</MudText>
+                            </MudPaper>
+                        </MudItem>
+                    }
+                </MudGrid>
+
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" md="5">
+                        <MudPaper Class="pa-3 dm-content-card">
+                            <MudText Typo="Typo.subtitle1" Class="mb-2">@Tr("Tags RFM", "RFM tags")</MudText>
+                            <MudTable T="RfmTagStatRow" Items="_rfmInsights.Tags" Dense="true" Hover="true" Bordered="true" Striped="true">
+                                <HeaderContent>
+                                    <MudTh>@Tr("Tag", "Tag")</MudTh>
+                                    <MudTh>@Tr("Nombre", "Count")</MudTh>
+                                    <MudTh Align="Align.Right">@Tr("Part", "Share")</MudTh>
+                                </HeaderContent>
+                                <RowTemplate Context="r">
+                                    <MudTd>@r.Tag</MudTd>
+                                    <MudTd>@r.Count</MudTd>
+                                    <MudTd Align="Align.Right">@Fmt(r.SharePercent)%</MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" md="7">
+                        <MudPaper Class="pa-3 dm-content-card">
+                            <MudText Typo="Typo.subtitle1" Class="mb-2">@Tr("Echantillon utilisateurs RFM", "RFM user sample")</MudText>
+                            <MudTable T="RfmUserRow" Items="_rfmInsights.Users.Take(15)" Dense="true" Hover="true" Bordered="true" Striped="true">
+                                <HeaderContent>
+                                    <MudTh>@Tr("Utilisateur", "User")</MudTh>
+                                    <MudTh>@Tr("Tag", "Tag")</MudTh>
+                                    <MudTh>@Tr("Recence", "Recency")</MudTh>
+                                    <MudTh>@Tr("Frequence", "Frequency")</MudTh>
+                                    <MudTh Align="Align.Right">@Tr("Monetaire", "Monetary")</MudTh>
+                                </HeaderContent>
+                                <RowTemplate Context="u">
+                                    <MudTd>@u.UserId.ToString()[..8]</MudTd>
+                                    <MudTd>@u.Tag</MudTd>
+                                    <MudTd>@(u.DaysSinceLastPaidOrder?.ToString() ?? "-")</MudTd>
+                                    <MudTd>@u.FrequencyWindow</MudTd>
+                                    <MudTd Align="Align.Right">@Fmt(u.MonetaryWindow)</MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            }
+
+            @if (_lastScenarioResult is not null)
+            {
+                <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Class="mt-3">
+                    @Tr($"Scenarios executes: {_lastScenarioResult.ExecutedRuns} executions, {_lastScenarioResult.TotalSent} envoyes, anti-spam ignore {_lastScenarioResult.AntiSpamSkippedUsers}, ROI {Fmt(_lastScenarioResult.RoiPercent)}%.", $"Scenarios executed: {_lastScenarioResult.ExecutedRuns} runs, {_lastScenarioResult.TotalSent} sent, anti-spam skipped {_lastScenarioResult.AntiSpamSkippedUsers}, ROI {Fmt(_lastScenarioResult.RoiPercent)}%.")
+                </MudAlert>
+            }
+
+            @if (_segmentPreviewBusy)
+            {
+                <MudSkeleton Height="40px" Class="mt-2" />
+            }
+            else if (_segmentPreview is not null)
+            {
+                <MudPaper Class="pa-3 dm-content-card mt-2">
+                    <MudText Typo="Typo.subtitle1" Class="mb-2">@Tr("Previsualisation segment dynamique", "Dynamic segment preview")</MudText>
+                    <MudText Typo="Typo.body2" Class="mb-2">
+                        @Tr($"Audience: {_segmentPreview.AudienceCount} utilisateurs (genere { _segmentPreview.GeneratedAtUtc.ToString("yyyy-MM-dd HH:mm")}).", $"Audience: {_segmentPreview.AudienceCount} users (generated {_segmentPreview.GeneratedAtUtc.ToString("yyyy-MM-dd HH:mm")}).")
+                    </MudText>
+                    @if (_segmentPreview.SampleUsers.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@Tr("Aucun utilisateur ne correspond a ce critere.", "No users matched this criteria.")</MudAlert>
+                    }
+                    else
+                    {
+                        <MudTable T="SegmentPreviewUserRow" Items="_segmentPreview.SampleUsers" Dense="true" Hover="true" Bordered="true" Striped="true">
+                            <HeaderContent>
+                                <MudTh>@Tr("Utilisateur", "User")</MudTh>
+                                <MudTh>Email</MudTh>
+                                <MudTh>@Tr("Commandes payees", "Paid orders")</MudTh>
+                                <MudTh Align="Align.Right">@Tr("Depense a vie", "Lifetime spend")</MudTh>
+                                <MudTh>@Tr("Dernier paiement", "Last paid")</MudTh>
+                            </HeaderContent>
+                            <RowTemplate Context="u">
+                                <MudTd>@u.UserId.ToString()[..8]</MudTd>
+                                <MudTd>@(u.Email ?? "-")</MudTd>
+                                <MudTd>@u.PaidOrders</MudTd>
+                                <MudTd Align="Align.Right">@Fmt(u.LifetimeSpend)</MudTd>
+                                <MudTd>@(u.LastPaidAtUtc?.ToString("yyyy-MM-dd") ?? "-")</MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                </MudPaper>
+            }
+        </MudPaper>
+    }
+</AuthGuard>
+
+@code {
+    private bool _ready;
+    private bool _loading = true;
+    private bool _saving;
+    private string? _error;
+
+    private Guid? _editingId;
+    private BannerFormModel _model = new();
+    private List<MarketingBannerRow> _items = new();
+    private List<CategoryDto> _categories = new();
+    private List<ShopLookupDto> _shops = new();
+    private MarketingSummaryRow? _summary;
+    private string _q = string.Empty;
+    private string _statusFilter = string.Empty;
+
+    private bool _campaignBusy;
+    private string? _campaignError;
+    private DateTime? _campaignFrom = DateTime.UtcNow.AddDays(-30);
+    private DateTime? _campaignTo = DateTime.UtcNow;
+    private string _campaignQ = string.Empty;
+    private string _campaignStatusFilter = string.Empty;
+    private Guid? _campaignSegmentId;
+    private string _campaignChannelFilter = string.Empty;
+    private int? _campaignMinSent;
+    private decimal? _campaignMinRoi;
+    private List<CampaignSegmentRow> _campaignSegments = new();
+    private List<MarketingCampaignRow> _campaigns = new();
+    private List<CampaignRoiRow> _campaignRoiRows = new();
+    private List<CampaignCohortRow> _campaignCohorts = new();
+    private string _campaignTimeSeriesGranularity = "day";
+    private List<CampaignTimeSeriesPointRow> _campaignTimeSeries = new();
+    private List<CampaignExperimentRow> _campaignExperiments = new();
+    private CampaignExperimentInsightsRow? _campaignExperimentInsights;
+    private CampaignSummaryRow? _campaignSummary;
+
+    private bool _rfmBusy;
+    private string? _rfmError;
+    private int _rfmWindowDays = 180;
+    private RfmInsightsRow? _rfmInsights;
+    private bool _scenarioIncludeWelcome = true;
+    private bool _scenarioIncludeWinback = true;
+    private bool _scenarioIncludeChurnRisk = true;
+    private bool _scenarioSplitChannelsToCampaigns;
+    private bool _segmentPreviewBusy;
+    private string? _segmentPreviewError;
+    private string _segmentPreviewCriteriaJson = "{\"rfmTag\":\"champions\"}";
+    private SegmentPreviewRow? _segmentPreview;
+    private ScenarioAutomationResultRow? _lastScenarioResult;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        while (!Auth.IsReady)
+        {
+            await Task.Delay(30);
+        }
+
+        _ready = true;
+        if (!Auth.IsAuthenticated || !Auth.IsAdmin)
+        {
+            StateHasChanged();
+            return;
+        }
+
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        var query = BuildAdminMarketingQuery();
+        try
+        {
+            try
+            {
+                var listUrl = string.IsNullOrWhiteSpace(query)
+                    ? "api/admin/marketing/banners?page=1&pageSize=100"
+                    : $"api/admin/marketing/banners?page=1&pageSize=100&{query}";
+                var summaryUrl = string.IsNullOrWhiteSpace(query)
+                    ? "api/admin/marketing/banners/summary"
+                    : $"api/admin/marketing/banners/summary?{query}";
+
+                var res = await Http.GetFromJsonAsync<AdminMarketingPaged>(listUrl);
+                _items = res?.Items ?? new();
+                _summary = await Http.GetFromJsonAsync<MarketingSummaryRow>(summaryUrl);
+            }
+            catch (Exception ex)
+            {
+                _error = ex.Message;
+                _items = new();
+                _summary = null;
+            }
+
+            try
+            {
+                var cats = await Http.GetFromJsonAsync<List<CategoryDto>>("api/categories") ?? new();
+                _categories = cats.OrderBy(c => c.Name).ToList();
+            }
+            catch (Exception ex)
+            {
+                _error = AppendError(_error, $"{Tr("Categories", "Categories")}: {ex.Message}");
+                _categories = new();
+            }
+
+            try
+            {
+                var shops = await Http.GetFromJsonAsync<PublicShopPaged>(
+                    "api/shops?page=1&pageSize=100")
+                    ?? new PublicShopPaged(new List<ShopLookupDto>(), 0, 1, 100);
+                _shops = (shops.Items ?? new()).OrderBy(s => s.Name).ToList();
+            }
+            catch (Exception ex)
+            {
+                _error = AppendError(_error, $"{Tr("Boutiques", "Shops")}: {ex.Message}");
+                _shops = new();
+            }
+
+            try
+            {
+                _campaignSegments = await Http.GetFromJsonAsync<List<CampaignSegmentRow>>("api/admin/marketing/segments")
+                    ?? new();
+            }
+            catch (Exception ex)
+            {
+                _error = AppendError(_error, $"{Tr("Segments campagne", "Campaign segments")}: {ex.Message}");
+                _campaignSegments = new();
+            }
+
+            await LoadCampaignAnalyticsAsync(inlineRefresh: true);
+            await LoadRfmInsightsAsync(inlineRefresh: true);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static string AppendError(string? current, string next)
+        => string.IsNullOrWhiteSpace(current) ? next : $"{current} | {next}";
+
+    private string BuildAdminMarketingQuery()
+    {
+        var list = new List<string>();
+        if (!string.IsNullOrWhiteSpace(_q)) list.Add($"q={Uri.EscapeDataString(_q.Trim())}");
+        if (!string.IsNullOrWhiteSpace(_statusFilter)) list.Add($"status={Uri.EscapeDataString(_statusFilter.Trim())}");
+        return list.Count == 0 ? string.Empty : string.Join("&", list);
+    }
+
+    private async Task ApplyFilters()
+    {
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    private async Task RunAutomationAsync()
+    {
+        _saving = true;
+        try
+        {
+            var res = await Http.PostAsJsonAsync(
+                "api/admin/marketing/automation/run",
+                new
+                {
+                    disableExpired = true,
+                    autoPrioritizeLiveByCtr = true,
+                    minImpressionsForCtr = 100
+                });
+            if (!res.IsSuccessStatusCode)
+            {
+                throw await BuildApiError(res);
+            }
+
+            var payload = await res.Content.ReadFromJsonAsync<MarketingAutomationResultRow>();
+            var disabled = payload?.DisabledExpired ?? 0;
+            var reprio = payload?.ReprioritizedLive ?? 0;
+            Snackbar.Add(
+                Tr($"Automatisation terminee: {disabled} expires desactives, {reprio} actifs repriorises.", $"Automation done: {disabled} expired disabled, {reprio} live reprioritized."),
+                Severity.Success);
+
+            await LoadAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private string BuildCampaignRangeQuery(bool includeGranularity = false)
+    {
+        var list = new List<string>();
+        if (_campaignFrom.HasValue) list.Add($"from={Uri.EscapeDataString(_campaignFrom.Value.ToString("yyyy-MM-dd"))}");
+        if (_campaignTo.HasValue) list.Add($"to={Uri.EscapeDataString(_campaignTo.Value.ToString("yyyy-MM-dd"))}");
+        if (!string.IsNullOrWhiteSpace(_campaignQ)) list.Add($"q={Uri.EscapeDataString(_campaignQ.Trim())}");
+        if (!string.IsNullOrWhiteSpace(_campaignStatusFilter)) list.Add($"status={Uri.EscapeDataString(_campaignStatusFilter.Trim())}");
+        if (_campaignSegmentId.HasValue && _campaignSegmentId.Value != Guid.Empty) list.Add($"segmentId={_campaignSegmentId.Value}");
+        if (!string.IsNullOrWhiteSpace(_campaignChannelFilter)) list.Add($"channel={Uri.EscapeDataString(_campaignChannelFilter.Trim())}");
+        if (_campaignMinSent.HasValue && _campaignMinSent.Value > 0) list.Add($"minSent={_campaignMinSent.Value}");
+        if (_campaignMinRoi.HasValue) list.Add($"minRoi={Uri.EscapeDataString(_campaignMinRoi.Value.ToString(System.Globalization.CultureInfo.InvariantCulture))}");
+        if (includeGranularity && !string.IsNullOrWhiteSpace(_campaignTimeSeriesGranularity))
+        {
+            list.Add($"granularity={Uri.EscapeDataString(_campaignTimeSeriesGranularity.Trim())}");
+        }
+        return list.Count == 0 ? string.Empty : string.Join("&", list);
+    }
+
+    private async Task LoadCampaignAnalyticsAsync(bool inlineRefresh = false)
+    {
+        _campaignError = null;
+        if (!inlineRefresh)
+        {
+            _campaignBusy = true;
+        }
+
+        try
+        {
+            var query = BuildCampaignRangeQuery();
+            var timeseriesQuery = BuildCampaignRangeQuery(includeGranularity: true);
+            var campaignsUrl = string.IsNullOrWhiteSpace(query)
+                ? "api/admin/marketing/campaigns?page=1&pageSize=100"
+                : $"api/admin/marketing/campaigns?page=1&pageSize=100&{query}";
+            var summaryUrl = string.IsNullOrWhiteSpace(query)
+                ? "api/admin/marketing/campaigns/summary"
+                : $"api/admin/marketing/campaigns/summary?{query}";
+            var roiUrl = string.IsNullOrWhiteSpace(query)
+                ? "api/admin/marketing/campaigns/roi?page=1&pageSize=100"
+                : $"api/admin/marketing/campaigns/roi?page=1&pageSize=100&{query}";
+            var cohortsUrl = string.IsNullOrWhiteSpace(query)
+                ? "api/admin/marketing/campaigns/cohorts"
+                : $"api/admin/marketing/campaigns/cohorts?{query}";
+            var timeseriesUrl = string.IsNullOrWhiteSpace(timeseriesQuery)
+                ? "api/admin/marketing/campaigns/timeseries?granularity=day"
+                : $"api/admin/marketing/campaigns/timeseries?{timeseriesQuery}";
+            var experimentsUrl = string.IsNullOrWhiteSpace(query)
+                ? "api/admin/marketing/campaigns/experiments"
+                : $"api/admin/marketing/campaigns/experiments?{query}";
+            var insightsUrl = string.IsNullOrWhiteSpace(query)
+                ? "api/admin/marketing/campaigns/experiments/insights"
+                : $"api/admin/marketing/campaigns/experiments/insights?{query}";
+
+            var campaigns = await Http.GetFromJsonAsync<CampaignPaged>(campaignsUrl);
+            _campaigns = campaigns?.Items ?? new();
+
+            _campaignSummary = await Http.GetFromJsonAsync<CampaignSummaryRow>(summaryUrl);
+
+            var roi = await Http.GetFromJsonAsync<CampaignRoiPaged>(roiUrl);
+            _campaignRoiRows = roi?.Items ?? new();
+
+            _campaignCohorts = await Http.GetFromJsonAsync<List<CampaignCohortRow>>(cohortsUrl) ?? new();
+
+            var timeseries = await Http.GetFromJsonAsync<CampaignTimeSeriesRow>(timeseriesUrl);
+            _campaignTimeSeries = timeseries?.Points ?? new();
+
+            _campaignExperiments = await Http.GetFromJsonAsync<List<CampaignExperimentRow>>(experimentsUrl) ?? new();
+            _campaignExperimentInsights = await Http.GetFromJsonAsync<CampaignExperimentInsightsRow>(insightsUrl);
+        }
+        catch (Exception ex)
+        {
+            _campaignError = ex.Message;
+            _campaigns = new();
+            _campaignRoiRows = new();
+            _campaignCohorts = new();
+            _campaignTimeSeries = new();
+            _campaignExperiments = new();
+            _campaignExperimentInsights = null;
+            _campaignSummary = null;
+        }
+        finally
+        {
+            if (!inlineRefresh)
+            {
+                _campaignBusy = false;
+            }
+        }
+    }
+
+    private async Task RunCampaignSchedulerAsync()
+    {
+        _campaignBusy = true;
+        _campaignError = null;
+
+        try
+        {
+            var res = await Http.PostAsJsonAsync(
+                "api/admin/marketing/automation/run-campaigns",
+                new
+                {
+                    dryRun = false,
+                    includeDraft = false,
+                    autoCompleteExpired = true,
+                    maxCampaigns = 25,
+                    attributionWindowDays = 30,
+                    runType = "Scheduled"
+                });
+
+            if (!res.IsSuccessStatusCode)
+            {
+                throw await BuildApiError(res);
+            }
+
+            var payload = await res.Content.ReadFromJsonAsync<CampaignBatchAutomationResultRow>();
+            Snackbar.Add(
+                Tr(
+                    $"Automatisation campagne terminee: {payload?.ProcessedCampaigns ?? 0} traitees, {payload?.CreatedRuns ?? 0} executions, ROI {Fmt(payload?.RoiPercent ?? 0m)}%.",
+                    $"Campaign automation done: {payload?.ProcessedCampaigns ?? 0} processed, {payload?.CreatedRuns ?? 0} runs, ROI {Fmt(payload?.RoiPercent ?? 0m)}%."),
+                Severity.Success);
+
+            await LoadCampaignAnalyticsAsync(inlineRefresh: false);
+        }
+        catch (Exception ex)
+        {
+            _campaignError = ex.Message;
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _campaignBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RunCampaignNowAsync(Guid campaignId)
+    {
+        _campaignBusy = true;
+        try
+        {
+            var res = await Http.PostAsJsonAsync($"api/admin/marketing/campaigns/{campaignId}/run", new { runType = "Manual" });
+            if (!res.IsSuccessStatusCode)
+            {
+                throw await BuildApiError(res);
+            }
+
+            Snackbar.Add(Tr("Execution campagne declenchee.", "Campaign run triggered."), Severity.Success);
+            await LoadCampaignAnalyticsAsync(inlineRefresh: false);
+        }
+        catch (Exception ex)
+        {
+            _campaignError = ex.Message;
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _campaignBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ExportCampaignRoiCsv()
+    {
+        var query = BuildCampaignRangeQuery();
+        var url = string.IsNullOrWhiteSpace(query)
+            ? "api/admin/marketing/campaigns/roi/export"
+            : $"api/admin/marketing/campaigns/roi/export?{query}";
+        Nav.NavigateTo(url, forceLoad: true);
+    }
+
+    private void ExportCampaignKpiCsv()
+    {
+        var query = BuildCampaignRangeQuery();
+        var url = string.IsNullOrWhiteSpace(query)
+            ? "api/admin/marketing/campaigns/kpi/export"
+            : $"api/admin/marketing/campaigns/kpi/export?{query}";
+        Nav.NavigateTo(url, forceLoad: true);
+    }
+
+    private void ExportCampaignDashboardCsv()
+    {
+        var query = BuildCampaignRangeQuery(includeGranularity: true);
+        var url = string.IsNullOrWhiteSpace(query)
+            ? "api/admin/marketing/campaigns/dashboard/export"
+            : $"api/admin/marketing/campaigns/dashboard/export?{query}";
+        Nav.NavigateTo(url, forceLoad: true);
+    }
+
+    private void ExportCampaignExperimentsCsv()
+    {
+        var query = BuildCampaignRangeQuery();
+        var url = string.IsNullOrWhiteSpace(query)
+            ? "api/admin/marketing/campaigns/experiments/export"
+            : $"api/admin/marketing/campaigns/experiments/export?{query}";
+        Nav.NavigateTo(url, forceLoad: true);
+    }
+
+    private void ExportCampaignExperimentInsightsCsv()
+    {
+        var query = BuildCampaignRangeQuery();
+        var url = string.IsNullOrWhiteSpace(query)
+            ? "api/admin/marketing/campaigns/experiments/insights/export"
+            : $"api/admin/marketing/campaigns/experiments/insights/export?{query}";
+        Nav.NavigateTo(url, forceLoad: true);
+    }
+
+    private decimal CampaignDeliverySuccessRate
+    {
+        get
+        {
+            if (_campaignSummary is null)
+            {
+                return 0m;
+            }
+
+            var totalAttempts = _campaignSummary.SentCount + _campaignSummary.FailedCount;
+            if (totalAttempts <= 0)
+            {
+                return 0m;
+            }
+
+            return decimal.Round((decimal)_campaignSummary.SentCount * 100m / totalAttempts, 2, MidpointRounding.AwayFromZero);
+        }
+    }
+
+    private decimal CampaignAverageRevenuePerSent
+        => _campaignSummary is not { SentCount: > 0 }
+            ? 0m
+            : decimal.Round(_campaignSummary.RevenueAttributed / _campaignSummary.SentCount, 4, MidpointRounding.AwayFromZero);
+
+    private decimal CampaignAverageCostPerSent
+        => _campaignSummary is not { SentCount: > 0 }
+            ? 0m
+            : decimal.Round(_campaignSummary.DiscountCost / _campaignSummary.SentCount, 4, MidpointRounding.AwayFromZero);
+
+    private List<CampaignRoiRow> TopRoiCampaigns
+        => _campaignRoiRows
+            .Where(x => x.SentCount > 0)
+            .OrderByDescending(x => x.RoiPercent)
+            .ThenByDescending(x => x.RevenueAttributed)
+            .ThenBy(x => x.CampaignName)
+            .Take(5)
+            .ToList();
+
+    private List<CampaignRoiRow> LowRoiCampaigns
+        => _campaignRoiRows
+            .Where(x => x.SentCount > 0)
+            .OrderBy(x => x.RoiPercent)
+            .ThenByDescending(x => x.SentCount)
+            .ThenBy(x => x.CampaignName)
+            .Take(5)
+            .ToList();
+
+    private string CampaignRoiTrendLabel
+    {
+        get
+        {
+            var ordered = _campaignTimeSeries
+                .OrderBy(x => x.PeriodStartUtc)
+                .ToList();
+            if (ordered.Count < 2)
+            {
+                return Tr("N/D", "N/A");
+            }
+
+            var delta = decimal.Round(
+                ordered[^1].RoiPercent - ordered[^2].RoiPercent,
+                2,
+                MidpointRounding.AwayFromZero);
+
+            if (delta > 0m)
+            {
+                return $"+{Fmt(delta)} {Tr("pts", "pts")}";
+            }
+
+            if (delta < 0m)
+            {
+                return $"{Fmt(delta)} {Tr("pts", "pts")}";
+            }
+
+            return Tr("Stable", "Flat");
+        }
+    }
+
+    private async Task LoadRfmInsightsAsync(bool inlineRefresh = false)
+    {
+        _rfmError = null;
+        if (!inlineRefresh)
+        {
+            _rfmBusy = true;
+        }
+
+        try
+        {
+            var window = Math.Clamp(_rfmWindowDays, 30, 365);
+            var url = $"api/admin/marketing/segments/rfm-insights?windowDays={window}";
+            _rfmInsights = await Http.GetFromJsonAsync<RfmInsightsRow>(url);
+        }
+        catch (Exception ex)
+        {
+            _rfmError = ex.Message;
+            _rfmInsights = null;
+        }
+        finally
+        {
+            if (!inlineRefresh)
+            {
+                _rfmBusy = false;
+            }
+        }
+    }
+
+    private async Task BootstrapRfmSegmentsAsync()
+    {
+        _rfmBusy = true;
+        _rfmError = null;
+        try
+        {
+            var res = await Http.PostAsync("api/admin/marketing/segments/rfm-bootstrap", null);
+            if (!res.IsSuccessStatusCode)
+            {
+                throw await BuildApiError(res);
+            }
+
+            var payload = await res.Content.ReadFromJsonAsync<RfmBootstrapResultRow>();
+            Snackbar.Add(
+                Tr(
+                    $"Segments RFM synchronises: {payload?.CreatedSegments ?? 0} crees, {payload?.UpdatedSegments ?? 0} mis a jour.",
+                    $"RFM segments synced: {payload?.CreatedSegments ?? 0} created, {payload?.UpdatedSegments ?? 0} updated."),
+                Severity.Success);
+
+            await LoadRfmInsightsAsync(inlineRefresh: false);
+            await LoadCampaignAnalyticsAsync(inlineRefresh: false);
+        }
+        catch (Exception ex)
+        {
+            _rfmError = ex.Message;
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _rfmBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RunScenarioAutomationAsync()
+    {
+        _rfmBusy = true;
+        _rfmError = null;
+        try
+        {
+            var res = await Http.PostAsJsonAsync(
+                "api/admin/marketing/automation/run-scenarios",
+                new
+                {
+                    dryRun = false,
+                    includeWelcome = _scenarioIncludeWelcome,
+                    includeWinback = _scenarioIncludeWinback,
+                    includeChurnRisk = _scenarioIncludeChurnRisk,
+                    maxScenarios = 20,
+                    attributionWindowDays = 30,
+                    splitChannelsToCampaigns = _scenarioSplitChannelsToCampaigns
+                });
+
+            if (!res.IsSuccessStatusCode)
+            {
+                throw await BuildApiError(res);
+            }
+
+            _lastScenarioResult = await res.Content.ReadFromJsonAsync<ScenarioAutomationResultRow>();
+            Snackbar.Add(
+                Tr(
+                    $"Automatisation des scenarios terminee: {_lastScenarioResult?.ExecutedRuns ?? 0} executions, ROI {Fmt(_lastScenarioResult?.RoiPercent ?? 0m)}%.",
+                    $"Scenario automation done: {_lastScenarioResult?.ExecutedRuns ?? 0} runs, ROI {Fmt(_lastScenarioResult?.RoiPercent ?? 0m)}%."),
+                Severity.Success);
+
+            await LoadRfmInsightsAsync(inlineRefresh: false);
+            await LoadCampaignAnalyticsAsync(inlineRefresh: false);
+        }
+        catch (Exception ex)
+        {
+            _rfmError = ex.Message;
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _rfmBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task PreviewDynamicSegmentAsync()
+    {
+        _segmentPreviewBusy = true;
+        _segmentPreviewError = null;
+        try
+        {
+            var res = await Http.PostAsJsonAsync(
+                "api/admin/marketing/segments/preview",
+                new
+                {
+                    criteriaJson = _segmentPreviewCriteriaJson,
+                    sampleSize = 20
+                });
+            if (!res.IsSuccessStatusCode)
+            {
+                throw await BuildApiError(res);
+            }
+
+            _segmentPreview = await res.Content.ReadFromJsonAsync<SegmentPreviewRow>();
+        }
+        catch (Exception ex)
+        {
+            _segmentPreviewError = ex.Message;
+            _segmentPreview = null;
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _segmentPreviewBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_model.StartAtUtc.HasValue && _model.EndAtUtc.HasValue && _model.StartAtUtc > _model.EndAtUtc)
+        {
+            Snackbar.Add(Tr("La date de debut doit etre inferieure ou egale a la date de fin.", "Start date must be before or equal to end date."), Severity.Warning);
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            var request = _model.ToRequest();
+            HttpResponseMessage res;
+            if (_editingId is null)
+            {
+                res = await Http.PostAsJsonAsync("api/admin/marketing/banners", request);
+            }
+            else
+            {
+                res = await Http.PutAsJsonAsync($"api/admin/marketing/banners/{_editingId.Value}", request);
+            }
+
+            if (!res.IsSuccessStatusCode)
+            {
+                throw await BuildApiError(res);
+            }
+
+            ResetForm();
+            Snackbar.Add(SL["Saved"], Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void StartEdit(MarketingBannerRow row)
+    {
+        _editingId = row.Id;
+        _model = BannerFormModel.From(row);
+    }
+
+    private void ResetForm()
+    {
+        _editingId = null;
+        _model = new BannerFormModel();
+    }
+
+    private async Task DeleteAsync(MarketingBannerRow row)
+    {
+        var confirm = await Dialog.ShowMessageBox(
+            title: SL["Delete"],
+            markupMessage: (MarkupString)$"{SL["Delete"]} <b>{row.Title}</b> ->",
+            yesText: SL["Delete"],
+            cancelText: SL["Cancel"]);
+
+        if (confirm != true)
+        {
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            var res = await Http.DeleteAsync($"api/admin/marketing/banners/{row.Id}");
+            if (!res.IsSuccessStatusCode)
+            {
+                throw await BuildApiError(res);
+            }
+
+            Snackbar.Add(SL["Deleted"], Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private string BuildPeriod(MarketingBannerRow row)
+    {
+        var start = row.StartAtUtc?.ToString("yyyy-MM-dd") ?? "-";
+        var end = row.EndAtUtc?.ToString("yyyy-MM-dd") ?? "-";
+        return $"{start} -> {end}";
+    }
+
+    private string BuildTargeting(MarketingBannerRow row)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(row.Language)) parts.Add(row.Language!.ToUpperInvariant());
+        if (!string.IsNullOrWhiteSpace(row.City)) parts.Add(row.City!);
+        if (!string.IsNullOrWhiteSpace(row.Zone)) parts.Add(row.Zone!);
+        if (row.CategoryId.HasValue)
+        {
+            var cat = _categories.FirstOrDefault(c => c.Id == row.CategoryId.Value);
+            parts.Add(cat is null ? $"{Tr("Categorie", "Category")}:{row.CategoryId}" : $"{Tr("Categorie", "Category")}:{cat.Name}");
+        }
+        if (row.ShopId.HasValue)
+        {
+            var shop = _shops.FirstOrDefault(s => s.Id == row.ShopId.Value);
+            parts.Add(shop is null ? $"{Tr("Boutique", "Shop")}:{row.ShopId}" : $"{Tr("Boutique", "Shop")}:{shop.Name}");
+        }
+        return parts.Count == 0 ? "-" : string.Join(" - ", parts);
+    }
+
+    private string ResolveStatus(MarketingBannerRow row)
+    {
+        var now = DateTime.UtcNow;
+        if (!row.IsActive)
+        {
+            return "Inactive";
+        }
+
+        if (row.StartAtUtc.HasValue && row.StartAtUtc.Value > now)
+        {
+            return "Planned";
+        }
+
+        if (row.EndAtUtc.HasValue && row.EndAtUtc.Value <= now)
+        {
+            return "Expired";
+        }
+
+        return "Live";
+    }
+
+    private string ResolveStatusLabel(MarketingBannerRow row)
+    {
+        return ResolveStatus(row) switch
+        {
+            "Live" => Tr("Actif", "Live"),
+            "Planned" => Tr("Planifie", "Planned"),
+            "Expired" => Tr("Expire", "Expired"),
+            _ => Tr("Inactif", "Inactive")
+        };
+    }
+
+    private string GetStatusBadgeCss(MarketingBannerRow row)
+    {
+        return ResolveStatus(row) switch
+        {
+            "Live" => "dm-status-badge dm-status-badge-live",
+            "Planned" => "dm-status-badge dm-status-badge-planned",
+            "Expired" => "dm-status-badge dm-status-badge-expired",
+            _ => "dm-status-badge dm-status-badge-inactive"
+        };
+    }
+
+    private static decimal Ctr(MarketingBannerRow row)
+    {
+        if (row.Impressions <= 0)
+        {
+            return 0m;
+        }
+
+        return decimal.Round((decimal)row.Clicks * 100m / row.Impressions, 2, MidpointRounding.AwayFromZero);
+    }
+
+    private async Task<Exception> BuildApiError(HttpResponseMessage res)
+    {
+        var body = await res.Content.ReadAsStringAsync();
+        return res.StatusCode switch
+        {
+            HttpStatusCode.Unauthorized => new InvalidOperationException(SL["Non autorise (401)."]),
+            HttpStatusCode.Forbidden => new InvalidOperationException(SL["Acces refuse (403). Admin requis."]),
+            HttpStatusCode.NotFound => new InvalidOperationException(SL["Route introuvable (404)."]),
+            HttpStatusCode.Conflict => new InvalidOperationException(string.IsNullOrWhiteSpace(body) ? SL["Conflit (409)."] : body),
+            _ => new InvalidOperationException($"{SL["Erreur API"]} ({(int)res.StatusCode}) : {body}")
+        };
+    }
+
+    private sealed class BannerFormModel
+    {
+        public string Title { get; set; } = "";
+        public string? Subtitle { get; set; }
+        public string? ImageUrl { get; set; }
+        public string? TargetUrl { get; set; }
+        public string? Language { get; set; }
+        public string? City { get; set; }
+        public string? Zone { get; set; }
+        public Guid? CategoryId { get; set; }
+        public Guid? ShopId { get; set; }
+        public DateTime? StartAtUtc { get; set; }
+        public DateTime? EndAtUtc { get; set; }
+        public int SortOrder { get; set; }
+        public bool IsActive { get; set; } = true;
+
+        public BannerWrite ToRequest()
+        {
+            return new BannerWrite(
+                Title.Trim(),
+                string.IsNullOrWhiteSpace(Subtitle) ? null : Subtitle.Trim(),
+                string.IsNullOrWhiteSpace(ImageUrl) ? null : ImageUrl.Trim(),
+                string.IsNullOrWhiteSpace(TargetUrl) ? null : TargetUrl.Trim(),
+                IsActive,
+                StartAtUtc,
+                EndAtUtc,
+                string.IsNullOrWhiteSpace(Language) ? null : Language.Trim(),
+                string.IsNullOrWhiteSpace(City) ? null : City.Trim(),
+                string.IsNullOrWhiteSpace(Zone) ? null : Zone.Trim(),
+                CategoryId,
+                ShopId,
+                SortOrder
+            );
+        }
+
+        public static BannerFormModel From(MarketingBannerRow row)
+        {
+            return new BannerFormModel
+            {
+                Title = row.Title,
+                Subtitle = row.Subtitle,
+                ImageUrl = row.ImageUrl,
+                TargetUrl = row.TargetUrl,
+                Language = row.Language,
+                City = row.City,
+                Zone = row.Zone,
+                CategoryId = row.CategoryId,
+                ShopId = row.ShopId,
+                StartAtUtc = row.StartAtUtc,
+                EndAtUtc = row.EndAtUtc,
+                SortOrder = row.SortOrder,
+                IsActive = row.IsActive
+            };
+        }
+    }
+
+    private static string Fmt(decimal value) => value.ToString("0.##");
+
+    private static string Tr(string fr, string en)
+        => string.Equals(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "en", StringComparison.OrdinalIgnoreCase) ? en : fr;
+
+    private sealed record BannerWrite(
+        string Title,
+        string? Subtitle,
+        string? ImageUrl,
+        string? TargetUrl,
+        bool IsActive,
+        DateTime? StartAtUtc,
+        DateTime? EndAtUtc,
+        string? Language,
+        string? City,
+        string? Zone,
+        Guid? CategoryId,
+        Guid? ShopId,
+        int SortOrder
+    );
+
+    private sealed record MarketingBannerRow(
+        Guid Id,
+        string Title,
+        string? Subtitle,
+        string? ImageUrl,
+        string? TargetUrl,
+        bool IsActive,
+        DateTime? StartAtUtc,
+        DateTime? EndAtUtc,
+        string? Language,
+        string? City,
+        string? Zone,
+        Guid? CategoryId,
+        Guid? ShopId,
+        int SortOrder,
+        int Impressions,
+        int Clicks,
+        DateTime CreatedAtUtc
+    );
+
+    private sealed record AdminMarketingPaged(List<MarketingBannerRow> Items, int Total, int Page, int PageSize);
+    private sealed record MarketingSummaryRow(int Total, int Live, int Planned, int Expired, int Inactive, int Impressions, int Clicks, decimal CtrPercent);
+    private sealed record MarketingAutomationResultRow(int DisabledExpired, int ReprioritizedLive, int MinImpressionsForCtr, DateTime ExecutedAtUtc);
+    private sealed record CampaignBatchAutomationResultRow(
+        int EligibleCampaigns,
+        int ProcessedCampaigns,
+        int CreatedRuns,
+        int CompletedExpiredCampaigns,
+        int TotalTargetUsers,
+        int TotalSent,
+        int TotalFailed,
+        decimal RevenueAttributed,
+        decimal DiscountCost,
+        decimal RoiPercent,
+        bool DryRun,
+        DateTime ExecutedAtUtc);
+
+    private sealed record CampaignPaged(List<MarketingCampaignRow> Items, int Total, int Page, int PageSize);
+    private sealed record CampaignRoiPaged(List<CampaignRoiRow> Items, int Total, int Page, int PageSize);
+
+    private sealed record MarketingCampaignRow(
+        Guid Id,
+        string Name,
+        string Status,
+        Guid? SegmentId,
+        string? SegmentName,
+        Guid? CouponId,
+        string? CouponCode,
+        bool ChannelEmail,
+        bool ChannelPush,
+        bool ChannelInApp,
+        string? MessageTitle,
+        string? MessageBody,
+        DateTime? StartAtUtc,
+        DateTime? EndAtUtc,
+        DateTime? LastRunAtUtc,
+        DateTime CreatedAtUtc,
+        DateTime? UpdatedAtUtc);
+
+    private sealed record CampaignSummaryRow(
+        int TotalCampaigns,
+        int DraftCampaigns,
+        int ActiveCampaigns,
+        int PausedCampaigns,
+        int CompletedCampaigns,
+        int ActiveInWindow,
+        int RunsCount,
+        int TargetUsers,
+        int SentCount,
+        int FailedCount,
+        decimal RevenueAttributed,
+        decimal DiscountCost,
+        decimal RoiPercent,
+        DateTime FromUtc,
+        DateTime ToUtc);
+
+    private sealed record CampaignRoiRow(
+        Guid CampaignId,
+        string CampaignName,
+        string Status,
+        int RunsCount,
+        int TargetUsers,
+        int SentCount,
+        int FailedCount,
+        decimal RevenueAttributed,
+        decimal DiscountCost,
+        decimal RoiPercent,
+        DateTime? LastRunAtUtc,
+        Guid? SegmentId,
+        string? SegmentName,
+        string Channels,
+        DateTime? StartAtUtc,
+        DateTime? EndAtUtc);
+
+    private sealed record CampaignCohortRow(
+        Guid? SegmentId,
+        string SegmentName,
+        int CampaignCount,
+        int RunsCount,
+        int SentCount,
+        decimal RevenueAttributed,
+        decimal DiscountCost,
+        decimal RoiPercent,
+        decimal ShareSentPercent,
+        decimal ShareRevenuePercent);
+
+    private sealed record CampaignSegmentRow(Guid Id, string Name);
+
+    private sealed record CampaignTimeSeriesRow(
+        string Granularity,
+        DateTime FromUtc,
+        DateTime ToUtc,
+        List<CampaignTimeSeriesPointRow> Points);
+
+    private sealed record CampaignTimeSeriesPointRow(
+        DateTime PeriodStartUtc,
+        int RunsCount,
+        int SentCount,
+        decimal RevenueAttributed,
+        decimal DiscountCost,
+        decimal RoiPercent);
+
+    private sealed record CampaignExperimentRow(
+        string Experiment,
+        int CampaignsCount,
+        int RunsCount,
+        int TargetUsers,
+        int SentCount,
+        int FailedCount,
+        decimal RevenueAttributed,
+        decimal DiscountCost,
+        decimal RoiPercent,
+        decimal DeliveryRatePercent,
+        decimal AvgRevenuePerSent,
+        DateTime FirstRunAtUtc,
+        DateTime LastRunAtUtc);
+
+    private sealed record CampaignExperimentInsightsRow(
+        DateTime FromUtc,
+        DateTime ToUtc,
+        bool HasPair,
+        CampaignExperimentRow? Baseline,
+        CampaignExperimentRow? Variant,
+        decimal UpliftRoiPct,
+        decimal UpliftRevenuePerSentPct,
+        decimal DeliveryDeltaPct,
+        string Confidence,
+        string WinnerExperiment,
+        List<CampaignActionRecommendationRow> Recommendations,
+        List<CampaignExperimentRow> Experiments);
+
+    private sealed record CampaignActionRecommendationRow(
+        string Priority,
+        string Action,
+        string Rationale,
+        string ExecutionHint);
+
+    private sealed record RfmInsightsRow(
+        DateTime GeneratedAtUtc,
+        DateTime WindowFromUtc,
+        int TotalActiveClients,
+        int ClientsWithPaidOrder,
+        int ClientsWithoutPaidOrder,
+        List<RfmTagStatRow> Tags,
+        List<RfmUserRow> Users);
+
+    private sealed record RfmTagStatRow(
+        string Tag,
+        int Count,
+        decimal SharePercent);
+
+    private sealed record RfmUserRow(
+        Guid UserId,
+        string Tag,
+        int? DaysSinceLastPaidOrder,
+        int FrequencyWindow,
+        decimal MonetaryWindow,
+        DateTime? LastPaidAtUtc);
+
+    private sealed record RfmBootstrapResultRow(
+        int CreatedSegments,
+        int UpdatedSegments,
+        int TotalTemplates,
+        DateTime ExecutedAtUtc);
+
+    private sealed record ScenarioAutomationResultRow(
+        bool DryRun,
+        int PlannedScenarios,
+        int EnsuredCampaigns,
+        int ExecutedRuns,
+        int TotalTargetUsers,
+        int TotalSent,
+        int TotalFailed,
+        decimal RevenueAttributed,
+        decimal DiscountCost,
+        decimal RoiPercent,
+        int AntiSpamSkippedUsers,
+        List<ScenarioStepExecutionRow> StepsExecuted,
+        DateTime ExecutedAtUtc);
+
+    private sealed record ScenarioStepExecutionRow(
+        string ScenarioKey,
+        string StepCode,
+        Guid CampaignId,
+        string CampaignName,
+        Guid RunId,
+        int TargetUsers,
+        int SentCount,
+        decimal RevenueAttributed,
+        decimal DiscountCost,
+        int AntiSpamSkipped,
+        DateTime StartedAtUtc);
+
+    private sealed record SegmentPreviewRow(
+        int AudienceCount,
+        string CriteriaJson,
+        List<SegmentPreviewUserRow> SampleUsers,
+        DateTime GeneratedAtUtc);
+
+    private sealed record SegmentPreviewUserRow(
+        Guid UserId,
+        string? Email,
+        int PaidOrders,
+        decimal LifetimeSpend,
+        DateTime? LastPaidAtUtc,
+        DateTime CreatedAtUtc);
+
+    private sealed record CategoryDto(Guid Id, string Name);
+
+    private sealed record ShopLookupDto(Guid Id, string Name);
+    private sealed record PublicShopPaged(List<ShopLookupDto> Items, int Total, int Page, int PageSize);
+}

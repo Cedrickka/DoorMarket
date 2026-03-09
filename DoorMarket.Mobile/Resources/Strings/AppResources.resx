@@ -1,0 +1,238 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="TabHome" xml:space="preserve"><value>Accueil</value></data>
+  <data name="TabCategories" xml:space="preserve"><value>Categories</value></data>
+  <data name="TabOrders" xml:space="preserve"><value>Commandes</value></data>
+  <data name="TabAccount" xml:space="preserve"><value>Compte</value></data>
+
+  <data name="BottomHome" xml:space="preserve"><value>Accueil</value></data>
+  <data name="BottomCategories" xml:space="preserve"><value>Categories</value></data>
+  <data name="BottomOrders" xml:space="preserve"><value>Commandes</value></data>
+  <data name="BottomProfile" xml:space="preserve"><value>Profil</value></data>
+
+  <data name="SettingsTitle" xml:space="preserve"><value>Parametres</value></data>
+  <data name="SettingsSubtitle" xml:space="preserve"><value>Preferences application</value></data>
+  <data name="SettingsLanguage" xml:space="preserve"><value>Langue</value></data>
+  <data name="SettingsAppearance" xml:space="preserve"><value>Apparence</value></data>
+  <data name="SettingsTheme" xml:space="preserve"><value>Theme</value></data>
+  <data name="SettingsNotifications" xml:space="preserve"><value>Notifications</value></data>
+  <data name="SettingsOrdersNotifications" xml:space="preserve"><value>Recevoir les notifications de commande</value></data>
+  <data name="SettingsVersion" xml:space="preserve"><value>Version</value></data>
+  <data name="ThemeSystem" xml:space="preserve"><value>Systeme</value></data>
+  <data name="ThemeLight" xml:space="preserve"><value>Clair</value></data>
+  <data name="ThemeDark" xml:space="preserve"><value>Sombre</value></data>
+  <data name="LanguageFrench" xml:space="preserve"><value>Francais</value></data>
+  <data name="LanguageEnglish" xml:space="preserve"><value>Anglais</value></data>
+
+  <data name="LoginWelcome" xml:space="preserve"><value>Bon retour, connectez-vous pour continuer</value></data>
+  <data name="LoginTitle" xml:space="preserve"><value>Connexion</value></data>
+  <data name="EmailOrPhoneLabel" xml:space="preserve"><value>Email ou telephone</value></data>
+  <data name="EmailOrPhonePlaceholder" xml:space="preserve"><value>ex: alex@mail.com</value></data>
+  <data name="PasswordLabel" xml:space="preserve"><value>Mot de passe</value></data>
+  <data name="PasswordPlaceholder" xml:space="preserve"><value>Votre mot de passe</value></data>
+  <data name="LoginAction" xml:space="preserve"><value>Se connecter</value></data>
+  <data name="CreateAccountAction" xml:space="preserve"><value>Creer un compte</value></data>
+  <data name="LoginMissingCredentials" xml:space="preserve"><value>Veuillez saisir vos identifiants.</value></data>
+  <data name="LoginFailedGeneric" xml:space="preserve"><value>Impossible de se connecter. Reessayez.</value></data>
+
+  <data name="RegisterIntro" xml:space="preserve"><value>Creez votre compte client DoorMarket</value></data>
+  <data name="RegisterTitle" xml:space="preserve"><value>Inscription</value></data>
+  <data name="EmailLabel" xml:space="preserve"><value>Email</value></data>
+  <data name="EmailPlaceholder" xml:space="preserve"><value>email@exemple.com</value></data>
+  <data name="PhoneOptionalLabel" xml:space="preserve"><value>Telephone (optionnel)</value></data>
+  <data name="PhonePlaceholder" xml:space="preserve"><value>+243...</value></data>
+  <data name="PasswordRegisterPlaceholder" xml:space="preserve"><value>Saisir un mot de passe</value></data>
+  <data name="ConfirmLabel" xml:space="preserve"><value>Confirmer</value></data>
+  <data name="ConfirmPlaceholder" xml:space="preserve"><value>Confirmer le mot de passe</value></data>
+  <data name="RegisterAction" xml:space="preserve"><value>Creer mon compte</value></data>
+  <data name="AlreadyHaveAccount" xml:space="preserve"><value>J'ai deja un compte</value></data>
+  <data name="RegisterRequired" xml:space="preserve"><value>Email et mot de passe sont obligatoires.</value></data>
+  <data name="RegisterPasswordMismatch" xml:space="preserve"><value>Les mots de passe ne correspondent pas.</value></data>
+  <data name="EmailVerificationTitle" xml:space="preserve"><value>Verification email</value></data>
+  <data name="EmailVerificationMessage" xml:space="preserve"><value>Un code de verification a ete envoye sur votre adresse email.</value></data>
+  <data name="Ok" xml:space="preserve"><value>OK</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Annuler</value></data>
+  <data name="OtpTitle" xml:space="preserve"><value>Code de verification</value></data>
+  <data name="OtpLoginMessage" xml:space="preserve"><value>Un code a ete envoye sur votre email pour valider la connexion.</value></data>
+  <data name="OtpProfilePhoneMessage" xml:space="preserve"><value>Un code a ete envoye sur votre email pour confirmer le telephone.</value></data>
+  <data name="OtpProfilePasswordMessage" xml:space="preserve"><value>Un code a ete envoye sur votre email pour confirmer le mot de passe.</value></data>
+  <data name="OtpPromptTitle" xml:space="preserve"><value>Verification</value></data>
+  <data name="OtpPromptMessage" xml:space="preserve"><value>Entrez le code recu par email</value></data>
+  <data name="OtpRequired" xml:space="preserve"><value>Code de verification requis.</value></data>
+  <data name="VerificationPromptTitle" xml:space="preserve"><value>Verification</value></data>
+  <data name="VerificationPromptMessage" xml:space="preserve"><value>Entrez le code recu par email</value></data>
+  <data name="VerifyAction" xml:space="preserve"><value>Verifier</value></data>
+  <data name="LaterAction" xml:space="preserve"><value>Plus tard</value></data>
+  <data name="VerificationPending" xml:space="preserve"><value>Verification en attente. Vous pourrez vous connecter apres confirmation de l'email.</value></data>
+  <data name="VerificationSuccessLogin" xml:space="preserve"><value>Verification reussie. Connectez-vous pour continuer.</value></data>
+  <data name="RegisterFailedGeneric" xml:space="preserve"><value>Impossible de creer le compte. Reessayez.</value></data>
+  <data name="NewPasswordLabel" xml:space="preserve"><value>Nouveau mot de passe</value></data>
+  <data name="NewPasswordPlaceholder" xml:space="preserve"><value>Saisir un nouveau mot de passe</value></data>
+  <data name="ConfirmPasswordLabel" xml:space="preserve"><value>Confirmer le mot de passe</value></data>
+  <data name="ConfirmPasswordPlaceholder" xml:space="preserve"><value>Confirmer le mot de passe</value></data>
+  <data name="ChangePasswordAction" xml:space="preserve"><value>Changer le mot de passe</value></data>
+  <data name="ChangePhotoAction" xml:space="preserve"><value>Changer la photo</value></data>
+  <data name="PhotoUpdated" xml:space="preserve"><value>Photo de profil mise a jour.</value></data>
+  <data name="PhotoUpdateFailed" xml:space="preserve"><value>Impossible de mettre a jour la photo.</value></data>
+  <data name="PasswordUpdated" xml:space="preserve"><value>Mot de passe mis a jour.</value></data>
+  <data name="PasswordRequired" xml:space="preserve"><value>Mot de passe requis.</value></data>
+  <data name="HelpTitle" xml:space="preserve"><value>Aide &amp; Support DoorMarket</value></data>
+  <data name="HelpSubtitle" xml:space="preserve"><value>Tout ce qu’il faut pour commander, payer et suivre vos commandes.</value></data>
+  <data name="HelpTagline" xml:space="preserve"><value>Du Marché à votre Porte</value></data>
+  <data name="TocTitle" xml:space="preserve"><value>Sommaire</value></data>
+  <data name="TocIntro" xml:space="preserve"><value>Présentation</value></data>
+  <data name="TocHow" xml:space="preserve"><value>Comment commander</value></data>
+  <data name="TocDelivery" xml:space="preserve"><value>Livraison</value></data>
+  <data name="TocPayments" xml:space="preserve"><value>Paiements</value></data>
+  <data name="TocStatus" xml:space="preserve"><value>Statuts</value></data>
+  <data name="TocFaq" xml:space="preserve"><value>FAQ</value></data>
+  <data name="TocSupport" xml:space="preserve"><value>Support</value></data>
+  <data name="HelpIntroTitle" xml:space="preserve"><value>C’est quoi DoorMarket ?</value></data>
+  <data name="HelpIntroBody" xml:space="preserve"><value>DoorMarket vous permet de découvrir des produits de plusieurs boutiques, d’ajouter au panier, de choisir la livraison à votre adresse et de payer en ligne. Après paiement, la boutique traite la commande et vous suivez son statut jusqu’à la livraison.</value></data>
+  <data name="HelpHowTitle" xml:space="preserve"><value>Comment ça marche</value></data>
+  <data name="HelpHowStep1" xml:space="preserve"><value>Parcourez les produits (catégories, recherche, filtres).</value></data>
+  <data name="HelpHowStep2" xml:space="preserve"><value>Consultez les détails (prix, boutique, disponibilité).</value></data>
+  <data name="HelpHowStep3" xml:space="preserve"><value>Ajoutez au panier (quantité + validation).</value></data>
+  <data name="HelpHowStep4" xml:space="preserve"><value>Renseignez l’adresse de livraison pour estimer les frais.</value></data>
+  <data name="HelpHowStep5" xml:space="preserve"><value>Finalisez au checkout et payez (Stripe/PayPal/Prépayé).</value></data>
+  <data name="HelpHowStep6" xml:space="preserve"><value>Suivez le statut : Payée -> Traitée -> Livrée (ou Annulée).</value></data>
+  <data name="HelpHowTip" xml:space="preserve"><value>Astuce : Vous pouvez naviguer et remplir le panier sans compte. Le compte est demandé seulement au moment du checkout.</value></data>
+  <data name="HelpProductsTitle" xml:space="preserve"><value>Produits, boutiques et disponibilité</value></data>
+  <data name="HelpProductsBody" xml:space="preserve"><value>Les produits proviennent de boutiques partenaires. Les prix et le stock peuvent évoluer. Si un article devient indisponible, la boutique peut ajuster la commande selon les règles métier.</value></data>
+  <data name="HelpCartTitle" xml:space="preserve"><value>Panier &amp; commande</value></data>
+  <data name="HelpCartBody1" xml:space="preserve"><value>Vous pouvez ajouter des articles au panier même sans compte.</value></data>
+  <data name="HelpCartBody2" xml:space="preserve"><value>Le compte est demandé au checkout pour sécuriser la commande et permettre le suivi.</value></data>
+  <data name="HelpCartReason1" xml:space="preserve"><value>Sécuriser le paiement et la commande.</value></data>
+  <data name="HelpCartReason2" xml:space="preserve"><value>Enregistrer l’adresse et les infos nécessaires à la livraison.</value></data>
+  <data name="HelpCartReason3" xml:space="preserve"><value>Accéder à l’historique et au suivi des commandes.</value></data>
+  <data name="HelpDeliveryTitle" xml:space="preserve"><value>Livraison</value></data>
+  <data name="HelpDeliveryBody1" xml:space="preserve"><value>Les frais de livraison sont calculés selon votre adresse et l’adresse de la boutique.</value></data>
+  <data name="HelpDeliveryBody2" xml:space="preserve"><value>Si votre panier contient plusieurs boutiques, le calcul peut tenir compte de la boutique la plus éloignée.</value></data>
+  <data name="HelpDeliveryBody3" xml:space="preserve"><value>Au-delà d’un certain nombre de boutiques, un petit supplément peut s’appliquer.</value></data>
+  <data name="HelpDeliveryNote" xml:space="preserve"><value>Le total au checkout inclut : sous-total produits + frais de livraison.</value></data>
+  <data name="HelpPaymentsTitle" xml:space="preserve"><value>Paiements</value></data>
+  <data name="HelpStripeTitle" xml:space="preserve"><value>Paiement par carte (Stripe)</value></data>
+  <data name="HelpStripeBody" xml:space="preserve"><value>Le paiement est sécurisé et traité par Stripe. Les cartes acceptées dépendent du prestataire et de votre banque (Visa, MasterCard, etc.).</value></data>
+  <data name="HelpPayPalTitle" xml:space="preserve"><value>Paiement via PayPal</value></data>
+  <data name="HelpPayPalBody" xml:space="preserve"><value>Vous êtes redirigé vers PayPal pour confirmer. DoorMarket reçoit uniquement la confirmation de paiement.</value></data>
+  <data name="HelpPrepaidTitle" xml:space="preserve"><value>Carte prépayée DoorMarket (si activée)</value></data>
+  <data name="HelpPrepaidBody" xml:space="preserve"><value>Vous payez avec un solde ou un code prépayé selon les options disponibles. En cas d’échec, la commande peut rester en attente ou être annulée.</value></data>
+  <data name="HelpPaymentsNote" xml:space="preserve"><value>Important : DoorMarket ne doit pas stocker les informations sensibles de carte (CVC). Pour Stripe/PayPal, la saisie se fait sur des pages sécurisées.</value></data>
+  <data name="HelpAccountTitle" xml:space="preserve"><value>Compte &amp; sécurité</value></data>
+  <data name="HelpAccountBody" xml:space="preserve"><value>Votre compte permet de sécuriser les commandes et de retrouver vos informations.</value></data>
+  <data name="HelpAccountReason1" xml:space="preserve"><value>Suivre vos commandes et leurs statuts.</value></data>
+  <data name="HelpAccountReason2" xml:space="preserve"><value>Sauvegarder vos adresses de livraison.</value></data>
+  <data name="HelpAccountReason3" xml:space="preserve"><value>Recevoir des notifications (selon configuration).</value></data>
+  <data name="HelpAccountReason4" xml:space="preserve"><value>Accéder à l’historique des achats.</value></data>
+  <data name="HelpStatusTitle" xml:space="preserve"><value>Statuts de commande</value></data>
+  <data name="HelpStatusItem1" xml:space="preserve"><value>En attente : commande enregistrée, traitement en attente.</value></data>
+  <data name="HelpStatusItem2" xml:space="preserve"><value>Payée : paiement confirmé, la boutique est notifiée.</value></data>
+  <data name="HelpStatusItem3" xml:space="preserve"><value>Traitée / En préparation : la boutique prépare.</value></data>
+  <data name="HelpStatusItem4" xml:space="preserve"><value>En livraison : la commande est en route.</value></data>
+  <data name="HelpStatusItem5" xml:space="preserve"><value>Livrée : commande livrée au client.</value></data>
+  <data name="HelpStatusItem6" xml:space="preserve"><value>Annulée / Échec : annulation ou incident (paiement/stock).</value></data>
+  <data name="HelpShopTitle" xml:space="preserve"><value>Informations boutique (vendeur)</value></data>
+  <data name="HelpShopBody1" xml:space="preserve"><value>Lorsqu’une commande est payée, la boutique reçoit une notification par email “Commande payée en attente”.</value></data>
+  <data name="HelpShopBody2" xml:space="preserve"><value>Depuis le Dashboard Boutique, vous pouvez consulter la commande et changer le statut (En attente -> Traitée -> Livrée, ou Annulée si nécessaire).</value></data>
+  <data name="HelpFaqTitle" xml:space="preserve"><value>Questions fréquentes (FAQ)</value></data>
+  <data name="HelpFaqQ1" xml:space="preserve"><value>Puis-je voir les produits sans compte ?</value></data>
+  <data name="HelpFaqA1" xml:space="preserve"><value>Oui. Vous pouvez consulter les produits et remplir le panier. Le compte est exigé seulement au checkout.</value></data>
+  <data name="HelpFaqQ2" xml:space="preserve"><value>Pourquoi faut-il un compte au moment de payer ?</value></data>
+  <data name="HelpFaqA2" xml:space="preserve"><value>Pour sécuriser la commande, assurer le suivi et faciliter la livraison.</value></data>
+  <data name="HelpFaqQ3" xml:space="preserve"><value>Comment savoir si le paiement a réussi ?</value></data>
+  <data name="HelpFaqA3" xml:space="preserve"><value>Après paiement, vous revenez sur DoorMarket et la commande apparaît comme “Payée”.</value></data>
+  <data name="HelpFaqQ4" xml:space="preserve"><value>Comment est calculée la livraison ?</value></data>
+  <data name="HelpFaqA4" xml:space="preserve"><value>Selon la distance entre votre adresse et la boutique (ou la plus éloignée si plusieurs boutiques), avec éventuel supplément multi-boutiques.</value></data>
+  <data name="HelpFaqQ5" xml:space="preserve"><value>Est-ce que DoorMarket stocke mes informations de carte ?</value></data>
+  <data name="HelpFaqA5" xml:space="preserve"><value>Non. Stripe/PayPal traitent les paiements ; DoorMarket ne stocke pas le CVC.</value></data>
+  <data name="HelpFaqQ6" xml:space="preserve"><value>Que faire si un produit est en rupture de stock ?</value></data>
+  <data name="HelpFaqA6" xml:space="preserve"><value>La boutique peut ajuster ou annuler la commande selon les règles métier ; vous serez informé selon configuration.</value></data>
+  <data name="HelpFaqQ7" xml:space="preserve"><value>Comment changer la langue ?</value></data>
+  <data name="HelpFaqA7" xml:space="preserve"><value>Utilisez le sélecteur de langue Français / English dans le menu.</value></data>
+  <data name="HelpSupportTitle" xml:space="preserve"><value>Support &amp; contact</value></data>
+  <data name="HelpSupportBody" xml:space="preserve"><value>Besoin d’aide ? Contactez notre équipe.</value></data>
+  <data name="HelpSupportEmailLabel" xml:space="preserve"><value>Email :</value></data>
+  <data name="HelpSupportEmail" xml:space="preserve"><value>contact@door-market.com</value></data>
+  <data name="HelpSupportPhoneLabel" xml:space="preserve"><value>Téléphone :</value></data>
+  <data name="HelpSupportPhone" xml:space="preserve"><value>(+1) 220-279-1506</value></data>
+  <data name="HelpSupportHoursLabel" xml:space="preserve"><value>Horaires :</value></data>
+  <data name="HelpSupportHours" xml:space="preserve"><value>Lun-Sam, 8h-18h</value></data>
+  <data name="HelpSupportCta" xml:space="preserve"><value>Nous contacter</value></data>
+  <data name="HelpSupportMailTo" xml:space="preserve"><value>mailto:contact@door-market.com?subject=Support%20DoorMarket</value></data>
+  <data name="SupportContactTitle" xml:space="preserve"><value>Envoyer un message</value></data>
+  <data name="SupportContactName" xml:space="preserve"><value>Nom</value></data>
+  <data name="SupportContactEmailLabel" xml:space="preserve"><value>Email</value></data>
+  <data name="SupportContactEmail" xml:space="preserve"><value>Contactez-nous a {0}.</value></data>
+  <data name="SupportContactPhone" xml:space="preserve"><value>Contactez-nous au {0}.</value></data>
+  <data name="SupportContactSubject" xml:space="preserve"><value>Objet</value></data>
+  <data name="SupportContactMessage" xml:space="preserve"><value>Votre message</value></data>
+  <data name="SupportContactSend" xml:space="preserve"><value>Envoyer</value></data>
+  <data name="SupportContactSent" xml:space="preserve"><value>Message envoyé. Merci.</value></data>
+  <data name="SupportContactRequired" xml:space="preserve"><value>Email et message requis.</value></data>
+  <data name="SupportContactFailed" xml:space="preserve"><value>Impossible d'envoyer le message.</value></data>
+  <data name="RoleChangedTitle" xml:space="preserve"><value>Changement de role</value></data>
+  <data name="RoleChangedMessage" xml:space="preserve"><value>Votre role a change, reconnectez-vous.</value></data>
+  <data name="RoleChangedReconnect" xml:space="preserve"><value>Se reconnecter</value></data>
+  <data name="RoleChangedLater" xml:space="preserve"><value>Plus tard</value></data>
+  <data name="OtpLoginDisabled" xml:space="preserve"><value>La verification OTP au login est desactivee.</value></data>
+  <data name="CartCheckoutBlockedAction" xml:space="preserve"><value>Corriger le panier</value></data>
+  <data name="CartCheckoutBlockedTitle" xml:space="preserve"><value>Checkout bloque</value></data>
+  <data name="CartCheckoutBlockedHint" xml:space="preserve"><value>Certains points bloquent la commande. Corrigez-les avant de continuer.</value></data>
+  <data name="CartCheckoutWarningHint" xml:space="preserve"><value>Des points sont a verifier avant checkout.</value></data>
+  <data name="CartCheckoutReadyHint" xml:space="preserve"><value>Panier pret pour checkout.</value></data>
+  <data name="CartCheckoutWarningsTitle" xml:space="preserve"><value>Points a verifier</value></data>
+  <data name="CartPreCheckoutUnavailableHint" xml:space="preserve"><value>Verification pre-checkout indisponible. Vous pouvez continuer et valider au checkout.</value></data>
+  <data name="CartFixActionsTitle" xml:space="preserve"><value>Actions recommandees</value></data>
+  <data name="RetryAction" xml:space="preserve"><value>Reessayer</value></data>
+  <data name="NavigationOpenAddressesFailed" xml:space="preserve"><value>Impossible d'ouvrir les adresses.</value></data>
+  <data name="NavigationOpenPaymentsFailed" xml:space="preserve"><value>Impossible d'ouvrir les paiements.</value></data>
+  <data name="OrdersPendingPaymentsTitle" xml:space="preserve"><value>Paiements a finaliser ({0})</value></data>
+  <data name="OrdersPendingPaymentsHint" xml:space="preserve"><value>Certaines commandes ne sont pas encore reglees. Reprenez le paiement pour lancer la preparation.</value></data>
+  <data name="ResumePaymentAction" xml:space="preserve"><value>Reprendre le paiement</value></data>
+  <data name="OrderPaymentPendingInline" xml:space="preserve"><value>Paiement non finalise. Touchez pour reprendre.</value></data>
+  <data name="RefreshStatusAction" xml:space="preserve"><value>Rafraichir le statut</value></data>
+  <data name="OrderStatusRefreshedHint" xml:space="preserve"><value>Statut de commande actualise.</value></data>
+  <data name="PaymentPendingRecoveryHint" xml:space="preserve"><value>Paiement en attente. Reprenez le paiement puis rafraichissez le statut.</value></data>
+  <data name="PaymentFailedRecoveryHint" xml:space="preserve"><value>Paiement echoue. Choisissez une action pour retenter.</value></data>
+  <data name="StripeLabel" xml:space="preserve"><value>Stripe</value></data>
+  <data name="StripeOpenNowPrompt" xml:space="preserve"><value>Commande creee. Ouvrir Stripe maintenant ?</value></data>
+  <data name="StripeOpenFailed" xml:space="preserve"><value>Impossible d'ouvrir Stripe sur cet appareil.</value></data>
+  <data name="StripeTemporaryUnavailable" xml:space="preserve"><value>Impossible d'ouvrir Stripe pour le moment. Reessayez plus tard.</value></data>
+  <data name="StripeRedirectReady" xml:space="preserve"><value>Redirection Stripe prete.</value></data>
+  <data name="PaymentStatusPending" xml:space="preserve"><value>En attente</value></data>
+  <data name="PaymentStatusFailed" xml:space="preserve"><value>Echoue</value></data>
+  <data name="PaymentResumeFromOrderHint" xml:space="preserve"><value>Commande creee mais paiement non finalise. Ouvrez le detail commande pour reprendre le paiement. ({0})</value></data>
+  <data name="NeedSupportAction" xml:space="preserve"><value>Contacter le support</value></data>
+  <data name="PaymentAutoRefreshHint" xml:space="preserve"><value>Actualisation automatique du statut toutes les 12 secondes.</value></data>
+  <data name="PaymentAutoRefreshWithTimeHint" xml:space="preserve"><value>Derniere actualisation auto: {0}</value></data>
+  <data name="NavigationOpenSupportFailed" xml:space="preserve"><value>Impossible d'ouvrir le support.</value></data>
+  <data name="NoPendingPayments" xml:space="preserve"><value>Aucun paiement a finaliser</value></data>
+  <data name="NoPendingPaymentsHint" xml:space="preserve"><value>Les commandes a reprendre apparaitront ici.</value></data>
+  <data name="SupportPaymentSubjectFormat" xml:space="preserve"><value>Incident paiement commande {0}</value></data>
+  <data name="SupportPaymentMessageFormat" xml:space="preserve"><value>Bonjour, j'ai besoin d'aide pour reprendre un paiement. Commande: {0}. Statut paiement: {1}. Fournisseur: {2}.</value></data>
+  <data name="PaymentReturnTitle" xml:space="preserve"><value>Retour paiement</value></data>
+  <data name="PaymentReturnSubtitle" xml:space="preserve"><value>Verification automatique du statut</value></data>
+  <data name="PaymentReturnChecking" xml:space="preserve"><value>Verification en cours...</value></data>
+  <data name="PaymentReturnLastCheckFormat" xml:space="preserve"><value>Derniere verification: {0}</value></data>
+  <data name="PaymentReturnStatusPaidTitle" xml:space="preserve"><value>Paiement confirme</value></data>
+  <data name="PaymentReturnStatusPaidHint" xml:space="preserve"><value>Votre paiement est confirme. La commande peut etre preparee.</value></data>
+  <data name="PaymentReturnStatusPendingTitle" xml:space="preserve"><value>Paiement en attente</value></data>
+  <data name="PaymentReturnStatusPendingHint" xml:space="preserve"><value>Le paiement n'est pas encore confirme. Revenez ici apres validation fournisseur.</value></data>
+  <data name="PaymentReturnStatusFailedTitle" xml:space="preserve"><value>Paiement echoue</value></data>
+  <data name="PaymentReturnStatusFailedHint" xml:space="preserve"><value>Le paiement a echoue. Reessayez ou contactez le support.</value></data>
+  <data name="PaymentReturnStatusErrorTitle" xml:space="preserve"><value>Verification indisponible</value></data>
+  <data name="PaymentReturnStatusErrorHint" xml:space="preserve"><value>Impossible de verifier le statut pour le moment.</value></data>
+  <data name="PaymentReturnCheckNowAction" xml:space="preserve"><value>Verifier maintenant</value></data>
+  <data name="PaymentReturnOpenOrderAction" xml:space="preserve"><value>Ouvrir le detail commande</value></data>
+  <data name="PaymentReturnBackToOrdersAction" xml:space="preserve"><value>Retour aux commandes</value></data>
+  <data name="PaymentReturnProviderFormat" xml:space="preserve"><value>Fournisseur: {0}</value></data>
+  <data name="PaymentReturnReopenProviderFormat" xml:space="preserve"><value>Rouvrir {0}</value></data>
+</root>
+
+
+

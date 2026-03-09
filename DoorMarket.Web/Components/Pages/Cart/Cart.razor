@@ -1,0 +1,446 @@
+@page "/cart"
+
+@using MudBlazor
+@using DoorMarket.Application.DTOs.Cart
+@using DoorMarket.Web.Utils
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject DoorMarket.Web.Services.CartApiClient CartApi
+@inject DoorMarket.Web.Services.GuestCartService GuestCart
+
+<h1 class="dm-page-h1">@SL["Cart"]</h1>
+<div class="dm-page-sub">@SL["CartSubtitle"]</div>
+
+    @if (!_bootstrapped)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudSkeleton Height="22px" Width="200px" Class="mb-3" />
+            <MudSkeleton Height="54px" Class="mb-2" />
+            <MudSkeleton Height="54px" Class="mb-2" />
+            <MudSkeleton Height="54px" Class="mb-2" />
+        </MudPaper>
+    }
+    else if (_loading)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudSkeleton Height="54px" Class="mb-2" />
+            <MudSkeleton Height="54px" Class="mb-2" />
+            <MudSkeleton Height="54px" Class="mb-2" />
+        </MudPaper>
+    }
+    else if (_error is not null)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_error</MudAlert>
+            <MudButton Variant="Variant.Outlined" Class="mt-3" OnClick="Reload">@SL["Retry"]</MudButton>
+        </MudPaper>
+    }
+    else if (_cart is null || _cart.Items.Count == 0)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@SL["CartEmpty"]</MudAlert>
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" Class="mt-3" OnClick="@(() => Nav.NavigateTo("/"))">
+                @SL["ContinueShopping"]
+            </MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        @if (!_isGuest && _recoveryStatus is not null && _recoveryStatus.HasActiveReminder)
+        {
+            <MudPaper Class="pa-4 mt-3 dm-content-card">
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+                    <div><b>Reprendre votre panier</b></div>
+                    <div>@_recoveryStatus.Message</div>
+                    <div class="mt-1">
+                        @($"Articles: {_recoveryStatus.ItemCount} | Sous-total: {_recoveryStatus.Subtotal:0.00} {_recoveryStatus.Currency}")
+                    </div>
+                    <MudButton Variant="Variant.Filled" Color="Color.Warning" Class="mt-2" OnClick="GoCheckout">
+                        Reprendre checkout
+                    </MudButton>
+                </MudAlert>
+            </MudPaper>
+        }
+
+        <MudGrid Class="mt-3 dm-view-enter" Spacing="3">
+            <MudItem xs="12" lg="8">
+                <MudPaper Class="pa-4 dm-content-card">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <MudText Typo="Typo.h6">@SL["Items"]</MudText>
+
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error" Class="dm-action-btn" Disabled="_saving"
+                                   OnClick="AskClear">@SL["ClearCart"]</MudButton>
+                    </div>
+
+                    <MudDivider Class="my-3" />
+
+                    @foreach (var item in _cart.Items)
+                    {
+                        <article class="dm-cart-item">
+                            <img src="@MediaCatalog.Product(item.MainImageUrl, item.ProductName, null, item.ProductId)"
+                                 alt="@item.ProductName"
+                                 class="dm-product-thumb-sm" />
+
+                            <div>
+                                <div class="dm-cart-item-name">@item.ProductName</div>
+                                <div class="dm-cart-item-meta">@SL["UnitPriceLabel"]: @item.UnitPrice.ToString("0.00") @_cart.Currency</div>
+                                <div class="dm-cart-item-meta">ID: @ShortId(item.ProductId)</div>
+                            </div>
+
+                            <div class="dm-cart-item-total">
+                                <div class="dm-cart-total-label">@SL["LineTotal"]</div>
+                                <div class="dm-cart-total-value">@item.LineTotal.ToString("0.00") @_cart.Currency</div>
+
+                                <div class="dm-qty-wrap mt-2">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Remove"
+                                                   Size="Size.Small"
+                                                   Disabled="_saving || item.Qty <= 1"
+                                                   OnClick="@(() => ChangeQty(item.Id, item.Qty - 1))" />
+
+                                    <MudNumericField T="int"
+                                                     Dense="true"
+                                                     Variant="Variant.Outlined"
+                                                     Min="1"
+                                                     Value="@item.Qty"
+                                                     ValueChanged="@(v => OnQtyInput(item.Id, v))"
+                                                     Style="width:80px" />
+
+                                    <MudIconButton Icon="@Icons.Material.Filled.Add"
+                                                   Size="Size.Small"
+                                                   Disabled="_saving"
+                                                   OnClick="@(() => ChangeQty(item.Id, item.Qty + 1))" />
+                                </div>
+
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Error"
+                                           Size="Size.Small"
+                                           Class="mt-2 dm-action-btn"
+                                           Disabled="_saving"
+                                           OnClick="@(() => AskRemove(item.Id))">
+                                    @SL["Delete"]
+                                </MudButton>
+                            </div>
+                        </article>
+                    }
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" lg="4">
+                <MudPaper Class="pa-4 dm-content-card">
+                    <MudText Typo="Typo.h6" Class="mb-2">@SL["Summary"]</MudText>
+
+                    @if (!_isGuest && _checkoutReadiness is not null)
+                    {
+                        @if (CheckoutBlocked)
+                        {
+                            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-2">
+                                <div><b>Checkout blocked</b></div>
+                                @foreach (var issue in _checkoutReadiness.BlockingIssues)
+                                {
+                                    <div>- @issue.Message</div>
+                                }
+                            </MudAlert>
+                        }
+                        else
+                        {
+                            <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Class="mb-2">
+                                Cart ready for checkout.
+                            </MudAlert>
+                        }
+
+                        @if (_checkoutReadiness.Warnings.Count > 0)
+                        {
+                            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-2">
+                                @foreach (var warning in _checkoutReadiness.Warnings)
+                                {
+                                    <div>- @warning.Message</div>
+                                }
+                            </MudAlert>
+                        }
+                    }
+
+                    <MudPaper Class="pa-3 dm-summary-card" Outlined="true">
+                        <div class="dm-summary-row">
+                            <span class="dm-summary-label">@SL["Subtotal"]</span>
+                            <span class="dm-summary-value">@SummarySubtotal.ToString("0.00") @SummaryCurrency</span>
+                        </div>
+                        <div class="dm-summary-row mt-2">
+                            <span class="dm-summary-label">@SL["Delivery"]</span>
+                            <span class="dm-summary-value">@SummaryDelivery.ToString("0.00") @SummaryCurrency</span>
+                        </div>
+                        <div class="dm-summary-row mt-2">
+                            <span class="dm-summary-label">@SL["Discount"]</span>
+                            <span class="dm-summary-value">-@SummaryDiscount.ToString("0.00") @SummaryCurrency</span>
+                        </div>
+
+                        <MudDivider Class="my-3" />
+
+                        <div class="dm-summary-row dm-summary-total">
+                            <span class="dm-summary-label">@SL["Total"]</span>
+                            <span class="dm-summary-value">@SummaryTotal.ToString("0.00") @SummaryCurrency</span>
+                        </div>
+                    </MudPaper>
+
+                    <MudButton Class="mt-3 dm-action-btn dm-action-btn-primary" Color="Color.Primary" Variant="Variant.Filled" FullWidth="true"
+                               Disabled="_saving || CheckoutBlocked"
+                               OnClick="GoCheckout">@SL["ProceedCheckout"]</MudButton>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+
+@code {
+    private bool _bootstrapped;
+    private bool _loading = true;
+    private bool _saving = false;
+    private string? _error;
+    private CartDto? _cart;
+    private bool _isGuest;
+    private CheckoutReadinessDto? _checkoutReadiness;
+    private CartRecoveryStatusDto? _recoveryStatus;
+    private bool CheckoutBlocked => !_isGuest && _checkoutReadiness is not null && _checkoutReadiness.BlockingIssues.Count > 0;
+    private decimal SummarySubtotal => _checkoutReadiness?.Subtotal ?? _cart?.Subtotal ?? 0m;
+    private decimal SummaryDelivery => _checkoutReadiness?.DeliveryFee ?? 0m;
+    private decimal SummaryDiscount => _checkoutReadiness?.Discount ?? 0m;
+    private decimal SummaryTotal => _checkoutReadiness?.TotalEstimate ?? _cart?.Subtotal ?? 0m;
+    private string SummaryCurrency => _checkoutReadiness?.Currency ?? _cart?.Currency ?? "USD";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var t0 = DateTime.UtcNow;
+        while (!Auth.IsReady && (DateTime.UtcNow - t0).TotalSeconds < 5)
+            await Task.Delay(30);
+
+        _bootstrapped = true;
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            if (Auth.IsAuthenticated)
+            {
+                _isGuest = false;
+                _cart = await CartApi.GetAsync();
+                _checkoutReadiness = await CartApi.PreCheckoutAsync(
+                    new PreCheckoutRequest(
+                        DeliveryZoneId: null,
+                        PromoCode: null,
+                        PaymentProvider: "PayPal",
+                        PrepaidCardCode: null,
+                        RequireDeliveryZone: false),
+                    CancellationToken.None);
+                _recoveryStatus = await CartApi.GetRecoveryStatusAsync(lookbackDays: 30, CancellationToken.None);
+            }
+            else
+            {
+                _isGuest = true;
+                _cart = await LoadGuestCartAsync();
+                _checkoutReadiness = null;
+                _recoveryStatus = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = WebErrorUx.ForException(
+                ex,
+                SL,
+                "Impossible de charger le panier.",
+                "Unable to load cart.");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private Task Reload() => LoadAsync();
+
+    private async Task OnQtyInput(Guid itemId, int qty)
+    {
+        if (qty < 1) qty = 1;
+        await ChangeQty(itemId, qty);
+    }
+
+    private async Task ChangeQty(Guid itemId, int qty)
+    {
+        if (_cart is null) return;
+
+        _saving = true;
+        try
+        {
+            if (_isGuest)
+            {
+                await GuestCart.UpdateQtyAsync(itemId, qty);
+                _cart = await LoadGuestCartAsync();
+            }
+            else
+            {
+                _cart = await CartApi.UpdateQtyAsync(itemId, qty);
+                await RefreshCheckoutReadinessAsync();
+            }
+
+            Snackbar.ShowSuccess(SL["QuantityUpdated"]);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.ShowError(WebErrorUx.ForException(
+                ex,
+                SL,
+                "Mise a jour de quantite impossible.",
+                "Unable to update quantity."));
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task AskRemove(Guid itemId)
+    {
+        var confirm = await Dialog.ShowMessageBox(
+            title: SL["Delete"],
+            markupMessage: (MarkupString)SL["RemoveItemPrompt"].Value,
+            yesText: SL["Delete"],
+            cancelText: SL["Cancel"]);
+
+        if (confirm == true)
+            await Remove(itemId);
+    }
+
+    private async Task Remove(Guid itemId)
+    {
+        if (_cart is null) return;
+
+        _saving = true;
+        try
+        {
+            if (_isGuest)
+            {
+                await GuestCart.RemoveItemAsync(itemId);
+                _cart = await LoadGuestCartAsync();
+            }
+            else
+            {
+                _cart = await CartApi.RemoveItemAsync(itemId);
+                await RefreshCheckoutReadinessAsync();
+            }
+
+            Snackbar.ShowInfo(SL["ItemDeleted"]);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.ShowError(WebErrorUx.ForException(
+                ex,
+                SL,
+                "Suppression impossible.",
+                "Unable to remove item."));
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task AskClear()
+    {
+        var confirm = await Dialog.ShowMessageBox(
+            title: SL["ClearCart"],
+            markupMessage: (MarkupString)SL["ClearCartPrompt"].Value,
+            yesText: SL["Clear"],
+            cancelText: SL["Cancel"]);
+
+        if (confirm == true)
+            await Clear();
+    }
+
+    private async Task Clear()
+    {
+        _saving = true;
+        try
+        {
+            if (_isGuest)
+            {
+                await GuestCart.ClearAsync();
+            }
+            else
+            {
+                await CartApi.ClearAsync();
+            }
+
+            Snackbar.ShowInfo(SL["CartCleared"]);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.ShowError(WebErrorUx.ForException(
+                ex,
+                SL,
+                "Impossible de vider le panier.",
+                "Unable to clear cart."));
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void GoCheckout()
+    {
+        if (_isGuest)
+        {
+            Nav.NavigateTo("/login?returnUrl=/checkout");
+            return;
+        }
+
+        Nav.NavigateTo("/checkout");
+    }
+
+    private async Task RefreshCheckoutReadinessAsync()
+    {
+        if (_isGuest || _cart is null)
+        {
+            _checkoutReadiness = null;
+            return;
+        }
+
+        _checkoutReadiness = await CartApi.PreCheckoutAsync(
+            new PreCheckoutRequest(
+                DeliveryZoneId: null,
+                PromoCode: null,
+                PaymentProvider: "PayPal",
+                PrepaidCardCode: null,
+                RequireDeliveryZone: false),
+            CancellationToken.None);
+    }
+
+    private async Task<CartDto> LoadGuestCartAsync()
+    {
+        var guest = await GuestCart.GetAsync();
+        var items = guest.Items.Select(x => new CartItemDto(
+            x.Id,
+            x.ProductId,
+            null,
+            x.ProductName,
+            x.UnitPrice,
+            x.Qty,
+            x.UnitPrice * x.Qty,
+            x.Currency,
+            x.MainImageUrl)).ToList();
+
+        var currency = items.FirstOrDefault()?.Currency ?? "USD";
+        var subtotal = items.Sum(x => x.LineTotal);
+        return new CartDto(Guid.Empty, items, subtotal, currency);
+    }
+
+    private static string ShortId(Guid id) => id.ToString("N")[..8];
+}

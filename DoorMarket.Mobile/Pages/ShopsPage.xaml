@@ -1,0 +1,160 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<local:LocalizedContentPage xmlns:local="clr-namespace:DoorMarket.Mobile.Localization" 
+    x:Class="DoorMarket.Mobile.Pages.ShopsPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:categories="clr-namespace:DoorMarket.Application.DTOs.Categories;assembly=DoorMarket.Application"
+    xmlns:components="clr-namespace:DoorMarket.Mobile.Components"
+    xmlns:markup="clr-namespace:DoorMarket.Mobile.Markup"
+    xmlns:models="clr-namespace:DoorMarket.Mobile.Models"
+    xmlns:shops="clr-namespace:DoorMarket.Application.DTOs.Shops;assembly=DoorMarket.Application"
+    NavigationPage.HasNavigationBar="False">
+
+    <Grid RowDefinitions="Auto,*">
+        <components:DmHeader
+            ActionCommand="{Binding CartCommand}"
+            ActionGlyph="{x:Static models:IconGlyphs.Cart}"
+            Subtitle="{markup:Translate ShopsSubtitle}"
+            Title="{markup:Translate ShopsTitle}" />
+
+        <Grid Grid.Row="1" Padding="24,16,24,0">
+            <CollectionView
+                ItemsSource="{Binding Shops}"
+                SelectionChanged="OnShopSelected"
+                SelectionMode="Single">
+                <CollectionView.Header>
+                    <VerticalStackLayout Spacing="16">
+                        <components:DmSearchBar
+                            x:Name="SearchInput"
+                            Placeholder="{markup:Translate SearchShopPlaceholder}"
+                            ReturnType="Search"
+                            Completed="OnSearchCompleted" />
+
+                        <components:DmCard Margin="0">
+                            <VerticalStackLayout Spacing="16">
+                                <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate FiltersTitle}" />
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                                    <VerticalStackLayout Spacing="8">
+                                        <Label Style="{StaticResource CaptionLabelStyle}" Text="{markup:Translate CountryLabel}" />
+                                        <Picker
+                                            x:Name="CountryPicker"
+                                            ItemsSource="{Binding Countries}"
+                                            SelectedIndexChanged="OnCountryChanged"
+                                            SelectedItem="{Binding SelectedCountry}"
+                                            Title="{markup:Translate CountryLabel}" />
+                                    </VerticalStackLayout>
+                                    <VerticalStackLayout Grid.Column="1" Spacing="8" VerticalOptions="End">
+                                        <Label HorizontalOptions="Center" Style="{StaticResource CaptionLabelStyle}" Text="{markup:Translate RecommendedLabel}" />
+                                        <Switch
+                                            IsToggled="{Binding RecommendedOnly}"
+                                            OnColor="{StaticResource DoorOrange}"
+                                            ThumbColor="White"
+                                            Toggled="OnRecommendedToggled" />
+                                    </VerticalStackLayout>
+                                </Grid>
+                            </VerticalStackLayout>
+                        </components:DmCard>
+
+                        <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate CategoriesTitle}" />
+                        <CollectionView
+                            x:Name="CategoryFilterCollection"
+                            ItemsSource="{Binding CategoryFilters}"
+                            SelectionChanged="OnCategoryFilterChanged"
+                            SelectionMode="Single">
+                            <CollectionView.ItemsLayout>
+                                <LinearItemsLayout ItemSpacing="8" Orientation="Horizontal" />
+                            </CollectionView.ItemsLayout>
+                            <CollectionView.ItemTemplate>
+                                <DataTemplate>
+                                    <Frame
+                                        BackgroundColor="{AppThemeBinding Light={StaticResource DmSurfaceAltLight}, Dark={StaticResource DmSurfaceAltDark}}"
+                                        BorderColor="{AppThemeBinding Light={StaticResource DmBorderLight}, Dark={StaticResource DmBorderDark}}"
+                                        CornerRadius="16"
+                                        HasShadow="False"
+                                        Padding="14,8">
+                                        <Label x:Name="ChipLabel" FontFamily="Inter-SemiBold" FontSize="13" Text="{Binding Name}" TextColor="{StaticResource DoorBlue}" />
+                                        <VisualStateManager.VisualStateGroups>
+                                            <VisualStateGroup>
+                                                    <VisualState x:Name="Normal">
+                                                        <VisualState.Setters>
+                                                            <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource DmSurfaceAltLight}, Dark={StaticResource DmSurfaceAltDark}}" />
+                                                            <Setter TargetName="ChipLabel" Property="Label.TextColor" Value="{AppThemeBinding Light={StaticResource DoorBlue}, Dark={StaticResource DmTextPrimaryDark}}" />
+                                                        </VisualState.Setters>
+                                                    </VisualState>
+                                                    <VisualState x:Name="Selected">
+                                                        <VisualState.Setters>
+                                                            <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource DoorBlue}, Dark={StaticResource DoorOrange}}" />
+                                                            <Setter TargetName="ChipLabel" Property="Label.TextColor" Value="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource DmTextPrimaryDark}}" />
+                                                        </VisualState.Setters>
+                                                    </VisualState>
+                                                </VisualStateGroup>
+                                        </VisualStateManager.VisualStateGroups>
+                                    </Frame>
+                                </DataTemplate>
+                            </CollectionView.ItemTemplate>
+                        </CollectionView>
+
+                        <Label
+                            IsVisible="{Binding ShowNoShops}"
+                            Style="{StaticResource MutedLabelStyle}"
+                            Text="{markup:Translate NoShopsAvailable}" />
+                    </VerticalStackLayout>
+                </CollectionView.Header>
+
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <components:DmCard Margin="0,0,0,12">
+                            <Grid ColumnDefinitions="64,*" ColumnSpacing="16">
+                                <Frame
+                                    BackgroundColor="{AppThemeBinding Light={StaticResource DmSurfaceAltLight}, Dark={StaticResource DmSurfaceAltDark}}"
+                                    CornerRadius="14"
+                                    HasShadow="False"
+                                    HeightRequest="64"
+                                    Padding="0"
+                                    WidthRequest="64">
+                                    <Image Aspect="AspectFill" Source="{Binding ImageUrl}" />
+                                </Frame>
+                                <VerticalStackLayout Grid.Column="1" Spacing="8" VerticalOptions="Center">
+                                    <Label FontFamily="Inter-SemiBold" FontSize="16" Text="{Binding Name}" />
+                                    <Label Style="{StaticResource CaptionLabelStyle}" Text="{Binding City}" />
+                                    <HorizontalStackLayout Spacing="6">
+                                        <Label Style="{StaticResource CaptionLabelStyle}" Text="{Binding CountryTag}" />
+                                        <Frame
+                                            BackgroundColor="{StaticResource DoorBlue10}"
+                                            CornerRadius="10"
+                                            HasShadow="False"
+                                            Padding="8,2">
+                                            <Label FontFamily="Inter-SemiBold" FontSize="11" Text="{markup:Translate VerifiedLabel}" TextColor="{StaticResource DoorBlue}" />
+                                        </Frame>
+                                    </HorizontalStackLayout>
+                                    <Button
+                                        BackgroundColor="{StaticResource DoorBlue}"
+                                        BorderWidth="0"
+                                        Clicked="OnShopProductsClicked"
+                                        CommandParameter="{Binding .}"
+                                        CornerRadius="10"
+                                        FontFamily="Inter-SemiBold"
+                                        FontSize="12"
+                                        HeightRequest="32"
+                                        HorizontalOptions="Start"
+                                        Padding="10,0"
+                                        Text="{markup:Translate ViewProducts}"
+                                        TextColor="White" />
+                                </VerticalStackLayout>
+                            </Grid>
+                        </components:DmCard>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <ActivityIndicator
+                HorizontalOptions="Center"
+                IsRunning="{Binding IsBusy}"
+                IsVisible="{Binding IsBusy}"
+                VerticalOptions="Center" />
+        </Grid>
+    </Grid>
+</local:LocalizedContentPage>
+
+
+

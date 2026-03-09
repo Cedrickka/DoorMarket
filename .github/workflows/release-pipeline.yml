@@ -1,0 +1,85 @@
+name: release-pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "production"
+        type: choice
+        options:
+          - staging
+          - production
+      run_migration:
+        description: "Run EF migration"
+        required: true
+        default: true
+        type: boolean
+      run_runtime_smoke:
+        description: "Run runtime smoke against deployed API"
+        required: true
+        default: true
+        type: boolean
+
+jobs:
+  release:
+    runs-on: windows-latest
+    environment: ${{ inputs.environment }}
+    env:
+      DOTNET_VERSION: "8.0.x"
+      API_BASE_URL: ${{ inputs.environment == 'production' && secrets.PROD_API_BASE_URL || secrets.STAGING_API_BASE_URL }}
+      DB_CONNECTION: ${{ inputs.environment == 'production' && secrets.PROD_DB_CONNECTION_STRING || secrets.STAGING_DB_CONNECTION_STRING }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore DoorMarket.sln
+
+      - name: Build
+        run: |
+          dotnet build DoorMarket.Api/DoorMarket.Api.csproj --configuration Release --no-restore
+          dotnet build DoorMarket.Web/DoorMarket.Web.csproj --configuration Release --no-restore
+          dotnet build DoorMarket.Tests/DoorMarket.Tests.csproj --configuration Release --no-restore
+
+      - name: Smoke tests (code level)
+        run: |
+          dotnet test DoorMarket.Tests --configuration Release --no-build --filter FullyQualifiedName~WebCheckoutSmokeTests
+          dotnet test DoorMarket.Tests --configuration Release --no-build --filter FullyQualifiedName~AdminReconciliationControllerTests
+          dotnet test DoorMarket.Tests --configuration Release --no-build --filter FullyQualifiedName~AdminCommissionsControllerTests
+          dotnet test DoorMarket.Tests --configuration Release --no-build --filter FullyQualifiedName~AdminNotificationsControllerTests
+
+      - name: Install EF tool
+        if: ${{ inputs.run_migration }}
+        run: dotnet tool install --global dotnet-ef --version 8.*
+
+      - name: Run migration
+        if: ${{ inputs.run_migration }}
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace("${{ env.DB_CONNECTION }}")) { throw "Missing DB connection secret." }
+          $targetEnv = "${{ inputs.environment }}" -eq "production" ? "Production" : "Staging"
+          ./scripts/ops/run_migration.ps1 -Environment $targetEnv -ConnectionString "${{ env.DB_CONNECTION }}"
+
+      - name: Runtime smoke
+        if: ${{ inputs.run_runtime_smoke }}
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace("${{ env.API_BASE_URL }}")) { throw "Missing API base URL secret." }
+          ./scripts/ops/release_smoke.ps1 -BaseUrl "${{ env.API_BASE_URL }}"
+
+      - name: Rollback plan reminder
+        shell: pwsh
+        run: |
+          Write-Host "If deployment fails after migration:"
+          Write-Host "1) Re-deploy previous application artifact."
+          Write-Host "2) Restore last validated DB backup or execute rollback SQL."
+          Write-Host "3) Re-run smoke: /ping, /api/health/live, /api/health/ready."
+          Write-Host "4) Open incident and attach logs + correlation IDs."

@@ -1,0 +1,46 @@
+name: qa-regression
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_mobile:
+        description: "Run Flutter mobile smoke test"
+        required: true
+        default: true
+        type: boolean
+
+jobs:
+  qa:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: API/Web regression
+        shell: pwsh
+        run: ./scripts/qa/run_dm60_regression.ps1 -Configuration Release -SkipMobile
+
+      - name: Non-reg recon/comm/notif
+        shell: pwsh
+        run: ./scripts/qa/run_dm60_nonreg_recon_comm_notif.ps1 -Configuration Release
+
+      - name: Setup Flutter
+        if: ${{ inputs.run_mobile }}
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Mobile smoke
+        if: ${{ inputs.run_mobile }}
+        shell: pwsh
+        run: |
+          Push-Location DoorMarket.Flutter/doormarket_flutter
+          flutter pub get
+          flutter test test/features/checkout/mobile_checkout_smoke_test.dart
+          Pop-Location

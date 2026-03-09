@@ -1,0 +1,1172 @@
+@page "/admin/dashboard"
+@using System.Net.Http.Json
+@using System.Globalization
+@using MudBlazor
+@inject HttpClient Http
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject IStringLocalizer<SharedResource> SL
+
+<div class="dm-page-header">
+    <div class="dm-page-title-wrap">
+        <h1 class="dm-page-h1">@SL["AdminDashboard"]</h1>
+        <div class="dm-page-sub">@SL["AnalyticsSubtitle"]</div>
+    </div>
+</div>
+
+<AuthGuard>
+    @if (!_ready)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudSkeleton Height="32px" Width="220px" Class="mb-2" />
+            <MudSkeleton Height="18px" Width="380px" />
+        </MudPaper>
+    }
+    else if (!Auth.IsAdmin)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@SL["AdminOnlyAccess"]</MudAlert>
+            <MudButton Variant="Variant.Outlined" Class="mt-3" OnClick="@(() => Nav.NavigateTo("/"))">@SL["Back"]</MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Class="pa-4 mt-3 dm-content-card dm-page-shell dm-view-enter">
+            <div class="dm-toolbar-row">
+                <MudDatePicker Label="@SL["DateFrom"]" @bind-Date="_from" Variant="Variant.Outlined" />
+                <MudDatePicker Label="@SL["DateTo"]" @bind-Date="_to" Variant="Variant.Outlined" />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Reload">@SL["Apply"]</MudButton>
+                @if (Auth.IsSuperAdmin)
+                {
+                    <MudButton Variant="Variant.Outlined" OnClick="OpenSearchAnalytics">@Tr("Analytique recherche", "Search analytics")</MudButton>
+                }
+            </div>
+
+            <MudDivider Class="my-3" />
+
+            @if (_loading)
+            {
+                <MudSkeleton Height="90px" />
+            }
+            else if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_error</MudAlert>
+            }
+            else if (_kpis is not null)
+            {
+                <MudGrid Class="mt-2 dm-equal-grid">
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                            <MudText Class="dm-kpi-label">@SL["PaidOrders"]</MudText>
+                            <MudText Class="dm-kpi-value">@_kpis.PaidOrdersCount</MudText>
+                            <MudText Class="dm-kpi-meta">@Tr("commandes payees sur la periode", "orders paid in selected period")</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                            <MudText Class="dm-kpi-label">@SL["GrossSalesItems"]</MudText>
+                            <MudText Class="dm-kpi-value">@Fmt(_kpis.GrossSalesItems)</MudText>
+                            <MudText Class="dm-kpi-meta">@Tr("revenus articles avant frais", "items revenue before fees")</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                            <MudText Class="dm-kpi-label">@SL["DeliveryRevenue"]</MudText>
+                            <MudText Class="dm-kpi-value">@Fmt(_kpis.DeliveryRevenue)</MudText>
+                            <MudText Class="dm-kpi-meta">@Tr("montant livraison collecte", "shipping amount collected")</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                            <MudText Class="dm-kpi-label">@SL["PlatformFeeTotal"]</MudText>
+                            <MudText Class="dm-kpi-value">@Fmt(_kpis.PlatformFeeTotal)</MudText>
+                            <MudText Class="dm-kpi-meta">@Tr("commission retenue par la plateforme", "commission retained by platform")</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card dm-kpi-tone-success">
+                            <MudText Class="dm-kpi-label">@SL["PlatformRevenueTotal"]</MudText>
+                            <MudText Class="dm-kpi-value">@Fmt(_kpis.PlatformRevenueTotal)</MudText>
+                            <MudText Class="dm-kpi-meta">@Tr("montant net pour DoorMarket", "net amount for DoorMarket")</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card dm-kpi-tone-warning">
+                            <MudText Class="dm-kpi-label">@SL["NetToShopsTotal"]</MudText>
+                            <MudText Class="dm-kpi-value">@Fmt(_kpis.NetToShopsTotal)</MudText>
+                            <MudText Class="dm-kpi-meta">@Tr("montant du aux boutiques", "amount owed to shops")</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                            <MudText Class="dm-kpi-label">@SL["AvgBasket"]</MudText>
+                            <MudText Class="dm-kpi-value">@Fmt(_kpis.AvgBasket)</MudText>
+                            <MudText Class="dm-kpi-meta">@Tr("panier moyen", "average order value")</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card dm-kpi-tone-danger">
+                            <MudText Class="dm-kpi-label">@SL["CashInExpected"]</MudText>
+                            <MudText Class="dm-kpi-value">@Fmt(_kpis.CashInExpected)</MudText>
+                            <MudText Class="dm-kpi-meta">@Tr("mouvement de tresorerie attendu", "expected cash movement")</MudText>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+
+                <MudGrid Class="mt-4 dm-equal-grid">
+                    <MudItem xs="12" md="4">
+                        <MudPaper Class="pa-3 dm-admin-panel dm-panel">
+                            <h3 class="dm-admin-panel-title">@SL["TopProducts"]</h3>
+                            <div class="dm-admin-panel-sub">@Tr("meilleures performances par quantite et revenu", "best performers by quantity and revenue")</div>
+                            <MudTable T="TopProductRow" Items="_topProducts" Dense="true">
+                                <HeaderContent>
+                                    <MudTh>@SL["Product"]</MudTh>
+                                    <MudTh>@SL["Qty"]</MudTh>
+                                    <MudTh Align="Align.Right">@SL["Revenue"]</MudTh>
+                                </HeaderContent>
+                                <RowTemplate Context="p">
+                                    <MudTd>@p.Name</MudTd>
+                                    <MudTd>@p.QtySold</MudTd>
+                                    <MudTd Align="Align.Right">@Fmt(p.RevenueItems)</MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudPaper Class="pa-3 dm-admin-panel dm-panel">
+                            <h3 class="dm-admin-panel-title">@SL["TopShops"]</h3>
+                            <div class="dm-admin-panel-sub">@Tr("classement boutiques par volume de commandes", "shop ranking by order volume")</div>
+                            <MudTable T="TopShopRow" Items="_topShops" Dense="true">
+                                <HeaderContent>
+                                    <MudTh>@SL["Shop"]</MudTh>
+                                    <MudTh>@SL["Orders"]</MudTh>
+                                    <MudTh Align="Align.Right">@SL["Revenue"]</MudTh>
+                                </HeaderContent>
+                                <RowTemplate Context="s">
+                                    <MudTd>@s.Name</MudTd>
+                                    <MudTd>@s.OrdersCount</MudTd>
+                                    <MudTd Align="Align.Right">@Fmt(s.GrossSalesItems)</MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudPaper Class="pa-3 dm-admin-panel dm-panel">
+                            <h3 class="dm-admin-panel-title">@SL["TopCategories"]</h3>
+                            <div class="dm-admin-panel-sub">@Tr("vue d'ensemble de la demande par categorie", "category demand overview")</div>
+                            <MudTable T="TopCategoryRow" Items="_topCategories" Dense="true">
+                                <HeaderContent>
+                                    <MudTh>@SL["Category"]</MudTh>
+                                    <MudTh>@SL["Qty"]</MudTh>
+                                    <MudTh Align="Align.Right">@SL["Revenue"]</MudTh>
+                                </HeaderContent>
+                                <RowTemplate Context="c">
+                                    <MudTd>@c.Name</MudTd>
+                                    <MudTd>@c.QtySold</MudTd>
+                                    <MudTd Align="Align.Right">@Fmt(c.RevenueItems)</MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+
+                @if (_ops is not null)
+                {
+                    <MudGrid Class="mt-4" Spacing="2">
+                        <MudItem xs="12">
+                            <MudPaper Class="pa-3 dm-admin-panel dm-panel">
+                                <h3 class="dm-admin-panel-title">@Tr("Instantane operations (24h)", "Operations Snapshot (last 24h)")</h3>
+                                <div class="dm-admin-panel-sub">@Tr("conversion, risque d'execution et backlog financier", "conversion, fulfillment risk and finance backlog")</div>
+                                <div class="dm-ops-grid mt-3">
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Commandes creees", "Orders created")</div>
+                                        <div class="dm-ops-value">@_ops.OrdersCreated</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Commandes payees", "Orders paid")</div>
+                                        <div class="dm-ops-value">@_ops.OrdersPaid</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Conversion checkout", "Checkout conversion")</div>
+                                        <div class="dm-ops-value">@Fmt(_ops.CheckoutUserConversionRate)%</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Paiements echoues", "Payments failed")</div>
+                                        <div class="dm-ops-value">@_ops.OrdersFailed</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Backlog des paiements boutiques", "Payout backlog")</div>
+                                        <div class="dm-ops-value">@_ops.PayoutBacklogCount</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Montant backlog", "Backlog amount")</div>
+                                        <div class="dm-ops-value">@Fmt(_ops.PayoutBacklogAmount)</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Paniers inactifs", "Stale carts")</div>
+                                        <div class="dm-ops-value">@_ops.StaleCarts</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Stock bas/rupture", "Low/out of stock")</div>
+                                        <div class="dm-ops-value">@(_ops.ActiveProductsLowStock + _ops.ActiveProductsOutOfStock)</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Echecs notifications (24h)", "Notification failures (24h)")</div>
+                                        <div class="dm-ops-value">@_ops.NotificationFailedInWindow</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Echecs notifications non resolus", "Unresolved notification failures")</div>
+                                        <div class="dm-ops-value">@_ops.NotificationFailedUnresolved</div>
+                                    </div>
+                                </div>
+                                @if (_ops.NotificationFailedUnresolved > 0)
+                                {
+                                    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mt-3">
+                                        <div class="d-flex flex-wrap justify-space-between align-center gap-2">
+                                            <span>@($"{_ops.NotificationFailedUnresolved} {Tr("echecs de notifications transactionnelles non resolus necessitent une action.", "unresolved transactional notification failures need attention.")}")</span>
+                                            <MudButton Variant="Variant.Filled" Color="Color.Warning" OnClick="OpenNotificationCenter">
+                                                @Tr("Ouvrir les notifications", "Open notifications")
+                                            </MudButton>
+                                        </div>
+                                    </MudAlert>
+                                }
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
+                }
+
+                @if (_cartRecovery is not null)
+                {
+                    <MudGrid Class="mt-4" Spacing="2">
+                        <MudItem xs="12">
+                            <MudPaper Class="pa-3 dm-admin-panel dm-panel">
+                                <h3 class="dm-admin-panel-title">@Tr("Resume relance panier", "Cart Recovery Snapshot")</h3>
+                                <div class="dm-admin-panel-sub">@Tr("relances paniers abandonnes, uplift conversion et fiabilite", "abandoned cart reminders, conversion uplift and reliability")</div>
+                                <div class="dm-ops-grid mt-3">
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Detectes", "Detected")</div>
+                                        <div class="dm-ops-value">@_cartRecovery.DetectedEvents</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Envoyes", "Sent")</div>
+                                        <div class="dm-ops-value">@_cartRecovery.RemindersSent</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Taux conversion", "Conversion rate")</div>
+                                        <div class="dm-ops-value">@Fmt(_cartRecovery.ConversionRatePct)%</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Uplift A/B", "A/B uplift")</div>
+                                        <div class="dm-ops-value">@Fmt(_cartRecovery.UpliftPct)%</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">Job p95</div>
+                                        <div class="dm-ops-value">@($"{_cartRecovery.JobLatencyP95Ms ?? 0} ms")</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Echecs SMTP/Push", "SMTP/Push failures")</div>
+                                        <div class="dm-ops-value">@($"{_cartRecovery.SmtpFailures}/{_cartRecovery.PushFailures}")</div>
+                                    </div>
+                                </div>
+                                <MudButton Variant="Variant.Outlined" Class="mt-3" OnClick="OpenCartRecovery">
+                                    @Tr("Ouvrir le dashboard relance panier", "Open cart recovery dashboard")
+                                </MudButton>
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
+                }
+
+                @if (_conversionFunnel is not null)
+                {
+                    <MudGrid Class="mt-4" Spacing="2">
+                        <MudItem xs="12">
+                            <MudPaper Class="pa-3 dm-admin-panel dm-panel">
+                                <h3 class="dm-admin-panel-title">@Tr("Tunnel de conversion", "Conversion Funnel")</h3>
+                                <div class="dm-admin-panel-sub">@Tr("visiteurs -> recherche -> clic -> panier -> checkout -> paye", "visitors -> search -> click -> cart -> checkout -> paid")</div>
+                                <div class="dm-ops-grid mt-3">
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Visiteurs", "Visitors")</div>
+                                        <div class="dm-ops-value">@_conversionFunnel.Visitors</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Recherches", "Searches")</div>
+                                        <div class="dm-ops-value">@_conversionFunnel.Searches</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Clics produits", "Product clicks")</div>
+                                        <div class="dm-ops-value">@_conversionFunnel.ProductClicks</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Utilisateurs panier", "Cart users")</div>
+                                        <div class="dm-ops-value">@_conversionFunnel.CartUsers</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Checkouts", "Checkouts")</div>
+                                        <div class="dm-ops-value">@_conversionFunnel.Checkouts</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Commandes payees", "Paid orders")</div>
+                                        <div class="dm-ops-value">@_conversionFunnel.PaidOrders</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Taux recherche", "Search rate")</div>
+                                        <div class="dm-ops-value">@Fmt(_conversionFunnel.VisitorToSearchRate)%</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Taux clic", "Click rate")</div>
+                                        <div class="dm-ops-value">@Fmt(_conversionFunnel.SearchToClickRate)%</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Taux checkout", "Checkout rate")</div>
+                                        <div class="dm-ops-value">@Fmt(_conversionFunnel.CartToCheckoutRate)%</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Taux paye", "Paid rate")</div>
+                                        <div class="dm-ops-value">@Fmt(_conversionFunnel.CheckoutToPaidRate)%</div>
+                                    </div>
+                                </div>
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
+                }
+
+                @if (_campaignRoi.Count > 0)
+                {
+                    <MudGrid Class="mt-4" Spacing="2">
+                        <MudItem xs="12">
+                            <MudPaper Class="pa-3 dm-admin-panel dm-panel">
+                                <h3 class="dm-admin-panel-title">@Tr("ROI campagnes", "Campaign ROI")</h3>
+                                <div class="dm-admin-panel-sub">@Tr("revenu attribue vs cout remise par campagne", "attributed revenue vs discount cost by run")</div>
+                                <MudTable T="CampaignRoiRow" Items="_campaignRoi.Take(10)" Dense="true" Hover="true" Bordered="true" Striped="true">
+                                    <HeaderContent>
+                                        <MudTh>@Tr("Campagne", "Campaign")</MudTh>
+                                        <MudTh>@Tr("Cible", "Target")</MudTh>
+                                        <MudTh>@Tr("Envoyes", "Sent")</MudTh>
+                                        <MudTh Align="Align.Right">@Tr("Revenu", "Revenue")</MudTh>
+                                        <MudTh Align="Align.Right">@Tr("Cout", "Cost")</MudTh>
+                                        <MudTh Align="Align.Right">ROI</MudTh>
+                                    </HeaderContent>
+                                    <RowTemplate Context="r">
+                                        <MudTd>@r.CampaignName</MudTd>
+                                        <MudTd>@r.TargetUsers</MudTd>
+                                        <MudTd>@r.SentCount</MudTd>
+                                        <MudTd Align="Align.Right">@Fmt(r.RevenueAttributed)</MudTd>
+                                        <MudTd Align="Align.Right">@Fmt(r.DiscountCost)</MudTd>
+                                        <MudTd Align="Align.Right">@Fmt(r.RoiPercent)%</MudTd>
+                                    </RowTemplate>
+                                </MudTable>
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
+                }
+
+                @if (_checkoutSnapshot is not null)
+                {
+                    <MudGrid Class="mt-4" Spacing="2">
+                        <MudItem xs="12">
+                            <MudPaper Class="pa-3 dm-admin-panel dm-panel">
+                                <h3 class="dm-admin-panel-title">@Tr("Observabilite checkout temps reel", "Checkout Real-Time Observability")</h3>
+                                <div class="dm-admin-panel-sub">@Tr("qualite paiement, abandons checkout et sante UX A/B", "payment quality, checkout drop-offs and A/B UX health")</div>
+                                <div class="dm-ops-grid mt-3">
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Vues checkout", "Checkout views")</div>
+                                        <div class="dm-ops-value">@_checkoutSnapshot.CheckoutViews</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Clics soumettre", "Submit clicks")</div>
+                                        <div class="dm-ops-value">@_checkoutSnapshot.SubmitClicks</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Commandes creees", "Orders created")</div>
+                                        <div class="dm-ops-value">@_checkoutSnapshot.OrdersCreated</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Paiements inities", "Payments initiated")</div>
+                                        <div class="dm-ops-value">@_checkoutSnapshot.PaymentsInitiated</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Paiements confirmes", "Payments confirmed")</div>
+                                        <div class="dm-ops-value">@_checkoutSnapshot.PaymentsConfirmed</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Paiements echoues", "Payments failed")</div>
+                                        <div class="dm-ops-value">@_checkoutSnapshot.PaymentsFailed</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Taux succes paiement", "Payment success rate")</div>
+                                        <div class="dm-ops-value">@Fmt(_checkoutSnapshot.PaymentSuccessRate)%</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Taux soumettre vers commande", "Submit to order rate")</div>
+                                        <div class="dm-ops-value">@Fmt(_checkoutSnapshot.SubmitToOrderRate)%</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Latence p50/p95", "Latency p50/p95")</div>
+                                        <div class="dm-ops-value">@($"{_checkoutSnapshot.LatencyP50Ms ?? 0} / {_checkoutSnapshot.LatencyP95Ms ?? 0} ms")</div>
+                                    </div>
+                                    <div class="dm-ops-card">
+                                        <div class="dm-ops-label">@Tr("Alertes actives", "Active alerts")</div>
+                                        <div class="dm-ops-value">@_checkoutSnapshot.AlertsCount</div>
+                                    </div>
+                                </div>
+
+                                @if (_checkoutSloStatus is not null)
+                                {
+                                    <MudAlert Severity="@GetCheckoutSloSeverity(_checkoutSloStatus)" Variant="Variant.Outlined" Class="mt-3">
+                                        <strong>@Tr("Etat SLO paiement", "Payment SLO status"):</strong>
+                                        @($" {Fmt(_checkoutSloStatus.CurrentPaymentSuccessRatePct)}% / seuil warning {Fmt(_checkoutSloStatus.PaymentSuccessWarningThresholdPct)}% | p95 {(_checkoutSloStatus.CurrentPaymentLatencyP95Ms ?? 0)}ms / seuil {_checkoutSloStatus.PaymentLatencyP95WarningMs}ms")
+                                        @if (_checkoutSloStatus.TriggeredAlertCodes.Count > 0)
+                                        {
+                                            <div class="mt-1">
+                                                @Tr("Alertes declenchees", "Triggered alerts"): @string.Join(", ", _checkoutSloStatus.TriggeredAlertCodes.Take(6))
+                                            </div>
+                                        }
+                                    </MudAlert>
+                                }
+
+                                @if (_checkoutProdDashboard is not null)
+                                {
+                                    <MudText Typo="Typo.subtitle1" Class="mt-4">@Tr("Observabilite production", "Production observability")</MudText>
+                                    <div class="dm-ops-grid mt-2">
+                                        <div class="dm-ops-card">
+                                            <div class="dm-ops-label">@Tr("Echecs checkout", "Checkout failures")</div>
+                                            <div class="dm-ops-value">@_checkoutProdDashboard.Errors.FailureEvents</div>
+                                        </div>
+                                        <div class="dm-ops-card">
+                                            <div class="dm-ops-label">@Tr("Taux echec checkout", "Checkout failure rate")</div>
+                                            <div class="dm-ops-value">@Fmt(_checkoutProdDashboard.Errors.FailureRatePercent)%</div>
+                                        </div>
+                                        <div class="dm-ops-card">
+                                            <div class="dm-ops-label">@Tr("Proxy erreurs 5xx", "5xx error proxy")</div>
+                                            <div class="dm-ops-value">@_checkoutProdDashboard.Errors.ServerErrorProxyCount</div>
+                                        </div>
+                                        <div class="dm-ops-card">
+                                            <div class="dm-ops-label">@Tr("Taux proxy 5xx", "5xx proxy rate")</div>
+                                            <div class="dm-ops-value">@Fmt(_checkoutProdDashboard.Errors.ServerErrorProxyRatePercent)%</div>
+                                        </div>
+                                        <div class="dm-ops-card">
+                                            <div class="dm-ops-label">@Tr("Backlog queue (approx)", "Queue backlog (approx)")</div>
+                                            <div class="dm-ops-value">@_checkoutProdDashboard.Queue.QueueBacklogApprox</div>
+                                        </div>
+                                        <div class="dm-ops-card">
+                                            <div class="dm-ops-label">@Tr("Incidents checkout ouverts", "Open checkout incidents")</div>
+                                            <div class="dm-ops-value">@_checkoutProdDashboard.Queue.OpenCheckoutIncidents</div>
+                                        </div>
+                                        <div class="dm-ops-card">
+                                            <div class="dm-ops-label">@Tr("Paniers abandonnes pending", "Pending abandoned carts")</div>
+                                            <div class="dm-ops-value">@_checkoutProdDashboard.Queue.PendingAbandonedCarts</div>
+                                        </div>
+                                        <div class="dm-ops-card">
+                                            <div class="dm-ops-label">@Tr("Notifications failed", "Failed notifications")</div>
+                                            <div class="dm-ops-value">@_checkoutProdDashboard.Queue.FailedNotifications</div>
+                                        </div>
+                                    </div>
+
+                                    @if (_checkoutProdDashboard.Errors.TopErrorCodes.Count > 0)
+                                    {
+                                        <MudText Typo="Typo.subtitle2" Class="mt-3">@Tr("Top codes erreurs", "Top error codes")</MudText>
+                                        <MudTable T="CheckoutKeyCountRow" Items="_checkoutProdDashboard.Errors.TopErrorCodes" Dense="true" Hover="true">
+                                            <HeaderContent>
+                                                <MudTh>Code</MudTh>
+                                                <MudTh>@Tr("Occurrences", "Occurrences")</MudTh>
+                                            </HeaderContent>
+                                            <RowTemplate Context="row">
+                                                <MudTd>@row.Key</MudTd>
+                                                <MudTd>@row.Count</MudTd>
+                                            </RowTemplate>
+                                        </MudTable>
+                                    }
+
+                                    <MudText Typo="Typo.subtitle2" Class="mt-3">@Tr("Sante jobs", "Jobs health")</MudText>
+                                    <MudTable T="CheckoutJobPipeline" Items="GetCheckoutJobRows(_checkoutProdDashboard)" Dense="true" Hover="true" Bordered="true" Striped="true">
+                                        <HeaderContent>
+                                            <MudTh>@Tr("Job", "Job")</MudTh>
+                                            <MudTh>@Tr("Runs", "Runs")</MudTh>
+                                            <MudTh>@Tr("Succes", "Success")</MudTh>
+                                            <MudTh>@Tr("Echec", "Failed")</MudTh>
+                                            <MudTh>@Tr("In progress", "In progress")</MudTh>
+                                            <MudTh Align="Align.Right">@Tr("Taux succes", "Success rate")</MudTh>
+                                            <MudTh Align="Align.Right">p50/p95 ms</MudTh>
+                                        </HeaderContent>
+                                        <RowTemplate Context="job">
+                                            <MudTd>@job.JobName</MudTd>
+                                            <MudTd>@job.Runs</MudTd>
+                                            <MudTd>@job.SuccessRuns</MudTd>
+                                            <MudTd>@job.FailedRuns</MudTd>
+                                            <MudTd>@job.InProgressRuns</MudTd>
+                                            <MudTd Align="Align.Right">@Fmt(job.SuccessRatePercent)%</MudTd>
+                                            <MudTd Align="Align.Right">@($"{job.DurationP50Ms ?? 0}/{job.DurationP95Ms ?? 0}")</MudTd>
+                                        </RowTemplate>
+                                    </MudTable>
+                                }
+
+                                @if (_checkoutAlerts.Count > 0)
+                                {
+                                    <div class="mt-3 d-grid gap-2">
+                                        @foreach (var alert in _checkoutAlerts.Take(6))
+                                        {
+                                            <MudAlert Severity="@(alert.Severity == "Critical" ? Severity.Error : Severity.Warning)" Variant="Variant.Outlined">
+                                                <strong>@alert.Title</strong> - @alert.Description
+                                                <div class="mt-1">@Tr("Observe", "Observed"): @Fmt(alert.ObservedValue) | @Tr("Seuil", "Threshold"): @Fmt(alert.ThresholdValue) @if(!string.IsNullOrWhiteSpace(alert.Provider)){<span>| @Tr("Provider", "Provider"): @alert.Provider</span>}</div>
+                                            </MudAlert>
+                                        }
+                                    </div>
+                                }
+
+                                <MudText Typo="Typo.subtitle1" Class="mt-4">@Tr("Incidents alertes", "Alert incidents")</MudText>
+                                @if (_checkoutIncidents.Count == 0)
+                                {
+                                    <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Dense="true">
+                                        @Tr("Aucun incident checkout actif sur cette periode.", "No active checkout incidents in this period.")
+                                    </MudAlert>
+                                }
+                                else
+                                {
+                                    <MudTable T="CheckoutAlertIncidentRow" Items="_checkoutIncidents" Dense="true" Hover="true" Bordered="true" Striped="true">
+                                        <HeaderContent>
+                                            <MudTh>@Tr("Severite", "Severity")</MudTh>
+                                            <MudTh>Code</MudTh>
+                                            <MudTh>@Tr("Provider", "Provider")</MudTh>
+                                            <MudTh>@Tr("Observe/Seuil", "Observed/Threshold")</MudTh>
+                                            <MudTh>@Tr("Declenchements", "Triggers")</MudTh>
+                                            <MudTh>@Tr("Derniere vue (UTC)", "Last seen (UTC)")</MudTh>
+                                            <MudTh>@Tr("Etat", "State")</MudTh>
+                                            <MudTh>@Tr("Actions", "Actions")</MudTh>
+                                        </HeaderContent>
+                                        <RowTemplate Context="incident">
+                                            <MudTd>
+                                                <MudText Typo="Typo.caption"
+                                                         Color="@(incident.Severity == "Critical" ? Color.Error : Color.Warning)">
+                                                    @incident.Severity
+                                                </MudText>
+                                            </MudTd>
+                                            <MudTd>@incident.AlertCode</MudTd>
+                                            <MudTd>@(string.IsNullOrWhiteSpace(incident.Provider) ? "-" : incident.Provider)</MudTd>
+                                            <MudTd>@Fmt(incident.ObservedValue) / @Fmt(incident.ThresholdValue)</MudTd>
+                                            <MudTd>@incident.TriggerCount</MudTd>
+                                            <MudTd>@incident.LastTriggeredAtUtc.ToString("yyyy-MM-dd HH:mm")</MudTd>
+                                            <MudTd>@GetCheckoutIncidentState(incident)</MudTd>
+                                            <MudTd>
+                                                <AdminRowActionMenu Disabled="_checkoutIncidentBusy" AriaLabel="@Tr("Actions", "Actions")">
+                                                    @if (incident.IsAcknowledged)
+                                                    {
+                                                        <MudMenuItem Icon="@Icons.Material.Filled.Replay"
+                                                                     OnClick="@(() => ReopenCheckoutIncident(incident.Id))">
+                                                            @Tr("Reouvrir", "Reopen")
+                                                        </MudMenuItem>
+                                                    }
+                                                    else
+                                                    {
+                                                        <MudMenuItem Icon="@Icons.Material.Filled.Done"
+                                                                     OnClick="@(() => AcknowledgeCheckoutIncident(incident.Id))">
+                                                            @Tr("Acquitter", "Acknowledge")
+                                                        </MudMenuItem>
+                                                    }
+                                                </AdminRowActionMenu>
+                                            </MudTd>
+                                        </RowTemplate>
+                                    </MudTable>
+                                }
+
+                                @if (_checkoutSnapshot.Providers.Count > 0)
+                                {
+                                    <MudText Typo="Typo.subtitle1" Class="mt-4">@Tr("Qualite provider", "Provider quality")</MudText>
+                                    <MudTable T="CheckoutProviderQualityRow" Items="_checkoutSnapshot.Providers" Dense="true" Hover="true" Bordered="true" Striped="true">
+                                        <HeaderContent>
+                                            <MudTh>@Tr("Provider", "Provider")</MudTh>
+                                            <MudTh>@Tr("Initie", "Initiated")</MudTh>
+                                            <MudTh>@Tr("Confirme", "Confirmed")</MudTh>
+                                            <MudTh>@Tr("Echoue", "Failed")</MudTh>
+                                            <MudTh Align="Align.Right">@Tr("Succes %", "Success %")</MudTh>
+                                            <MudTh Align="Align.Right">@Tr("Echec %", "Fail %")</MudTh>
+                                            <MudTh Align="Align.Right">p95 ms</MudTh>
+                                        </HeaderContent>
+                                        <RowTemplate Context="p">
+                                            <MudTd>@p.Provider</MudTd>
+                                            <MudTd>@p.InitiatedCount</MudTd>
+                                            <MudTd>@p.ConfirmedCount</MudTd>
+                                            <MudTd>@p.FailedCount</MudTd>
+                                            <MudTd Align="Align.Right">@Fmt(p.SuccessRatePercent)%</MudTd>
+                                            <MudTd Align="Align.Right">@Fmt(p.FailureRatePercent)%</MudTd>
+                                            <MudTd Align="Align.Right">@($"{p.LatencyP95Ms ?? 0}")</MudTd>
+                                        </RowTemplate>
+                                    </MudTable>
+                                }
+
+                                @if (_checkoutAbRows.Count > 0)
+                                {
+                                    <MudText Typo="Typo.subtitle1" Class="mt-4">@Tr("Checkout UX A/B", "Checkout UX A/B")</MudText>
+                                    <MudTable T="CheckoutAbUxRow" Items="_checkoutAbRows" Dense="true" Hover="true" Bordered="true" Striped="true">
+                                        <HeaderContent>
+                                            <MudTh>@Tr("Experience", "Experiment")</MudTh>
+                                            <MudTh>@Tr("Groupe", "Group")</MudTh>
+                                            <MudTh>@Tr("Vues", "Views")</MudTh>
+                                            <MudTh>@Tr("Submit", "Submit")</MudTh>
+                                            <MudTh>@Tr("Commandes", "Orders")</MudTh>
+                                            <MudTh>@Tr("Payees", "Paid")</MudTh>
+                                            <MudTh Align="Align.Right">@Tr("Global %", "Overall %")</MudTh>
+                                            <MudTh Align="Align.Right">@Tr("Uplift vs A", "Uplift vs A")</MudTh>
+                                        </HeaderContent>
+                                        <RowTemplate Context="x">
+                                            <MudTd>@x.ExperimentName</MudTd>
+                                            <MudTd>@x.ExperimentGroup</MudTd>
+                                            <MudTd>@x.CheckoutViews</MudTd>
+                                            <MudTd>@x.SubmitClicks</MudTd>
+                                            <MudTd>@x.OrdersCreated</MudTd>
+                                            <MudTd>@x.PaymentsConfirmed</MudTd>
+                                            <MudTd Align="Align.Right">@Fmt(x.OverallConversionRate)%</MudTd>
+                                            <MudTd Align="Align.Right">@Fmt(x.UpliftVsControlPct)%</MudTd>
+                                        </RowTemplate>
+                                    </MudTable>
+                                }
+
+                                @if (_checkoutRealtime.Count > 0)
+                                {
+                                    <MudText Typo="Typo.subtitle1" Class="mt-4">@Tr("Derniers buckets (15 min)", "Last buckets (15 min)")</MudText>
+                                    <MudTable T="CheckoutRealtimePoint" Items="_checkoutRealtime.TakeLast(8)" Dense="true" Hover="true">
+                                        <HeaderContent>
+                                            <MudTh>@Tr("Bucket UTC", "Bucket UTC")</MudTh>
+                                            <MudTh>@Tr("Submit", "Submit")</MudTh>
+                                            <MudTh>@Tr("Commandes", "Orders")</MudTh>
+                                            <MudTh>@Tr("Initie", "Initiated")</MudTh>
+                                            <MudTh>@Tr("Confirme", "Confirmed")</MudTh>
+                                            <MudTh>@Tr("Echoue", "Failed")</MudTh>
+                                            <MudTh Align="Align.Right">@Tr("Succes %", "Success %")</MudTh>
+                                        </HeaderContent>
+                                        <RowTemplate Context="r">
+                                            <MudTd>@r.BucketStartUtc.ToString("yyyy-MM-dd HH:mm")</MudTd>
+                                            <MudTd>@r.SubmitClicks</MudTd>
+                                            <MudTd>@r.OrdersCreated</MudTd>
+                                            <MudTd>@r.PaymentsInitiated</MudTd>
+                                            <MudTd>@r.PaymentsConfirmed</MudTd>
+                                            <MudTd>@r.PaymentsFailed</MudTd>
+                                            <MudTd Align="Align.Right">@Fmt(r.PaymentSuccessRate)%</MudTd>
+                                        </RowTemplate>
+                                    </MudTable>
+                                }
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
+                }
+            }
+        </MudPaper>
+    }
+</AuthGuard>
+
+@code {
+    private bool _ready;
+    private bool _loading = true;
+    private string? _error;
+    private DateTime? _from = DateTime.UtcNow.AddDays(-30);
+    private DateTime? _to = DateTime.UtcNow;
+
+    private FinanceKpis? _kpis;
+    private List<TopProductRow> _topProducts = new();
+    private List<TopShopRow> _topShops = new();
+    private List<TopCategoryRow> _topCategories = new();
+    private OperationsSnapshot? _ops;
+    private CartRecoverySummary? _cartRecovery;
+    private CheckoutSnapshot? _checkoutSnapshot;
+    private CheckoutProductionDashboard? _checkoutProdDashboard;
+    private CheckoutSloStatus? _checkoutSloStatus;
+    private List<CheckoutRealtimePoint> _checkoutRealtime = new();
+    private List<CheckoutPaymentAlert> _checkoutAlerts = new();
+    private List<CheckoutAlertIncidentRow> _checkoutIncidents = new();
+    private List<CheckoutAbUxRow> _checkoutAbRows = new();
+    private bool _checkoutIncidentBusy;
+    private ConversionFunnel? _conversionFunnel;
+    private List<CohortRow> _cohorts = new();
+    private List<CampaignRoiRow> _campaignRoi = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var t0 = DateTime.UtcNow;
+        while (!Auth.IsReady && (DateTime.UtcNow - t0).TotalSeconds < 5)
+            await Task.Delay(30);
+
+        _ready = true;
+        if (!Auth.IsAuthenticated || !Auth.IsAdmin)
+        {
+            StateHasChanged();
+            return;
+        }
+
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    private async Task Reload()
+    {
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            var query = BuildQuery();
+            _kpis = await GetJsonAsync<FinanceKpis>($"api/admin/analytics/kpis{query}");
+            _topProducts = await GetJsonAsync<List<TopProductRow>>($"api/admin/analytics/top-products{query}&take=10") ?? new();
+            _topShops = await GetJsonAsync<List<TopShopRow>>($"api/admin/analytics/top-shops{query}&take=10") ?? new();
+            _topCategories = await GetJsonAsync<List<TopCategoryRow>>($"api/admin/analytics/top-categories{query}&take=10") ?? new();
+            _ops = await GetJsonAsync<OperationsSnapshot>("api/admin/operations/snapshot?hours=24&staleCartHours=24");
+            _cartRecovery = await GetJsonAsync<CartRecoverySummary>("api/admin/cart-recovery/summary?conversionWindowHours=168");
+            _checkoutSnapshot = await GetJsonAsync<CheckoutSnapshot>($"api/admin/checkout-observability/snapshot{query}");
+            _checkoutProdDashboard = await GetJsonAsync<CheckoutProductionDashboard>(AppendQuery("api/admin/checkout-observability/dashboard", query, "defaultHours=24"));
+            _checkoutSloStatus = await GetJsonAsync<CheckoutSloStatus>(AppendQuery("api/admin/checkout-observability/slo", query, "defaultHours=4"));
+            _checkoutRealtime = await GetJsonAsync<List<CheckoutRealtimePoint>>($"{AppendQuery("api/admin/checkout-observability/realtime", query, "bucketMinutes=15")}") ?? new();
+            _checkoutAlerts = await GetJsonAsync<List<CheckoutPaymentAlert>>($"api/admin/checkout-observability/alerts{query}") ?? new();
+            _checkoutIncidents = await GetJsonAsync<List<CheckoutAlertIncidentRow>>($"{AppendQuery("api/admin/checkout-observability/incidents", query, "includeResolved=false&includeAcknowledged=true&take=30")}") ?? new();
+            _checkoutAbRows = await GetJsonAsync<List<CheckoutAbUxRow>>($"{AppendQuery("api/admin/checkout-observability/ab-ux", query, "defaultDays=30")}") ?? new();
+            _conversionFunnel = await GetJsonAsync<ConversionFunnel>($"api/admin/conversion/funnel{query}");
+            _cohorts = await GetJsonAsync<List<CohortRow>>($"api/admin/conversion/cohorts{query}") ?? new();
+            _campaignRoi = await GetJsonAsync<List<CampaignRoiRow>>($"api/admin/conversion/campaign-roi{query}") ?? new();
+        }
+        catch (Exception ex)
+        {
+            _error = WebErrorUx.ForException(
+                ex,
+                SL,
+                "Impossible de charger le dashboard.",
+                "Unable to load dashboard.");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private string BuildQuery()
+    {
+        var list = new List<string>();
+        if (_from.HasValue) list.Add($"from={Uri.EscapeDataString(_from.Value.ToString("yyyy-MM-dd"))}");
+        if (_to.HasValue) list.Add($"to={Uri.EscapeDataString(_to.Value.ToString("yyyy-MM-dd"))}");
+        return list.Count == 0 ? string.Empty : "?" + string.Join("&", list);
+    }
+
+    private static string AppendQuery(string basePath, string query, string extra)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return $"{basePath}?{extra}";
+        }
+
+        return $"{basePath}{query}&{extra}";
+    }
+
+    private async Task<T?> GetJsonAsync<T>(string url)
+    {
+        using var response = await Http.GetAsync(url);
+        if (!response.IsSuccessStatusCode)
+        {
+            var message = await WebErrorUx.ForHttpFailureAsync(
+                response,
+                SL,
+                "Chargement des donnees impossible.",
+                "Unable to load data.");
+            throw new InvalidOperationException(message);
+        }
+
+        if (response.Content.Headers.ContentLength == 0)
+        {
+            return default;
+        }
+
+        return await response.Content.ReadFromJsonAsync<T>();
+    }
+
+    private async Task AcknowledgeCheckoutIncident(Guid incidentId)
+    {
+        _checkoutIncidentBusy = true;
+        try
+        {
+            using var response = await Http.PostAsJsonAsync(
+                $"api/admin/checkout-observability/incidents/{incidentId}/acknowledge",
+                new CheckoutIncidentAcknowledgeRequest(null));
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var message = await WebErrorUx.ForHttpFailureAsync(
+                    response,
+                    SL,
+                    "Acquittement impossible.",
+                    "Unable to acknowledge incident.");
+                throw new InvalidOperationException(message);
+            }
+
+            Snackbar.ShowSuccess(Tr("Incident checkout acquitte.", "Checkout incident acknowledged."));
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.ShowError(WebErrorUx.ForException(
+                ex,
+                SL,
+                "Acquittement impossible.",
+                "Unable to acknowledge incident."));
+        }
+        finally
+        {
+            _checkoutIncidentBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ReopenCheckoutIncident(Guid incidentId)
+    {
+        _checkoutIncidentBusy = true;
+        try
+        {
+            using var response = await Http.PostAsync(
+                $"api/admin/checkout-observability/incidents/{incidentId}/reopen",
+                content: null);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var message = await WebErrorUx.ForHttpFailureAsync(
+                    response,
+                    SL,
+                    "Reouverture impossible.",
+                    "Unable to reopen incident.");
+                throw new InvalidOperationException(message);
+            }
+
+            Snackbar.ShowSuccess(Tr("Incident checkout rouvert.", "Checkout incident reopened."));
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.ShowError(WebErrorUx.ForException(
+                ex,
+                SL,
+                "Reouverture impossible.",
+                "Unable to reopen incident."));
+        }
+        finally
+        {
+            _checkoutIncidentBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    private static string Fmt(decimal value) => value.ToString("0.##");
+
+    private static string Tr(string fr, string en)
+        => string.Equals(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "en", StringComparison.OrdinalIgnoreCase) ? en : fr;
+
+    private static string GetCheckoutIncidentState(CheckoutAlertIncidentRow incident)
+    {
+        if (incident.ResolvedAtUtc.HasValue)
+        {
+            return Tr($"Resolu le {incident.ResolvedAtUtc.Value.ToLocalTime():yyyy-MM-dd HH:mm}", $"Resolved at {incident.ResolvedAtUtc.Value.ToLocalTime():yyyy-MM-dd HH:mm}");
+        }
+
+        if (!incident.IsAcknowledged)
+        {
+            return Tr("Ouvert", "Open");
+        }
+
+        var at = incident.AcknowledgedAtUtc.HasValue
+            ? incident.AcknowledgedAtUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+            : "-";
+        var by = string.IsNullOrWhiteSpace(incident.AcknowledgedBy) ? Tr("admin", "admin") : incident.AcknowledgedBy;
+        return Tr($"Acquitte par {by} a {at}", $"Acknowledged by {by} at {at}");
+    }
+
+    private static Severity GetCheckoutSloSeverity(CheckoutSloStatus? status)
+    {
+        if (status is null || status.TriggeredAlertCodes.Count == 0)
+        {
+            return Severity.Success;
+        }
+
+        return status.TriggeredAlertCodes.Any(x => x.StartsWith("critical_", StringComparison.OrdinalIgnoreCase))
+            ? Severity.Error
+            : Severity.Warning;
+    }
+
+    private static IReadOnlyList<CheckoutJobPipeline> GetCheckoutJobRows(CheckoutProductionDashboard dashboard)
+        => new[]
+        {
+            dashboard.Jobs.CartRecovery,
+            dashboard.Jobs.Reconciliation,
+            dashboard.Jobs.MarketingAutomation
+        };
+
+    private void OpenNotificationCenter()
+        => Nav.NavigateTo("/admin/notifications");
+
+    private void OpenSearchAnalytics()
+    {
+        if (!Auth.IsSuperAdmin)
+        {
+            return;
+        }
+
+        Nav.NavigateTo("/admin/search-analytics");
+    }
+
+    private void OpenCartRecovery()
+        => Nav.NavigateTo("/admin/cart-recovery");
+
+    private sealed record FinanceKpis(
+        int OrdersCount,
+        int PaidOrdersCount,
+        decimal GrossSalesItems,
+        decimal DeliveryRevenue,
+        decimal PlatformFeeTotal,
+        decimal PlatformRevenueTotal,
+        decimal NetToShopsTotal,
+        decimal AvgBasket,
+        decimal CashInExpected);
+
+    private sealed record TopProductRow(Guid ProductId, string Name, int QtySold, decimal RevenueItems, decimal PlatformFee);
+    private sealed record TopShopRow(Guid ShopId, string Name, int OrdersCount, decimal GrossSalesItems, decimal PlatformFee);
+    private sealed record TopCategoryRow(Guid CategoryId, string Name, int QtySold, decimal RevenueItems, decimal PlatformFee);
+    private sealed record OperationsSnapshot(
+        DateTime FromUtc,
+        DateTime ToUtc,
+        int OrdersCreated,
+        int OrdersPaid,
+        int OrdersFailed,
+        int CartUsersActive,
+        int CheckoutUsers,
+        decimal CheckoutUserConversionRate,
+        int CartsWithItems,
+        int StaleCarts,
+        int PayoutBacklogCount,
+        decimal PayoutBacklogAmount,
+        int ActiveProductsOutOfStock,
+        int ActiveProductsLowStock,
+        int PendingShopApplications,
+        int LiveBanners,
+        int NotificationAttemptsInWindow,
+        int NotificationFailedInWindow,
+        int NotificationFailedUnresolved);
+
+    private sealed record CartRecoverySummary(
+        DateTime FromUtc,
+        DateTime ToUtc,
+        int DetectedEvents,
+        int RemindersSent,
+        int RemindersFailed,
+        int RemindersSkipped,
+        int ConvertedEvents,
+        decimal ConversionRatePct,
+        int ResumedEvents,
+        decimal ResumeRatePct,
+        int GroupAEvents,
+        int GroupAConverted,
+        decimal GroupAConversionRatePct,
+        int GroupBEvents,
+        int GroupBConverted,
+        decimal GroupBConversionRatePct,
+        decimal UpliftPct,
+        int JobRunsCount,
+        int JobRunsSuccessCount,
+        int JobRunsFailureCount,
+        int? JobLatencyP50Ms,
+        int? JobLatencyP95Ms,
+        int SmtpFailures,
+        int PushFailures);
+
+    private sealed record CheckoutSnapshot(
+        DateTime FromUtc,
+        DateTime ToUtc,
+        int CheckoutViews,
+        int SubmitClicks,
+        int OrdersCreated,
+        int PaymentsInitiated,
+        int PaymentsConfirmed,
+        int PaymentsFailed,
+        int RedirectsFailed,
+        decimal SubmitToOrderRate,
+        decimal OrderToPaidRate,
+        decimal PaymentSuccessRate,
+        decimal DropBeforePaymentRate,
+        int? LatencyP50Ms,
+        int? LatencyP95Ms,
+        IReadOnlyList<CheckoutProviderQualityRow> Providers,
+        int AlertsCount);
+
+    private sealed record CheckoutProviderQualityRow(
+        string Provider,
+        int InitiatedCount,
+        int ConfirmedCount,
+        int FailedCount,
+        decimal SuccessRatePercent,
+        decimal FailureRatePercent,
+        int? LatencyP50Ms,
+        int? LatencyP95Ms);
+
+    private sealed record CheckoutRealtimePoint(
+        DateTime BucketStartUtc,
+        DateTime BucketEndUtc,
+        int SubmitClicks,
+        int OrdersCreated,
+        int PaymentsInitiated,
+        int PaymentsConfirmed,
+        int PaymentsFailed,
+        decimal PaymentSuccessRate,
+        decimal SubmitToOrderRate);
+
+    private sealed record CheckoutPaymentAlert(
+        string Code,
+        string Severity,
+        string Title,
+        string Description,
+        string? Provider,
+        decimal ObservedValue,
+        decimal ThresholdValue,
+        DateTime FromUtc,
+        DateTime ToUtc);
+
+    private sealed record CheckoutProductionDashboard(
+        DateTime FromUtc,
+        DateTime ToUtc,
+        DateTime GeneratedAtUtc,
+        CheckoutSnapshot Checkout,
+        CheckoutErrorSummary Errors,
+        CheckoutJobSummary Jobs,
+        CheckoutQueueSummary Queue);
+
+    private sealed record CheckoutErrorSummary(
+        int TotalCheckoutEvents,
+        int FailureEvents,
+        decimal FailureRatePercent,
+        int ServerErrorProxyCount,
+        decimal ServerErrorProxyRatePercent,
+        IReadOnlyList<CheckoutKeyCountRow> TopErrorCodes);
+
+    private sealed record CheckoutKeyCountRow(string Key, int Count);
+
+    private sealed record CheckoutJobSummary(
+        CheckoutJobPipeline CartRecovery,
+        CheckoutJobPipeline Reconciliation,
+        CheckoutJobPipeline MarketingAutomation);
+
+    private sealed record CheckoutJobPipeline(
+        string JobName,
+        int Runs,
+        int SuccessRuns,
+        int FailedRuns,
+        int InProgressRuns,
+        decimal SuccessRatePercent,
+        int? DurationP50Ms,
+        int? DurationP95Ms,
+        DateTime? LastRunAtUtc,
+        string? LastError);
+
+    private sealed record CheckoutQueueSummary(
+        int PendingAbandonedCarts,
+        int FailedAbandonedCarts,
+        int SentAbandonedCarts,
+        int SkippedAbandonedCarts,
+        int FailedNotifications,
+        int SentNotifications,
+        int OpenCheckoutIncidents,
+        int QueueBacklogApprox,
+        DateTime? OldestPendingAbandonedAtUtc,
+        int? OldestPendingAbandonedAgeMinutes);
+
+    private sealed record CheckoutSloStatus(
+        DateTime FromUtc,
+        DateTime ToUtc,
+        DateTime GeneratedAtUtc,
+        decimal PaymentSuccessCriticalThresholdPct,
+        decimal PaymentSuccessWarningThresholdPct,
+        int PaymentLatencyP95WarningMs,
+        decimal SubmitToOrderWarningThresholdPct,
+        int RedirectFailuresWarningCount,
+        decimal CurrentPaymentSuccessRatePct,
+        int? CurrentPaymentLatencyP95Ms,
+        decimal CurrentSubmitToOrderRatePct,
+        int CurrentRedirectFailuresCount,
+        IReadOnlyList<string> TriggeredAlertCodes);
+
+    private sealed record CheckoutAlertIncidentRow(
+        Guid Id,
+        string AlertCode,
+        string Severity,
+        string Title,
+        string Description,
+        string? Provider,
+        decimal ObservedValue,
+        decimal ThresholdValue,
+        DateTime FirstTriggeredAtUtc,
+        DateTime LastTriggeredAtUtc,
+        int TriggerCount,
+        bool IsAcknowledged,
+        DateTime? AcknowledgedAtUtc,
+        string? AcknowledgedBy,
+        string? AcknowledgementNote,
+        DateTime? ResolvedAtUtc,
+        DateTime? LastNotifiedAtUtc,
+        int NotificationCount,
+        string? LastNotificationError);
+
+    private sealed record CheckoutIncidentAcknowledgeRequest(string? Note);
+
+    private sealed record CheckoutAbUxRow(
+        string ExperimentName,
+        string ExperimentGroup,
+        int CheckoutViews,
+        int SubmitClicks,
+        int OrdersCreated,
+        int PaymentsConfirmed,
+        decimal ViewToSubmitRate,
+        decimal SubmitToOrderRate,
+        decimal OrderToPaidRate,
+        decimal OverallConversionRate,
+        decimal UpliftVsControlPct);
+
+    private sealed record ConversionFunnel(
+        DateTime FromUtc,
+        DateTime ToUtc,
+        int Visitors,
+        int Searches,
+        int ProductClicks,
+        int CartUsers,
+        int Checkouts,
+        int PaidOrders,
+        decimal VisitorToSearchRate,
+        decimal SearchToClickRate,
+        decimal ClickToCartRate,
+        decimal CartToCheckoutRate,
+        decimal CheckoutToPaidRate);
+
+    private sealed record CohortRow(
+        DateTime CohortMonthUtc,
+        int CohortSize,
+        int RepeatWithin30Days,
+        decimal RepeatWithin30DaysRate);
+
+    private sealed record CampaignRoiRow(
+        Guid RunId,
+        Guid CampaignId,
+        string CampaignName,
+        int TargetUsers,
+        int SentCount,
+        int FailedCount,
+        decimal RevenueAttributed,
+        decimal DiscountCost,
+        decimal RoiPercent,
+        DateTime StartedAtUtc);
+}
+
+
+
+
+
+
+
+
+
+

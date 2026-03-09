@@ -1,0 +1,141 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<local:LocalizedContentPage xmlns:local="clr-namespace:DoorMarket.Mobile.Localization"     x:Class="DoorMarket.Mobile.Pages.ProductDetailsPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:components="clr-namespace:DoorMarket.Mobile.Components"
+    xmlns:markup="clr-namespace:DoorMarket.Mobile.Markup"
+    xmlns:models="clr-namespace:DoorMarket.Mobile.Models"
+    NavigationPage.HasNavigationBar="False">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        <Grid
+            Style="{StaticResource TopSurfaceGridStyle}"
+            ColumnDefinitions="Auto,*"
+            ColumnSpacing="16"
+            Padding="{OnPlatform iOS='24,56,24,20', Default='24,50,24,20'}">
+            <ImageButton Clicked="OnBackClicked">
+                <ImageButton.Source>
+                    <FontImageSource FontFamily="fa-solid-900" Glyph="{x:Static models:IconGlyphs.Back}" Color="{AppThemeBinding Light={StaticResource DoorBlue}, Dark={StaticResource DmTextPrimaryDark}}" Size="16" />
+                </ImageButton.Source>
+            </ImageButton>
+            <Label
+                Grid.Column="1"
+                FontFamily="Inter-Bold"
+                FontSize="22"
+                Text="{markup:Translate ProductDetailsTitle}"
+                TextColor="{AppThemeBinding Light={StaticResource DoorBlue}, Dark={StaticResource DmTextPrimaryDark}}"
+                VerticalOptions="Center" />
+        </Grid>
+
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="24,16,24,24" Spacing="16">
+                <Frame
+                    BackgroundColor="{AppThemeBinding Light={StaticResource DmSurfaceLight}, Dark={StaticResource DmSurfaceDark}}"
+                    BorderColor="{AppThemeBinding Light={StaticResource DmBorderLight}, Dark={StaticResource DmBorderDark}}"
+                    CornerRadius="16"
+                    HasShadow="False"
+                    Padding="0">
+                    <Grid HeightRequest="250">
+                        <Grid.Background>
+                            <LinearGradientBrush EndPoint="1,1" StartPoint="0,0">
+                                <GradientStop Color="{AppThemeBinding Light={StaticResource DmSurfaceAltLight}, Dark={StaticResource DmSurfaceAltDark}}" Offset="0" />
+                                <GradientStop Color="{AppThemeBinding Light={StaticResource DmBgLight}, Dark={StaticResource DmBgDark}}" Offset="1" />
+                            </LinearGradientBrush>
+                        </Grid.Background>
+                        <Image x:Name="ProductImage" Aspect="AspectFit" Margin="12" />
+                        <Frame
+                            BackgroundColor="{StaticResource DoorBlue}"
+                            CornerRadius="12"
+                            HasShadow="False"
+                            HorizontalOptions="End"
+                            Margin="12"
+                            Padding="10,6"
+                            VerticalOptions="End">
+                            <Label
+                                x:Name="PriceLabel"
+                                FontFamily="Inter-Bold"
+                                FontSize="15"
+                                TextColor="White" />
+                        </Frame>
+                    </Grid>
+                </Frame>
+
+                <components:DmCard Margin="0">
+                    <VerticalStackLayout Spacing="8">
+                        <Label x:Name="NameLabel" Style="{StaticResource H2LabelStyle}" />
+                        <Label
+                            x:Name="NormalPriceLabel"
+                            FontFamily="Inter-Regular"
+                            FontSize="13"
+                            IsVisible="False"
+                            TextColor="{AppThemeBinding Light={StaticResource DmTextSecondaryLight}, Dark={StaticResource DmTextSecondaryDark}}"
+                            TextDecorations="Strikethrough" />
+                        <Label x:Name="ShopLabel" Style="{StaticResource CaptionLabelStyle}" />
+                        <Label x:Name="CategoryLabel" Style="{StaticResource CaptionLabelStyle}" />
+                        <Label x:Name="StockLabel" Style="{StaticResource CaptionLabelStyle}" />
+                        <components:DmSecondaryButton
+                            Clicked="OnViewShopProductsClicked"
+                            HeightRequest="44"
+                            Text="{markup:Translate ViewShopProducts}" />
+                    </VerticalStackLayout>
+                </components:DmCard>
+
+                <components:DmCard Margin="0">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                        <Label
+                            Style="{StaticResource SectionTitleLabelStyle}"
+                            Text="{markup:Translate QuantityTitle}"
+                            VerticalOptions="Center" />
+                        <HorizontalStackLayout Grid.Column="1" Spacing="8" VerticalOptions="Center">
+                            <Button
+                                BackgroundColor="{StaticResource DoorBlue10}"
+                                Clicked="OnDecreaseQuantity"
+                                CornerRadius="12"
+                                FontFamily="Inter-Bold"
+                                FontSize="18"
+                                HeightRequest="38"
+                                Text="-"
+                                TextColor="{StaticResource DoorBlue}"
+                                WidthRequest="38" />
+                            <Label
+                                x:Name="QuantityLabel"
+                                FontFamily="Inter-SemiBold"
+                                FontSize="16"
+                                HorizontalTextAlignment="Center"
+                                Text="1"
+                                VerticalOptions="Center"
+                                WidthRequest="26" />
+                            <Button
+                                BackgroundColor="{StaticResource DoorBlue10}"
+                                Clicked="OnIncreaseQuantity"
+                                CornerRadius="12"
+                                FontFamily="Inter-Bold"
+                                FontSize="18"
+                                HeightRequest="38"
+                                Text="+"
+                                TextColor="{StaticResource DoorBlue}"
+                                WidthRequest="38" />
+                        </HorizontalStackLayout>
+                    </Grid>
+                </components:DmCard>
+
+                <components:DmCard Margin="0">
+                    <VerticalStackLayout Spacing="8">
+                        <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate DescriptionTitle}" />
+                        <Label x:Name="DescriptionLabel" Style="{StaticResource MutedLabelStyle}" />
+                    </VerticalStackLayout>
+                </components:DmCard>
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <Grid Grid.Row="2" Style="{StaticResource BottomSurfaceGridStyle}" Padding="{OnPlatform iOS='24,12,24,32', Default='24,12'}">
+            <components:DmPrimaryButton
+                x:Name="AddToCartButton"
+                Clicked="OnAddToCartClicked"
+                Text="{markup:Translate AddToCart}" />
+        </Grid>
+    </Grid>
+</local:LocalizedContentPage>
+
+
+

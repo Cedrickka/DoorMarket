@@ -1,0 +1,25 @@
+@using MudBlazor
+
+<MudMenu Dense="true"
+         Class="dm-row-action-menu"
+         AnchorOrigin="Origin.BottomRight"
+         TransformOrigin="Origin.TopRight">
+    <ActivatorContent>
+        <MudIconButton Icon="@Icons.Material.Filled.MoreHoriz"
+                       Size="Size.Small"
+                       Color="Color.Default"
+                       Disabled="Disabled"
+                       Variant="Variant.Outlined"
+                       aria-label="@AriaLabel"
+                       title="@AriaLabel" />
+    </ActivatorContent>
+    <ChildContent>
+        @ChildContent
+    </ChildContent>
+</MudMenu>
+
+@code {
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string AriaLabel { get; set; } = "Actions";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

@@ -1,0 +1,629 @@
+@page "/admin/notifications"
+@using System.Net
+@using System.Net.Http.Json
+@using MudBlazor
+@inject HttpClient Http
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject IStringLocalizer<SharedResource> SL
+
+<h1 class="dm-page-h1">@Tr("Centre de notifications", "Notification Center")</h1>
+<div class="dm-page-sub">@Tr("Suivez les emails transactionnels et relancez les envois en echec.", "Monitor transaction emails and retry failed deliveries.")</div>
+
+<AuthGuard>
+    @if (!_ready)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudSkeleton Height="32px" Width="220px" Class="mb-2" />
+            <MudSkeleton Height="18px" Width="380px" />
+        </MudPaper>
+    }
+    else if (!Auth.IsAdmin)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@SL["AdminOnlyAccess"]</MudAlert>
+            <MudButton Variant="Variant.Outlined" Class="mt-3" OnClick="@(() => Nav.NavigateTo("/"))">@SL["Back"]</MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Class="pa-4 mt-3 dm-content-card">
+            <div class="d-flex flex-wrap gap-2 align-items-end">
+                <MudDatePicker Label="@SL["DateFrom"]" @bind-Date="_from" Variant="Variant.Outlined" />
+                <MudDatePicker Label="@SL["DateTo"]" @bind-Date="_to" Variant="Variant.Outlined" />
+                <MudSelect T="string" Label="@Tr("Type", "Type")" Variant="Variant.Outlined" Dense="true" @bind-Value="_typeFilter">
+                    <MudSelectItem T="string" Value="@string.Empty">@Tr("Tous", "All")</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("ClientOrderCreated")">ClientOrderCreated</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("ClientPaymentPaid")">ClientPaymentPaid</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("ClientPaymentFailed")">ClientPaymentFailed</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("ShopOrderPaidPending")">ShopOrderPaidPending</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("AdminOrderPaid")">AdminOrderPaid</MudSelectItem>
+                </MudSelect>
+                <MudSelect T="string" Label="@Tr("Statut", "Status")" Variant="Variant.Outlined" Dense="true" @bind-Value="_statusFilter">
+                    <MudSelectItem T="string" Value="@string.Empty">@Tr("Tous", "All")</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Sent")">@Tr("Envoye", "Sent")</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Failed")">@Tr("Echec", "Failed")</MudSelectItem>
+                </MudSelect>
+                <MudTextField T="string" Label="@Tr("OrderId", "OrderId")" Variant="Variant.Outlined" @bind-Value="_orderIdFilter" />
+                <MudNumericField T="int" Label="@Tr("Taille page", "Page size")" Variant="Variant.Outlined" Min="10" Max="200" @bind-Value="_pageSize" />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Reload">@SL["Apply"]</MudButton>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 align-items-end mt-3">
+                <MudNumericField T="int" Label="@Tr("Limite relance lot", "Bulk retry limit")" Variant="Variant.Outlined" Min="1" Max="200" @bind-Value="_bulkRetryLimit" />
+                <MudNumericField T="int" Label="@Tr("Echecs mini incident", "Incident min failures")" Variant="Variant.Outlined" Min="1" Max="100" @bind-Value="_incidentsMinFailures" />
+                <MudNumericField T="int" Label="@Tr("Lignes max export", "Export max rows")" Variant="Variant.Outlined" Min="1" Max="20000" @bind-Value="_exportMaxRows" />
+                <MudSwitch T="bool" Color="Color.Info" @bind-Value="_includeAcknowledged" Label="@Tr("Afficher incidents acquittes", "Show acknowledged incidents")" />
+                <MudButton Variant="Variant.Outlined" Color="Color.Warning" Disabled="_busy" OnClick="RetryFailedBulk">
+                    @Tr("Relancer les echecs non resolus", "Retry unresolved failed")
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Info" Disabled="_busy" OnClick="ExportCsv">
+                    @Tr("Exporter CSV", "Export CSV")
+                </MudButton>
+            </div>
+
+            <MudDivider Class="my-3" />
+
+            @if (_loading)
+            {
+                <MudSkeleton Height="42px" />
+                <MudSkeleton Height="42px" Class="mt-2" />
+            }
+            else if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_error</MudAlert>
+            }
+            else
+            {
+                <MudText Typo="Typo.h6" Class="mb-2">@Tr("Resume", "Summary")</MudText>
+                <MudTable T="TransactionNotificationSummaryDto" Items="_summary" Dense="true" Hover="true" Bordered="true" Striped="true" Class="mb-4">
+                    <HeaderContent>
+                        <MudTh>@Tr("Type", "Type")</MudTh>
+                        <MudTh Align="Align.Right">@Tr("Total", "Total")</MudTh>
+                        <MudTh Align="Align.Right">@Tr("Envoye", "Sent")</MudTh>
+                        <MudTh Align="Align.Right">@Tr("Echec", "Failed")</MudTh>
+                        <MudTh>@Tr("Derniere tentative", "Last attempt")</MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="row">
+                        <MudTd>@row.NotificationType</MudTd>
+                        <MudTd Align="Align.Right">@row.Total</MudTd>
+                        <MudTd Align="Align.Right">@row.Sent</MudTd>
+                        <MudTd Align="Align.Right">@row.Failed</MudTd>
+                        <MudTd>@FmtDate(row.LastAttemptUtc)</MudTd>
+                    </RowTemplate>
+                </MudTable>
+
+                <MudText Typo="Typo.h6" Class="mb-2">@Tr("Incidents non resolus", "Unresolved incidents")</MudText>
+                @if (_incidents.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4">
+                        @Tr("Aucun incident non resolu pour ces filtres.", "No unresolved incidents for current filters.")
+                    </MudAlert>
+                }
+                else
+                {
+                    <MudTable T="NotificationIncidentDto" Items="_incidents" Dense="true" Hover="true" Bordered="true" Striped="true" Class="mb-4">
+                        <HeaderContent>
+                            <MudTh>@Tr("Type", "Type")</MudTh>
+                            <MudTh>@Tr("Destinataire", "Recipient")</MudTh>
+                            <MudTh Align="Align.Right">@Tr("Echecs", "Failures")</MudTh>
+                            <MudTh>@Tr("Etat", "State")</MudTh>
+                            <MudTh>@Tr("Premier", "First")</MudTh>
+                            <MudTh>@Tr("Dernier", "Last")</MudTh>
+                            <MudTh>@Tr("Derniere erreur", "Last error")</MudTh>
+                            <MudTh Align="Align.Right">@SL["Actions"]</MudTh>
+                        </HeaderContent>
+                        <RowTemplate Context="incident">
+                            <MudTd>@incident.NotificationType</MudTd>
+                            <MudTd>@incident.Recipient</MudTd>
+                            <MudTd Align="Align.Right">@incident.FailedCount</MudTd>
+                            <MudTd>@GetIncidentState(incident)</MudTd>
+                            <MudTd>@FmtDate(incident.FirstAttemptUtc)</MudTd>
+                            <MudTd>@FmtDate(incident.LastAttemptUtc)</MudTd>
+                            <MudTd>@incident.LastError</MudTd>
+                            <MudTd Align="Align.Right">
+                                <AdminRowActionMenu Disabled="_busy" AriaLabel="@SL["Actions"]">
+                                    <MudMenuItem Icon="@Icons.Material.Filled.Refresh"
+                                                 OnClick="@(() => RetryOne(incident.LastLogId))">
+                                        @SL["Retry"]
+                                    </MudMenuItem>
+                                    @if (incident.Acknowledged)
+                                    {
+                                        <MudMenuItem Icon="@Icons.Material.Filled.Replay"
+                                                     OnClick="@(() => ReopenIncident(incident.LastLogId))">
+                                            @Tr("Reouvrir", "Reopen")
+                                        </MudMenuItem>
+                                    }
+                                    else
+                                    {
+                                        <MudMenuItem Icon="@Icons.Material.Filled.Done"
+                                                     OnClick="@(() => AcknowledgeIncident(incident.LastLogId))">
+                                            @Tr("Acquitter", "Acknowledge")
+                                        </MudMenuItem>
+                                    }
+                                </AdminRowActionMenu>
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+
+                <MudText Typo="Typo.h6" Class="mb-2">@Tr("Transactions", "Transactions")</MudText>
+                @if (_rows.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@Tr("Aucune notification trouvee pour ce filtre.", "No notification found for this filter.")</MudAlert>
+                }
+                else
+                {
+                    <MudTable T="TransactionNotificationDto" Items="_rows" Dense="true" Hover="true" Bordered="true" Striped="true">
+                        <HeaderContent>
+                            <MudTh>@Tr("Tente le", "Attempted")</MudTh>
+                            <MudTh>@Tr("Type", "Type")</MudTh>
+                            <MudTh>@Tr("Destinataire", "Recipient")</MudTh>
+                            <MudTh>@Tr("Statut", "Status")</MudTh>
+                            <MudTh>@Tr("Commande", "Order")</MudTh>
+                            <MudTh>@Tr("Sujet", "Subject")</MudTh>
+                            <MudTh Align="Align.Right">@SL["Actions"]</MudTh>
+                        </HeaderContent>
+                        <RowTemplate Context="row">
+                            <MudTd>@FmtDate(row.AttemptedAtUtc)</MudTd>
+                            <MudTd>@row.NotificationType</MudTd>
+                            <MudTd>@row.Recipient</MudTd>
+                            <MudTd><span class="@GetStatusBadgeCss(row.Status)">@row.Status</span></MudTd>
+                            <MudTd>@(row.OrderId?.ToString() ?? "-")</MudTd>
+                            <MudTd>@row.Subject</MudTd>
+                            <MudTd Align="Align.Right">
+                                @if (string.Equals(row.Status, "Failed", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <AdminRowActionMenu Disabled="_busy" AriaLabel="@SL["Actions"]">
+                                        <MudMenuItem Icon="@Icons.Material.Filled.Refresh"
+                                                     OnClick="@(() => RetryOne(row.Id))">
+                                            @SL["Retry"]
+                                        </MudMenuItem>
+                                    </AdminRowActionMenu>
+                                }
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+
+                <div class="d-flex justify-space-between align-center mt-3">
+                    <MudText Typo="Typo.body2">@Tr("Total", "Total"): @_total</MudText>
+                    <div class="d-flex gap-2">
+                        <MudButton Variant="Variant.Outlined" Disabled="@(_page <= 1 || _busy)" OnClick="PrevPage">@Tr("Prec", "Prev")</MudButton>
+                        <MudButton Variant="Variant.Outlined" Disabled="@((_page * _pageSize) >= _total || _busy)" OnClick="NextPage">@Tr("Suiv", "Next")</MudButton>
+                    </div>
+                </div>
+            }
+        </MudPaper>
+    }
+</AuthGuard>
+
+@code {
+    private bool _ready;
+    private bool _loading = true;
+    private bool _busy;
+    private string? _error;
+
+    private DateTime? _from = DateTime.UtcNow.AddDays(-30);
+    private DateTime? _to = DateTime.UtcNow;
+    private string _typeFilter = string.Empty;
+    private string _statusFilter = string.Empty;
+    private string? _orderIdFilter;
+    private int _page = 1;
+    private int _pageSize = 50;
+    private int _bulkRetryLimit = 25;
+    private int _incidentsMinFailures = 1;
+    private int _incidentsTake = 20;
+    private int _exportMaxRows = 5000;
+    private bool _includeAcknowledged;
+    private int _total;
+
+    private List<TransactionNotificationSummaryDto> _summary = new();
+    private List<NotificationIncidentDto> _incidents = new();
+    private List<TransactionNotificationDto> _rows = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var t0 = DateTime.UtcNow;
+        while (!Auth.IsReady && (DateTime.UtcNow - t0).TotalSeconds < 5)
+            await Task.Delay(30);
+
+        _ready = true;
+        if (!Auth.IsAuthenticated || !Auth.IsAdmin)
+        {
+            StateHasChanged();
+            return;
+        }
+
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    private async Task Reload()
+    {
+        _page = 1;
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    private async Task NextPage()
+    {
+        _page++;
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    private async Task PrevPage()
+    {
+        if (_page <= 1) return;
+        _page--;
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            var txQuery = BuildTransactionsQuery();
+            _summary = await GetJsonAsync<List<TransactionNotificationSummaryDto>>($"api/admin/notifications/transactions/summary{BuildDateQuery()}") ?? new();
+            _incidents = await GetJsonAsync<List<NotificationIncidentDto>>($"api/admin/notifications/transactions/incidents{BuildIncidentsQuery()}") ?? new();
+            var page = await GetJsonAsync<TransactionsPageDto>($"api/admin/notifications/transactions{txQuery}");
+            _rows = page?.Items?.ToList() ?? new List<TransactionNotificationDto>();
+            _total = page?.Total ?? 0;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task RetryOne(Guid id)
+    {
+        _busy = true;
+        try
+        {
+            var res = await Http.PostAsync($"api/admin/notifications/transactions/{id}/retry", content: null);
+            if (!res.IsSuccessStatusCode)
+            {
+                throw await BuildApiError(res);
+            }
+
+            var payload = await res.Content.ReadFromJsonAsync<RetryTransactionDto>();
+            var message = payload is null ? Tr("Relance envoyee.", "Retry sent.") : $"{payload.Outcome}: {payload.Message}";
+            Snackbar.Add(message, Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task AcknowledgeIncident(Guid lastLogId)
+    {
+        _busy = true;
+        try
+        {
+            var res = await Http.PostAsJsonAsync(
+                $"api/admin/notifications/transactions/incidents/{lastLogId}/acknowledge",
+                new IncidentAcknowledgeRequest(null));
+            if (!res.IsSuccessStatusCode)
+            {
+                throw await BuildApiError(res);
+            }
+
+            Snackbar.Add(Tr("Incident acquitte.", "Incident acknowledged."), Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ReopenIncident(Guid lastLogId)
+    {
+        _busy = true;
+        try
+        {
+            var res = await Http.PostAsync($"api/admin/notifications/transactions/incidents/{lastLogId}/reopen", content: null);
+            if (!res.IsSuccessStatusCode)
+            {
+                throw await BuildApiError(res);
+            }
+
+            Snackbar.Add(Tr("Incident reouvert.", "Incident reopened."), Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RetryFailedBulk()
+    {
+        var confirm = await Dialog.ShowMessageBox(
+            title: Tr("Relance lot des notifications en echec", "Bulk retry failed notifications"),
+            markupMessage: (MarkupString)Tr("Relancer maintenant les notifications en echec non resolues ?", "Retry unresolved failed notifications now?"),
+            yesText: Tr("Relancer", "Retry"),
+            cancelText: Tr("Annuler", "Cancel"));
+        if (confirm != true)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var query = $"?limit={_bulkRetryLimit}";
+            if (!string.IsNullOrWhiteSpace(_typeFilter))
+            {
+                query += $"&type={Uri.EscapeDataString(_typeFilter)}";
+            }
+
+            var res = await Http.PostAsync($"api/admin/notifications/transactions/retry-failed{query}", content: null);
+            if (!res.IsSuccessStatusCode)
+            {
+                throw await BuildApiError(res);
+            }
+
+            var payload = await res.Content.ReadFromJsonAsync<BulkRetryTransactionsDto>();
+            if (payload is null)
+            {
+                Snackbar.Add(Tr("Relance lot terminee.", "Bulk retry completed."), Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(
+                    Tr($"Candidats={payload.Candidates}, Declenches={payload.Triggered}, Ignores={payload.Ignored}, En echec={payload.Failed}",
+                       $"Candidates={payload.Candidates}, Triggered={payload.Triggered}, Ignored={payload.Ignored}, Failed={payload.Failed}"),
+                    Severity.Success);
+            }
+
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private Task ExportCsv()
+    {
+        var query = BuildExportQuery();
+        Nav.NavigateTo($"/api/admin/notifications/transactions/export.csv{query}", forceLoad: true);
+        return Task.CompletedTask;
+    }
+
+    private string BuildDateQuery()
+    {
+        var list = new List<string>();
+        if (_from.HasValue) list.Add($"from={Uri.EscapeDataString(_from.Value.ToString("yyyy-MM-dd"))}");
+        if (_to.HasValue) list.Add($"to={Uri.EscapeDataString(_to.Value.ToString("yyyy-MM-dd"))}");
+        return list.Count == 0 ? string.Empty : "?" + string.Join("&", list);
+    }
+
+    private string BuildTransactionsQuery()
+    {
+        var list = new List<string>
+        {
+            $"page={_page}",
+            $"pageSize={Math.Clamp(_pageSize, 10, 200)}"
+        };
+
+        if (_from.HasValue) list.Add($"from={Uri.EscapeDataString(_from.Value.ToString("yyyy-MM-dd"))}");
+        if (_to.HasValue) list.Add($"to={Uri.EscapeDataString(_to.Value.ToString("yyyy-MM-dd"))}");
+        if (!string.IsNullOrWhiteSpace(_typeFilter)) list.Add($"type={Uri.EscapeDataString(_typeFilter)}");
+        if (!string.IsNullOrWhiteSpace(_statusFilter)) list.Add($"status={Uri.EscapeDataString(_statusFilter)}");
+
+        if (!string.IsNullOrWhiteSpace(_orderIdFilter))
+        {
+            if (!Guid.TryParse(_orderIdFilter, out var orderId))
+            {
+                throw new InvalidOperationException("OrderId invalide.");
+            }
+
+            list.Add($"orderId={orderId}");
+        }
+
+        return "?" + string.Join("&", list);
+    }
+
+    private string BuildIncidentsQuery()
+    {
+        var list = new List<string>
+        {
+            $"minFailures={Math.Clamp(_incidentsMinFailures, 1, 100)}",
+            $"take={Math.Clamp(_incidentsTake, 1, 200)}",
+            $"includeAcknowledged={_includeAcknowledged.ToString().ToLowerInvariant()}"
+        };
+
+        if (_from.HasValue) list.Add($"from={Uri.EscapeDataString(_from.Value.ToString("yyyy-MM-dd"))}");
+        if (_to.HasValue) list.Add($"to={Uri.EscapeDataString(_to.Value.ToString("yyyy-MM-dd"))}");
+        if (!string.IsNullOrWhiteSpace(_typeFilter)) list.Add($"type={Uri.EscapeDataString(_typeFilter)}");
+
+        if (!string.IsNullOrWhiteSpace(_orderIdFilter))
+        {
+            if (!Guid.TryParse(_orderIdFilter, out var orderId))
+            {
+                throw new InvalidOperationException("OrderId invalide.");
+            }
+
+            list.Add($"orderId={orderId}");
+        }
+
+        return "?" + string.Join("&", list);
+    }
+
+    private string BuildExportQuery()
+    {
+        var list = new List<string>
+        {
+            $"maxRows={Math.Clamp(_exportMaxRows, 1, 20000)}"
+        };
+
+        if (_from.HasValue) list.Add($"from={Uri.EscapeDataString(_from.Value.ToString("yyyy-MM-dd"))}");
+        if (_to.HasValue) list.Add($"to={Uri.EscapeDataString(_to.Value.ToString("yyyy-MM-dd"))}");
+        if (!string.IsNullOrWhiteSpace(_typeFilter)) list.Add($"type={Uri.EscapeDataString(_typeFilter)}");
+        if (!string.IsNullOrWhiteSpace(_statusFilter)) list.Add($"status={Uri.EscapeDataString(_statusFilter)}");
+
+        if (!string.IsNullOrWhiteSpace(_orderIdFilter))
+        {
+            if (!Guid.TryParse(_orderIdFilter, out var orderId))
+            {
+                throw new InvalidOperationException("OrderId invalide.");
+            }
+
+            list.Add($"orderId={orderId}");
+        }
+
+        return "?" + string.Join("&", list);
+    }
+
+    private async Task<T?> GetJsonAsync<T>(string url)
+    {
+        using var response = await Http.GetAsync(url);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            var details = string.IsNullOrWhiteSpace(body) ? Tr("Aucun detail.", "No details.") : body;
+            throw new InvalidOperationException($"API {(int)response.StatusCode} {response.ReasonPhrase}: {details}");
+        }
+
+        if (response.Content.Headers.ContentLength == 0)
+        {
+            return default;
+        }
+
+        return await response.Content.ReadFromJsonAsync<T>();
+    }
+
+    private async Task<Exception> BuildApiError(HttpResponseMessage res)
+    {
+        var body = await res.Content.ReadAsStringAsync();
+        return res.StatusCode switch
+        {
+            HttpStatusCode.Unauthorized => new InvalidOperationException(Tr("Non autorise (401).", "Unauthorized (401).")),
+            HttpStatusCode.Forbidden => new InvalidOperationException(Tr("Acces refuse (403).", "Forbidden (403).")),
+            HttpStatusCode.NotFound => new InvalidOperationException(Tr("Route introuvable (404).", "Route not found (404).")),
+            _ => new InvalidOperationException($"{Tr("Erreur API", "API error")} ({(int)res.StatusCode}): {body}")
+        };
+    }
+
+    private static string FmtDate(DateTime? value)
+        => value.HasValue ? value.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "-";
+
+    private static string GetStatusBadgeCss(string? status)
+    {
+        return status?.Trim().ToLowerInvariant() switch
+        {
+            "sent" => "dm-status-badge dm-status-badge-live",
+            "failed" => "dm-status-badge dm-status-badge-expired",
+            _ => "dm-status-badge dm-status-badge-inactive"
+        };
+    }
+
+    private static string GetIncidentState(NotificationIncidentDto incident)
+    {
+        if (!incident.Acknowledged)
+        {
+            return Tr("Ouvert", "Open");
+        }
+
+        var at = incident.AcknowledgedAtUtc.HasValue
+            ? incident.AcknowledgedAtUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+            : "-";
+
+        var by = string.IsNullOrWhiteSpace(incident.AcknowledgedBy) ? Tr("admin", "admin") : incident.AcknowledgedBy;
+        return Tr($"Acquitte par {by} a {at}", $"Acknowledged by {by} at {at}");
+    }
+
+    private static string Tr(string fr, string en)
+        => string.Equals(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "en", StringComparison.OrdinalIgnoreCase) ? en : fr;
+
+    private sealed record TransactionsPageDto(
+        int Page,
+        int PageSize,
+        int Total,
+        IReadOnlyList<TransactionNotificationDto> Items);
+
+    private sealed record TransactionNotificationDto(
+        Guid Id,
+        Guid? OrderId,
+        string NotificationType,
+        string Channel,
+        string Recipient,
+        string Subject,
+        string Status,
+        string? Error,
+        DateTime AttemptedAtUtc);
+
+    private sealed record TransactionNotificationSummaryDto(
+        string NotificationType,
+        int Total,
+        int Sent,
+        int Failed,
+        DateTime? LastAttemptUtc);
+
+    private sealed record NotificationIncidentDto(
+        Guid LastLogId,
+        Guid? OrderId,
+        string NotificationType,
+        string Recipient,
+        int FailedCount,
+        DateTime FirstAttemptUtc,
+        DateTime LastAttemptUtc,
+        string? LastError,
+        bool Acknowledged,
+        DateTime? AcknowledgedAtUtc,
+        string? AcknowledgedBy,
+        string? AcknowledgementNote);
+
+    private sealed record IncidentAcknowledgeRequest(string? Note);
+
+    private sealed record RetryTransactionDto(
+        Guid NotificationLogId,
+        bool Retried,
+        string Outcome,
+        string Message,
+        Guid? OrderId,
+        string? NotificationType);
+
+    private sealed record BulkRetryTransactionsDto(
+        int Candidates,
+        int Triggered,
+        int Ignored,
+        int Failed);
+}

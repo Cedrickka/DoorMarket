@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentView
+    x:Class="DoorMarket.Mobile.Components.DmBottomNav"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:markup="clr-namespace:DoorMarket.Mobile.Markup"
+    xmlns:models="clr-namespace:DoorMarket.Mobile.Models"
+    x:Name="Root">
+
+    <Grid BackgroundColor="{AppThemeBinding Light={StaticResource DmBottomBarBgLight}, Dark={StaticResource DmBottomBarBgDark}}" Padding="16,10">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <VerticalStackLayout Grid.Column="0" Spacing="8" HorizontalOptions="Center">
+            <Image Source="{FontImageSource FontFamily=fa-solid-900, Glyph={x:Static models:IconGlyphs.Home}, Color={Binding HomeColor, Source={x:Reference Root}}, Size=18}" />
+            <Label Text="{markup:Translate BottomHome}" FontSize="12" TextColor="{Binding HomeColor, Source={x:Reference Root}}" />
+            <VerticalStackLayout.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding HomeCommand, Source={x:Reference Root}}" />
+            </VerticalStackLayout.GestureRecognizers>
+        </VerticalStackLayout>
+
+        <VerticalStackLayout Grid.Column="1" Spacing="8" HorizontalOptions="Center">
+            <Image Source="{FontImageSource FontFamily=fa-solid-900, Glyph={x:Static models:IconGlyphs.Grid}, Color={Binding CategoriesColor, Source={x:Reference Root}}, Size=18}" />
+            <Label Text="{markup:Translate BottomCategories}" FontSize="12" TextColor="{Binding CategoriesColor, Source={x:Reference Root}}" />
+            <VerticalStackLayout.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding CategoriesCommand, Source={x:Reference Root}}" />
+            </VerticalStackLayout.GestureRecognizers>
+        </VerticalStackLayout>
+
+        <VerticalStackLayout Grid.Column="2" Spacing="8" HorizontalOptions="Center">
+            <Image Source="{FontImageSource FontFamily=fa-solid-900, Glyph={x:Static models:IconGlyphs.Orders}, Color={Binding OrdersColor, Source={x:Reference Root}}, Size=18}" />
+            <Label Text="{markup:Translate BottomOrders}" FontSize="12" TextColor="{Binding OrdersColor, Source={x:Reference Root}}" />
+            <VerticalStackLayout.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding OrdersCommand, Source={x:Reference Root}}" />
+            </VerticalStackLayout.GestureRecognizers>
+        </VerticalStackLayout>
+
+        <VerticalStackLayout Grid.Column="3" Spacing="8" HorizontalOptions="Center">
+            <Image Source="{FontImageSource FontFamily=fa-solid-900, Glyph={x:Static models:IconGlyphs.User}, Color={Binding ProfileColor, Source={x:Reference Root}}, Size=18}" />
+            <Label Text="{markup:Translate BottomProfile}" FontSize="12" TextColor="{Binding ProfileColor, Source={x:Reference Root}}" />
+            <VerticalStackLayout.GestureRecognizers>
+                <TapGestureRecognizer Command="{Binding ProfileCommand, Source={x:Reference Root}}" />
+            </VerticalStackLayout.GestureRecognizers>
+        </VerticalStackLayout>
+    </Grid>
+</ContentView>
+
+

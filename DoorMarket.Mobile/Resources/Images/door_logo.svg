@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="64" viewBox="0 0 240 64">
+  <rect x="0" y="0" width="240" height="64" rx="12" fill="#FFFFFF"/>
+  <g transform="translate(12,8)">
+    <rect x="0" y="12" width="40" height="36" rx="6" fill="#FF7A00"/>
+    <path d="M8 14c0-8 6-14 12-14s12 6 12 14" fill="none" stroke="#002D5E" stroke-width="4" stroke-linecap="round"/>
+    <rect x="14" y="22" width="12" height="20" rx="2" fill="#002D5E"/>
+    <rect x="18" y="26" width="4" height="12" rx="2" fill="#FF7A00"/>
+  </g>
+  <text x="70" y="40" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700" fill="#002D5E">DoorMarket</text>
+</svg>

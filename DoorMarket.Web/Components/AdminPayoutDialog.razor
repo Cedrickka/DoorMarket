@@ -1,0 +1,74 @@
+@using System.Net.Http.Json
+@using MudBlazor
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.h6">@ShopName</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">@($"{PeriodStart:yyyy-MM-dd} -> {PeriodEnd:yyyy-MM-dd}")</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">@($"Currency: {Currency}")</MudText>
+
+        <MudNumericField T="decimal" Label="Amount to pay" Variant="Variant.Outlined" @bind-Value="_amountPaid" Class="mt-3" />
+        <MudTextField T="string" Label="Reference" Variant="Variant.Outlined" @bind-Value="_reference" />
+        <MudTextField T="string" Label="Idempotency key (optional)" Variant="Variant.Outlined" @bind-Value="_idempotencyKey" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Submit" Disabled="_saving">Create Draft</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudBlazor.IMudDialogInstance Dialog { get; set; } = default!;
+    [Parameter] public Guid ShopId { get; set; }
+    [Parameter] public string ShopName { get; set; } = "";
+    [Parameter] public string Currency { get; set; } = "USD";
+    [Parameter] public DateTime PeriodStart { get; set; }
+    [Parameter] public DateTime PeriodEnd { get; set; }
+
+    private decimal _amountPaid;
+    private string? _reference;
+    private string? _idempotencyKey;
+    private bool _saving;
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task Submit()
+    {
+        if (_amountPaid <= 0m)
+        {
+            Snackbar.Add("Amount invalide.", Severity.Warning);
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            var req = new
+            {
+                shopId = ShopId,
+                currency = Currency,
+                periodStartUtc = PeriodStart,
+                periodEndUtc = PeriodEnd,
+                amountPaid = _amountPaid,
+                reference = _reference,
+                idempotencyKey = string.IsNullOrWhiteSpace(_idempotencyKey) ? null : _idempotencyKey
+            };
+
+            var res = await Http.PostAsJsonAsync("api/admin/reconciliation/payouts", req);
+            if (!res.IsSuccessStatusCode)
+                throw new InvalidOperationException(await res.Content.ReadAsStringAsync());
+
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="HelpTitle" xml:space="preserve"><value>DoorMarket Help &amp; Support</value></data>
+  <data name="HelpSubtitle" xml:space="preserve"><value>Everything you need to order, pay, and track your orders.</value></data>
+  <data name="HelpTagline" xml:space="preserve"><value>From the Market to Your Door</value></data>
+  <data name="TocTitle" xml:space="preserve"><value>Table of contents</value></data>
+
+  <data name="TocIntro" xml:space="preserve"><value>Overview</value></data>
+  <data name="TocHow" xml:space="preserve"><value>How to order</value></data>
+  <data name="TocDelivery" xml:space="preserve"><value>Delivery</value></data>
+  <data name="TocPayments" xml:space="preserve"><value>Payments</value></data>
+  <data name="TocStatus" xml:space="preserve"><value>Statuses</value></data>
+  <data name="TocFaq" xml:space="preserve"><value>FAQ</value></data>
+  <data name="TocSupport" xml:space="preserve"><value>Support</value></data>
+
+  <data name="HelpIntroTitle" xml:space="preserve"><value>What is DoorMarket?</value></data>
+  <data name="HelpIntroBody" xml:space="preserve"><value>DoorMarket lets you browse products from multiple shops, add items to your cart, choose delivery to your address, and pay online. After payment, the shop processes the order and you track its status until delivery.</value></data>
+
+  <data name="HelpHowTitle" xml:space="preserve"><value>How it works</value></data>
+  <data name="HelpHowStep1" xml:space="preserve"><value>Browse products (categories, search, filters).</value></data>
+  <data name="HelpHowStep2" xml:space="preserve"><value>Open product details (price, shop, availability).</value></data>
+  <data name="HelpHowStep3" xml:space="preserve"><value>Add to cart (quantity + confirm).</value></data>
+  <data name="HelpHowStep4" xml:space="preserve"><value>Enter your delivery address to estimate fees.</value></data>
+  <data name="HelpHowStep5" xml:space="preserve"><value>Checkout and pay (Stripe/PayPal/Prepaid).</value></data>
+  <data name="HelpHowStep6" xml:space="preserve"><value>Track status: Paid → Processed → Delivered (or Cancelled).</value></data>
+  <data name="HelpHowTip" xml:space="preserve"><value>Tip: You can browse and build your cart without an account. An account is required only at checkout.</value></data>
+
+  <data name="HelpProductsTitle" xml:space="preserve"><value>Products, shops &amp; availability</value></data>
+  <data name="HelpProductsBody" xml:space="preserve"><value>Products come from partner shops. Prices and stock may change. If an item becomes unavailable, the shop may adjust the order based on business rules.</value></data>
+
+  <data name="HelpCartTitle" xml:space="preserve"><value>Cart &amp; order</value></data>
+  <data name="HelpCartBody1" xml:space="preserve"><value>You can add items to your cart even without an account.</value></data>
+  <data name="HelpCartBody2" xml:space="preserve"><value>An account is required at checkout to secure the order and enable tracking.</value></data>
+  <data name="HelpCartReason1" xml:space="preserve"><value>Secure payment and order.</value></data>
+  <data name="HelpCartReason2" xml:space="preserve"><value>Store delivery details needed for fulfillment.</value></data>
+  <data name="HelpCartReason3" xml:space="preserve"><value>Access order tracking and history.</value></data>
+
+  <data name="HelpDeliveryTitle" xml:space="preserve"><value>Delivery</value></data>
+  <data name="HelpDeliveryBody1" xml:space="preserve"><value>Delivery fees are calculated based on your address and the shop address.</value></data>
+  <data name="HelpDeliveryBody2" xml:space="preserve"><value>If your cart contains multiple shops, fees may consider the farthest shop.</value></data>
+  <data name="HelpDeliveryBody3" xml:space="preserve"><value>A small extra fee may apply above a certain number of shops.</value></data>
+  <data name="HelpDeliveryNote" xml:space="preserve"><value>Checkout total includes: items subtotal + delivery fee.</value></data>
+
+  <data name="HelpPaymentsTitle" xml:space="preserve"><value>Payments</value></data>
+  <data name="HelpStripeTitle" xml:space="preserve"><value>Card payment (Stripe)</value></data>
+  <data name="HelpStripeBody" xml:space="preserve"><value>Payments are secure and handled by Stripe. Accepted cards depend on the provider and your bank (Visa, MasterCard, etc.).</value></data>
+  <data name="HelpPayPalTitle" xml:space="preserve"><value>PayPal payment</value></data>
+  <data name="HelpPayPalBody" xml:space="preserve"><value>You are redirected to PayPal to confirm. DoorMarket only receives payment confirmation.</value></data>
+  <data name="HelpPrepaidTitle" xml:space="preserve"><value>DoorMarket prepaid (if enabled)</value></data>
+  <data name="HelpPrepaidBody" xml:space="preserve"><value>Pay using a prepaid balance or code depending on available options. If it fails, the order may remain pending or be cancelled.</value></data>
+  <data name="HelpPaymentsNote" xml:space="preserve"><value>Important: DoorMarket must not store sensitive card data (CVC). Stripe/PayPal collect card details on secure pages.</value></data>
+
+  <data name="HelpAccountTitle" xml:space="preserve"><value>Account &amp; security</value></data>
+  <data name="HelpAccountBody" xml:space="preserve"><value>Your account helps secure orders and keep your information accessible.</value></data>
+  <data name="HelpAccountReason1" xml:space="preserve"><value>Track your orders and statuses.</value></data>
+  <data name="HelpAccountReason2" xml:space="preserve"><value>Save delivery addresses.</value></data>
+  <data name="HelpAccountReason3" xml:space="preserve"><value>Receive notifications (depending on configuration).</value></data>
+  <data name="HelpAccountReason4" xml:space="preserve"><value>Access purchase history.</value></data>
+
+  <data name="HelpStatusTitle" xml:space="preserve"><value>Order statuses</value></data>
+  <data name="HelpStatusItem1" xml:space="preserve"><value>Pending: order created, waiting for processing.</value></data>
+  <data name="HelpStatusItem2" xml:space="preserve"><value>Paid: payment confirmed, the shop is notified.</value></data>
+  <data name="HelpStatusItem3" xml:space="preserve"><value>Processed / Preparing: the shop is preparing.</value></data>
+  <data name="HelpStatusItem4" xml:space="preserve"><value>Out for delivery: the order is on the way.</value></data>
+  <data name="HelpStatusItem5" xml:space="preserve"><value>Delivered: order delivered to the customer.</value></data>
+  <data name="HelpStatusItem6" xml:space="preserve"><value>Cancelled / Failed: cancelled or payment/stock issue.</value></data>
+
+  <data name="HelpShopTitle" xml:space="preserve"><value>For shops (seller)</value></data>
+  <data name="HelpShopBody1" xml:space="preserve"><value>When an order is paid, the shop receives an email notification “Paid order pending”.</value></data>
+  <data name="HelpShopBody2" xml:space="preserve"><value>From the Shop Dashboard, you can view the order and update status (Pending → Processed → Delivered, or Cancelled if needed).</value></data>
+
+  <data name="HelpFaqTitle" xml:space="preserve"><value>Frequently asked questions (FAQ)</value></data>
+  <data name="HelpFaqQ1" xml:space="preserve"><value>Can I browse products without an account?</value></data>
+  <data name="HelpFaqA1" xml:space="preserve"><value>Yes. You can browse and build your cart. An account is required only at checkout.</value></data>
+  <data name="HelpFaqQ2" xml:space="preserve"><value>Why is an account required at payment time?</value></data>
+  <data name="HelpFaqA2" xml:space="preserve"><value>To secure the order, enable tracking, and support delivery.</value></data>
+  <data name="HelpFaqQ3" xml:space="preserve"><value>How do I know the payment succeeded?</value></data>
+  <data name="HelpFaqA3" xml:space="preserve"><value>After payment you return to DoorMarket and the order is marked “Paid”.</value></data>
+  <data name="HelpFaqQ4" xml:space="preserve"><value>How is delivery calculated?</value></data>
+  <data name="HelpFaqA4" xml:space="preserve"><value>Based on distance between your address and the shop (or the farthest shop if multiple), with possible multi-shop fee.</value></data>
+  <data name="HelpFaqQ5" xml:space="preserve"><value>Do you store my card details?</value></data>
+  <data name="HelpFaqA5" xml:space="preserve"><value>No. Stripe/PayPal handle payments; DoorMarket does not store the CVC.</value></data>
+  <data name="HelpFaqQ6" xml:space="preserve"><value>What if an item is out of stock?</value></data>
+  <data name="HelpFaqA6" xml:space="preserve"><value>The shop may adjust or cancel the order based on business rules; you will be informed depending on configuration.</value></data>
+  <data name="HelpFaqQ7" xml:space="preserve"><value>How do I change language?</value></data>
+  <data name="HelpFaqA7" xml:space="preserve"><value>Use the French / English language selector in the menu.</value></data>
+
+  <data name="HelpSupportTitle" xml:space="preserve"><value>Support &amp; contact</value></data>
+  <data name="HelpSupportBody" xml:space="preserve"><value>Need help? Contact our team.</value></data>
+  <data name="HelpSupportEmailLabel" xml:space="preserve"><value>Email:</value></data>
+  <data name="HelpSupportEmail" xml:space="preserve"><value>contact@door-market.com</value></data>
+  <data name="HelpSupportPhoneLabel" xml:space="preserve"><value>Phone:</value></data>
+  <data name="HelpSupportPhone" xml:space="preserve"><value>(+1) 220-279-1506</value></data>
+  <data name="HelpSupportHoursLabel" xml:space="preserve"><value>Hours:</value></data>
+  <data name="HelpSupportHours" xml:space="preserve"><value>Mon–Sat, 8am–6pm</value></data>
+  <data name="HelpSupportCta" xml:space="preserve"><value>Contact us</value></data>
+  <data name="HelpSupportMailTo" xml:space="preserve"><value>mailto:contact@door-market.com?subject=DoorMarket%20Support</value></data>
+  <data name="HelpSupportFormTitle" xml:space="preserve"><value>Send a message</value></data>
+  <data name="HelpSupportNameLabel" xml:space="preserve"><value>Name</value></data>
+  <data name="HelpSupportSubjectLabel" xml:space="preserve"><value>Subject</value></data>
+  <data name="HelpSupportMessageLabel" xml:space="preserve"><value>Message</value></data>
+  <data name="HelpSupportSend" xml:space="preserve"><value>Send</value></data>
+  <data name="HelpSupportSending" xml:space="preserve"><value>Sending...</value></data>
+  <data name="HelpSupportRequired" xml:space="preserve"><value>Email and message are required.</value></data>
+  <data name="HelpSupportSent" xml:space="preserve"><value>Message sent. Thank you.</value></data>
+  <data name="HelpSupportFailed" xml:space="preserve"><value>Unable to send message.</value></data>
+</root>

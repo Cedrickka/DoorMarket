@@ -1,0 +1,341 @@
+﻿@page "/shop/products"
+
+@using System.Net.Http.Json
+@using MudBlazor
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+
+<h1 class="dm-page-h1">@SL["Products"]</h1>
+<div class="dm-page-sub">@SL["ShopProductsSubtitle"]</div>
+
+<AuthGuard>
+    @if (!_bootstrapped)
+    {
+        <MudPaper Class="pa-4 mt-3 dm-content-card">
+            <MudSkeleton Height="28px" Width="220px" Class="mb-2" />
+            <MudSkeleton Height="18px" Width="380px" Class="mb-4" />
+            <MudSkeleton Height="46px" />
+            <MudSkeleton Height="46px" Class="mt-2" />
+            <MudSkeleton Height="46px" Class="mt-2" />
+        </MudPaper>}
+    else
+    {<MudPaper Class="pa-4 mt-3">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <MudText Typo="Typo.h6" Class="mb-1">@SL["Catalog"]</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@SL["Total"] : @(_result?.Total ?? 0)</MudText>
+                </div>
+
+                <div class="d-flex gap-2 align-items-center flex-wrap">
+                    <MudTextField T="string"
+                                  Variant="Variant.Outlined"
+                                  Placeholder="@SL["SearchByNameCategory"]"
+                                  Dense="true"
+                                  Immediate="true"
+                                  DebounceInterval="250"
+                                  @bind-Value="_q" />
+
+                    <MudButton Color="Color.Primary" Variant="Variant.Filled" Class="dm-action-btn dm-action-btn-primary" OnClick="GoNew">+ @SL["New"]</MudButton>
+                </div>
+            </div>
+
+            <MudDivider Class="my-3" />
+
+            @if (_loading)
+            {
+                <MudSkeleton Height="46px" />
+                <MudSkeleton Height="46px" Class="mt-2" />
+                <MudSkeleton Height="46px" Class="mt-2" />}
+            else if (_error is not null)
+            {<MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_error</MudAlert>}
+            else if (_result is null || _result.Items.Count == 0)
+            {<MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@SL["NoProductsClickNew"]</MudAlert>}
+            else
+            {<MudTable Items="Filtered()" Dense="true" Hover="true" Bordered="true" Striped="true">
+                    <HeaderContent>
+                        <MudTh>@SL["Product"]</MudTh>
+                        <MudTh>@SL["Category"]</MudTh>
+                        <MudTh Align="right">@SL["Price"]</MudTh>
+                        <MudTh>@SL["Promotion"]</MudTh>
+                        <MudTh Align="right">@SL["Stock"]</MudTh>
+                        <MudTh>@SL["Status"]</MudTh>
+                        <MudTh Align="right">@SL["Actions"]</MudTh>
+                    </HeaderContent>
+
+                    <RowTemplate>
+                        <MudTd>
+                            <div class="dm-table-avatar">
+                                <img src="@MediaCatalog.Product(context.MainImageUrl, context.Name, context.CategoryName, context.Id)"
+                                     alt="@context.Name"
+                                     class="dm-product-thumb-sm" />
+                                <div>
+                                    <div style="font-weight:800;">@context.Name</div>
+                                    <div class="dm-muted">@SL["CreatedAt"]: @context.CreatedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")</div>
+                                </div>
+                            </div>
+                        </MudTd>
+
+                        <MudTd>@(string.IsNullOrWhiteSpace(context.CategoryName) ? "-" : context.CategoryName)</MudTd>
+
+                        <MudTd Align="Align.Right">
+                            @if (HasConfiguredPromotion(context))
+                            {
+                                <div>
+                                    <div style="font-weight:900;color:#FF7A00">@context.PromotionPrice!.Value.ToString("0.00") @context.Currency</div>
+                                    <div class="dm-muted" style="text-decoration:line-through">@context.Price.ToString("0.00") @context.Currency</div>
+                                </div>}
+                            else
+                            {<span>@context.Price.ToString("0.00") @context.Currency</span>
+                            }
+                        </MudTd>
+
+                        <MudTd>
+                            @if (HasConfiguredPromotion(context))
+                            {
+                                <div>
+                                    <div style="font-weight:700;">
+                                        @context.PromotionPrice!.Value.ToString("0.00") @context.Currency
+                                        @if (context.PromotionPercent.HasValue)
+                                        {
+                                            <span class="dm-muted">(-@context.PromotionPercent.Value.ToString("0.#")%)</span>
+                                        }
+                                    </div>
+                                    <div class="dm-muted">
+                                        @FormatPromoDate(context.PromotionStartUtc) - @FormatPromoDate(context.PromotionEndUtc)
+                                    </div>
+                                    <MudChip T="string" Variant="Variant.Outlined" Color="@PromotionStateColor(context)" Label="true" Class="mt-1">
+                                        @PromotionStateLabel(context)
+                                    </MudChip>
+                                </div>}
+                            else
+                            {<span class="dm-muted">@SL["None"]</span>
+                            }
+                        </MudTd>
+
+                        <MudTd Align="Align.Right">
+                            <MudChip T="int" Variant="Variant.Filled"
+                                     Color="@(context.StockQty <= 0 ? Color.Error : Color.Success)"
+                                     Label="true">
+                                @context.StockQty
+                            </MudChip>
+                        </MudTd>
+
+                        <MudTd>
+                            <MudChip T="string" Variant="Variant.Outlined"
+                                     Color="@(context.IsActive ? Color.Success : Color.Error)"
+                                     Label="true">
+                                @(context.IsActive ? SL["Active"] : SL["Inactive"])
+                            </MudChip>
+                            @if (HasConfiguredPromotion(context))
+                            {
+                                <MudChip T="string" Variant="Variant.Filled" Color="@PromotionStateColor(context)" Label="true" Class="ms-2">
+                                    @PromotionStateLabel(context)
+                                </MudChip>
+                            }
+                        </MudTd>
+
+                        <MudTd Align="Align.Right">
+                            <div class="d-flex justify-content-end gap-2 flex-wrap">
+                                <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                                           OnClick="@(() => Edit(context.Id))">
+                                    @SL["Edit"]
+                                </MudButton>
+
+                                <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Secondary"
+                                           OnClick="@(() => Toggle(context))">
+                                    @(context.IsActive ? SL["Disable"] : SL["Enable"])
+                                </MudButton>
+                            </div>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+
+                <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+                    <div class="dm-muted">@SL["Page"] @_page / @TotalPages()</div>
+                    <DmPager CurrentPage="_page" TotalPages="TotalPages()" OnPageChanged="OnPageChanged" />
+                </div>
+            }
+        </MudPaper>
+    }
+</AuthGuard>
+
+@code {
+    private bool _loading = true;
+    private string? _error;
+
+    private int _page = 1;
+    private int _pageSize = 20;
+    private string _q = "";
+
+    private DoorMarket.Application.Common.PagedResult<ProductListItemDto>? _result;
+
+    private bool _bootstrapped;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var t0 = DateTime.UtcNow;
+        while (!Auth.IsReady && (DateTime.UtcNow - t0).TotalSeconds < 6)
+            await Task.Delay(30);
+
+        if (!Auth.IsReady)
+        {
+            Auth.SetUnauthenticated();
+        }
+
+        if (!Auth.IsAuthenticated)
+        {
+            _bootstrapped = true;
+            StateHasChanged();
+            return;
+        }
+
+        if (!Auth.IsShop && !Auth.IsAdmin)
+        {
+            Nav.NavigateTo("/", forceLoad: false);
+            return;
+        }
+
+        _bootstrapped = true;
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            _result = await Http.GetFromJsonAsync<DoorMarket.Application.Common.PagedResult<ProductListItemDto>>(
+                $"api/products/mine?page={_page}&pageSize={_pageSize}");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private IEnumerable<ProductListItemDto>Filtered()
+    {
+        if (_result is null) return Array.Empty<ProductListItemDto>();
+        if (string.IsNullOrWhiteSpace(_q)) return _result.Items;
+
+        return _result.Items.Where(x =>
+            x.Name.Contains(_q, StringComparison.OrdinalIgnoreCase) ||
+            (x.CategoryName ?? "").Contains(_q, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void GoNew() => Nav.NavigateTo("/shop/products/new");
+    private void Edit(Guid id) => Nav.NavigateTo($"/shop/products/{id}");
+
+    private async Task Toggle(ProductListItemDto p)
+    {
+        var confirm = await Dialog.ShowMessageBox(
+            title: SL["Confirm"],
+            markupMessage: (MarkupString)string.Format(SL["ConfirmToggleProductStatus"].Value, p.Name),
+            yesText: SL["Oui"],
+            cancelText: SL["Annuler"]);
+
+        if (confirm != true) return;
+
+        try
+        {
+            var value = (!p.IsActive).ToString().ToLowerInvariant();
+            var res = await Http.PatchAsync($"api/products/{p.Id}/active?value={value}", null);
+
+            if (!res.IsSuccessStatusCode)
+            {
+                var body = await res.Content.ReadAsStringAsync();
+                throw new InvalidOperationException($"{SL["ApiError"]} ({(int)res.StatusCode}) : {body}");
+            }
+
+            Snackbar.Add(SL["ProductStatusUpdated"], Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private int TotalPages()
+        => _result is null ? 1 : Math.Max(1, (int)Math.Ceiling(_result.Total / (double)_pageSize));
+
+    private async Task OnPageChanged(int page)
+    {
+        _page = Math.Clamp(page, 1, TotalPages());
+        await LoadAsync();
+    }
+
+    private static bool HasConfiguredPromotion(ProductListItemDto p)
+        => p.IsPromotionEnabled
+           && p.PromotionPrice.HasValue
+           && p.PromotionPrice.Value > 0m
+           && p.PromotionPrice.Value < p.Price;
+
+    private static string FormatPromoDate(DateTime? utcDate)
+        => utcDate.HasValue ? utcDate.Value.ToLocalTime().ToString("dd/MM/yyyy") : "--";
+
+    private PromoState GetPromotionState(ProductListItemDto p)
+    {
+        if (!HasConfiguredPromotion(p))
+        {
+            return PromoState.None;
+        }
+
+        var now = DateTime.UtcNow;
+        if (p.PromotionStartUtc.HasValue && p.PromotionStartUtc.Value > now)
+        {
+            return PromoState.Upcoming;
+        }
+
+        if (p.PromotionEndUtc.HasValue && p.PromotionEndUtc.Value < now)
+        {
+            return PromoState.Expired;
+        }
+
+        return PromoState.Active;
+    }
+
+    private string PromotionStateLabel(ProductListItemDto p)
+        => GetPromotionState(p) switch
+        {
+            PromoState.None => SL["NoPromotionLabel"],
+            PromoState.Upcoming => SL["PromotionPlanned"],
+            PromoState.Expired => SL["PromotionExpired"],
+            _ => SL["PromotionActive"]
+        };
+
+    private Color PromotionStateColor(ProductListItemDto p)
+        => GetPromotionState(p) switch
+        {
+            PromoState.Active => Color.Warning,
+            PromoState.Upcoming => Color.Info,
+            PromoState.Expired => Color.Default,
+            _ => Color.Default
+        };
+
+    private enum PromoState
+    {
+        None,
+        Upcoming,
+        Expired,
+        Active
+    }
+}
+
+
+
+
+
+

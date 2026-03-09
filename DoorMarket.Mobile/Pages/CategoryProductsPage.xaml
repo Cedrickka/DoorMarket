@@ -1,0 +1,130 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<local:LocalizedContentPage xmlns:local="clr-namespace:DoorMarket.Mobile.Localization" 
+    x:Class="DoorMarket.Mobile.Pages.CategoryProductsPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:components="clr-namespace:DoorMarket.Mobile.Components"
+    xmlns:models="clr-namespace:DoorMarket.Mobile.Models"
+    xmlns:markup="clr-namespace:DoorMarket.Mobile.Markup"
+    xmlns:products="clr-namespace:DoorMarket.Application.DTOs.Products;assembly=DoorMarket.Application"
+    NavigationPage.HasNavigationBar="False">
+
+    <Grid RowDefinitions="Auto,*">
+        <Grid
+            BackgroundColor="{StaticResource DoorBlue}"
+            ColumnDefinitions="Auto,*"
+            ColumnSpacing="16"
+            Padding="{OnPlatform iOS='24,56,24,20', Default='24,50,24,20'}">
+            <ImageButton Clicked="OnBackClicked">
+                <ImageButton.Source>
+                    <FontImageSource FontFamily="fa-solid-900" Glyph="{x:Static models:IconGlyphs.Back}" Color="White" Size="16" />
+                </ImageButton.Source>
+            </ImageButton>
+            <VerticalStackLayout Grid.Column="1" Spacing="8" VerticalOptions="Center">
+                <Label x:Name="TitleLabel" FontFamily="Inter-Bold" FontSize="22" TextColor="White" />
+                <Label FontFamily="Inter-Regular" FontSize="13" Text="{markup:Translate CategoryProductsSubtitle}" TextColor="#DCE9F8" />
+            </VerticalStackLayout>
+        </Grid>
+
+        <Grid Grid.Row="1" Padding="24,16,24,0">
+            <CollectionView
+                ItemsSource="{Binding Products}"
+                SelectionChanged="OnProductSelected"
+                SelectionMode="Single">
+                <CollectionView.Header>
+                    <VerticalStackLayout Spacing="16">
+                        <components:DmSearchBar
+                            x:Name="SearchInput"
+                            Placeholder="{markup:Translate SearchCategoryPlaceholder}"
+                            ReturnType="Search"
+                            Completed="OnSearchCompleted" />
+
+                        <components:DmCard Margin="0">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                                <Label
+                                    FontFamily="Inter-SemiBold"
+                                    FontSize="15"
+                                    Text="{markup:Translate InStockOnly}"
+                                    VerticalOptions="Center" />
+                                <Switch
+                                    x:Name="InStockSwitch"
+                                    Grid.Column="1"
+                                    IsToggled="True"
+                                    OnColor="{StaticResource DoorOrange}"
+                                    Toggled="OnInStockToggled" />
+                            </Grid>
+                        </components:DmCard>
+
+                        <Label
+                            IsVisible="{Binding ShowNoProducts}"
+                            Style="{StaticResource MutedLabelStyle}"
+                            Text="{markup:Translate NoProductsForCategory}" />
+                    </VerticalStackLayout>
+                </CollectionView.Header>
+
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <components:DmCard Margin="0,0,0,12">
+                            <Grid ColumnDefinitions="88,*,Auto" ColumnSpacing="16">
+                                <Frame
+                                    BackgroundColor="{StaticResource SurfaceAltLight}"
+                                    CornerRadius="12"
+                                    HasShadow="False"
+                                    HeightRequest="88"
+                                    Padding="0"
+                                    WidthRequest="88">
+                                    <Image Aspect="AspectFill" Source="{Binding MainImageUrl}" />
+                                </Frame>
+
+                                <VerticalStackLayout Grid.Column="1" Spacing="8" VerticalOptions="Center">
+                                    <Label FontFamily="Inter-SemiBold" FontSize="15" Text="{Binding Name}" />
+                                    <Label Style="{StaticResource CaptionLabelStyle}" Text="{Binding ShopName}" />
+                                    <Label>
+                                        <Label.FormattedText>
+                                            <FormattedString>
+                                                <Span FontFamily="Inter-Bold" FontSize="17" Text="{Binding EffectivePrice, StringFormat='{}{0:0.##}'}" TextColor="{StaticResource DoorOrange}" />
+                                                <Span Text=" " />
+                                                <Span FontFamily="Inter-Bold" FontSize="17" Text="{Binding Currency}" TextColor="{StaticResource DoorOrange}" />
+                                            </FormattedString>
+                                        </Label.FormattedText>
+                                    </Label>
+                                    <Label
+                                        FontFamily="Inter-Regular"
+                                        FontSize="11"
+                                        IsVisible="{Binding HasActivePromotion}"
+                                        Text="{Binding Price, StringFormat='{markup:Translate NormalPriceFormat}'}"
+                                        TextColor="{StaticResource DarkGray}"
+                                        TextDecorations="Strikethrough" />
+                                </VerticalStackLayout>
+
+                                <Frame
+                                    Grid.Column="2"
+                                    BackgroundColor="{StaticResource DoorBlue10}"
+                                    CornerRadius="12"
+                                    HasShadow="False"
+                                    HeightRequest="34"
+                                    Padding="8,6"
+                                    VerticalOptions="Center">
+                                    <Label
+                                        FontFamily="Inter-SemiBold"
+                                        FontSize="12"
+                                        Text="{markup:Translate View}"
+                                        TextColor="{StaticResource DoorBlue}" />
+                                </Frame>
+                            </Grid>
+                        </components:DmCard>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <ActivityIndicator
+                HorizontalOptions="Center"
+                IsRunning="{Binding IsBusy}"
+                IsVisible="{Binding IsBusy}"
+                VerticalOptions="Center" />
+        </Grid>
+    </Grid>
+</local:LocalizedContentPage>
+
+
+

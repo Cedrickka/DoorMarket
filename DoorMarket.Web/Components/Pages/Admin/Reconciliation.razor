@@ -1,0 +1,600 @@
+@page "/admin/reconciliation"
+@using System.Net
+@using System.Net.Http.Json
+@using MudBlazor
+@inject HttpClient Http
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject IStringLocalizer<SharedResource> SL
+
+<div class="dm-page-header">
+    <div class="dm-page-title-wrap">
+        <h1 class="dm-page-h1">@SL["AdminReconciliation"]</h1>
+        <div class="dm-page-sub">@SL["AdminReconciliationSubtitle"]</div>
+    </div>
+</div>
+
+<AuthGuard>
+    @if (!_ready)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudSkeleton Height="32px" Width="220px" Class="mb-2" />
+            <MudSkeleton Height="18px" Width="380px" />
+        </MudPaper>
+    }
+    else if (!Auth.IsAdmin)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@SL["AdminOnlyAccess"]</MudAlert>
+            <MudButton Variant="Variant.Outlined" Class="mt-3" OnClick="@(() => Nav.NavigateTo("/"))">@SL["Back"]</MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Class="pa-4 mt-3 dm-content-card dm-page-shell">
+            <div class="dm-toolbar-row">
+                <MudDatePicker Label="@SL["DateFrom"]" @bind-Date="_from" Variant="Variant.Outlined" />
+                <MudDatePicker Label="@SL["DateTo"]" @bind-Date="_to" Variant="Variant.Outlined" />
+                <MudSelect T="string" Label="@Tr("Statut du paiement", "Payout status")" Variant="Variant.Outlined" Dense="true" @bind-Value="_payoutStatusFilter">
+                    <MudSelectItem T="string" Value="@string.Empty">@Tr("Tous", "All")</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Draft")">@Tr("Brouillon", "Draft")</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Approved")">@Tr("Approuve", "Approved")</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Paid")">@Tr("Paye", "Paid")</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Reversed")">@Tr("Annule", "Reversed")</MudSelectItem>
+                </MudSelect>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Reload">@SL["Apply"]</MudButton>
+            </div>
+
+            <MudDivider Class="my-3" />
+
+            @if (_loading)
+            {
+                <MudSkeleton Height="42px" />
+                <MudSkeleton Height="42px" Class="mt-2" />
+            }
+            else if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_error</MudAlert>
+            }
+            else
+            {
+                <MudTable T="ShopReconciliationRow" Items="_items" Dense="true" Hover="true" Bordered="true" Striped="true">
+                    <HeaderContent>
+                        <MudTh>@SL["Shop"]</MudTh>
+                        <MudTh>@SL["Currency"]</MudTh>
+                        <MudTh>@SL["Orders"]</MudTh>
+                        <MudTh Align="Align.Right">@SL["GrossSalesItems"]</MudTh>
+                        <MudTh Align="Align.Right">@SL["PlatformFeeTotal"]</MudTh>
+                        <MudTh Align="Align.Right">@SL["NetToShopsTotal"]</MudTh>
+                        <MudTh Align="Align.Right">@SL["Actions"]</MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="s">
+                        <MudTd>@s.Name</MudTd>
+                        <MudTd>@s.Currency</MudTd>
+                        <MudTd>@s.OrdersCount</MudTd>
+                        <MudTd Align="Align.Right">@Fmt(s.GrossSalesItems)</MudTd>
+                        <MudTd Align="Align.Right">@Fmt(s.PlatformFee)</MudTd>
+                        <MudTd Align="Align.Right">@Fmt(s.NetToPay)</MudTd>
+                        <MudTd Align="Align.Right">
+                            <AdminRowActionMenu AriaLabel="@SL["Actions"]">
+                                <MudMenuItem Icon="@Icons.Material.Filled.Payments"
+                                             OnClick="@(() => OpenPayoutDialog(s))">
+                                    @SL["Payout"]
+                                </MudMenuItem>
+                            </AdminRowActionMenu>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+
+                <MudDivider Class="my-4" />
+
+                <MudText Typo="Typo.h6" Class="mb-2">@Tr("Paiements", "Payouts")</MudText>
+                @if (_payoutSummary.Count > 0)
+                {
+                    <MudTable T="PayoutCurrencySummaryRow" Items="_payoutSummary" Dense="true" Hover="true" Bordered="true" Striped="true" Class="mb-3">
+                        <HeaderContent>
+                            <MudTh>@SL["Currency"]</MudTh>
+                            <MudTh Align="Align.Right">@Tr("Total", "Total")</MudTh>
+                            <MudTh Align="Align.Right">@Tr("Brouillon", "Draft")</MudTh>
+                            <MudTh Align="Align.Right">@Tr("Approuve", "Approved")</MudTh>
+                            <MudTh Align="Align.Right">@Tr("Paye", "Paid")</MudTh>
+                            <MudTh Align="Align.Right">@Tr("Annule", "Reversed")</MudTh>
+                            <MudTh Align="Align.Right">@Tr("Net", "Net")</MudTh>
+                            <MudTh Align="Align.Right">@Tr("Deja paye", "Paid out")</MudTh>
+                        </HeaderContent>
+                        <RowTemplate Context="s">
+                            <MudTd>@s.Currency</MudTd>
+                            <MudTd Align="Align.Right">@s.TotalCount</MudTd>
+                            <MudTd Align="Align.Right">@s.DraftCount</MudTd>
+                            <MudTd Align="Align.Right">@s.ApprovedCount</MudTd>
+                            <MudTd Align="Align.Right">@s.PaidCount</MudTd>
+                            <MudTd Align="Align.Right">@s.ReversedCount</MudTd>
+                            <MudTd Align="Align.Right">@Fmt(s.TotalNetToPay)</MudTd>
+                            <MudTd Align="Align.Right">@Fmt(s.TotalPaidOut)</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+
+                <MudPaper Class="pa-3 mb-3 dm-content-card-soft dm-panel dm-panel-soft">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                        <MudText Typo="Typo.h6">@Tr("Assistant de rapprochement", "Reconciliation assistant")</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @Tr($"SLA brouillon: {_assistant?.DraftSlaDays} j | SLA approuve: {_assistant?.ApprovedSlaDays} j", $"Draft SLA: {_assistant?.DraftSlaDays} d | Approved SLA: {_assistant?.ApprovedSlaDays} d")
+                        </MudText>
+                    </div>
+
+                    @if (_assistant is null)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">@Tr("Aucun insight assistant pour le filtre courant.", "No assistant insight for current filter.")</MudText>
+                    }
+                    else
+                    {
+                        <MudGrid Class="mb-2">
+                            <MudItem xs="6" md="3"><MudText Typo="Typo.body2">@Tr($"Brouillons en retard: {_assistant.Summary.StaleDraftCount}", $"Stale drafts: {_assistant.Summary.StaleDraftCount}")</MudText></MudItem>
+                            <MudItem xs="6" md="3"><MudText Typo="Typo.body2">@Tr($"Approuves en retard: {_assistant.Summary.StaleApprovedCount}", $"Stale approved: {_assistant.Summary.StaleApprovedCount}")</MudText></MudItem>
+                            <MudItem xs="6" md="3"><MudText Typo="Typo.body2">@Tr($"Paiements partiels: {_assistant.Summary.PartialPaidCount}", $"Partial paid: {_assistant.Summary.PartialPaidCount}")</MudText></MudItem>
+                            <MudItem xs="6" md="3"><MudText Typo="Typo.body2">@Tr($"Chevauchements: {_assistant.Summary.OverlapPairCount}", $"Overlaps: {_assistant.Summary.OverlapPairCount}")</MudText></MudItem>
+                        </MudGrid>
+
+                        @if (_assistant.Insights.Count == 0)
+                        {
+                            <MudAlert Severity="Severity.Success" Variant="Variant.Outlined">@Tr("Aucune anomalie detectee sur cette fenetre de rapprochement.", "No anomaly detected for current reconciliation window.")</MudAlert>
+                        }
+                        else
+                        {
+                            <MudTable T="ReconciliationInsightRow" Items="_assistant.Insights" Dense="true" Hover="true" Bordered="true" Striped="true">
+                                <HeaderContent>
+                                    <MudTh>@Tr("Severite", "Severity")</MudTh>
+                                    <MudTh>@Tr("Detail", "Detail")</MudTh>
+                                    <MudTh>@Tr("Action", "Action")</MudTh>
+                                    <MudTh Align="Align.Right">@Tr("Impacte", "Affected")</MudTh>
+                                </HeaderContent>
+                                <RowTemplate Context="insight">
+                                    <MudTd><MudChip T="string" Color="@SeverityColor(insight.Severity)" Size="Size.Small">@insight.Severity</MudChip></MudTd>
+                                    <MudTd>@insight.Detail</MudTd>
+                                    <MudTd>@insight.RecommendedAction</MudTd>
+                                    <MudTd Align="Align.Right">@insight.AffectedCount</MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        }
+                    }
+                </MudPaper>
+
+                @if (_payouts.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4">@Tr("Aucun paiement pour ce filtre.", "No payouts for this filter.")</MudAlert>
+                }
+                else
+                {
+                    <MudTable T="ShopPayoutDto" Items="_payouts" Dense="true" Hover="true" Bordered="true" Striped="true">
+                        <HeaderContent>
+                            <MudTh>@SL["Shop"]</MudTh>
+                            <MudTh>@SL["Currency"]</MudTh>
+                            <MudTh>@Tr("Statut", "Status")</MudTh>
+                            <MudTh Align="Align.Right">@Tr("Net", "Net")</MudTh>
+                            <MudTh Align="Align.Right">@Tr("Montant", "Amount")</MudTh>
+                            <MudTh>@SL["CreatedAt"]</MudTh>
+                            <MudTh Align="Align.Right">@SL["Actions"]</MudTh>
+                        </HeaderContent>
+                        <RowTemplate Context="p">
+                            <MudTd>@p.ShopName</MudTd>
+                            <MudTd>@p.Currency</MudTd>
+                            <MudTd><span class="@GetStatusBadgeCss(p.Status)">@p.Status</span></MudTd>
+                            <MudTd Align="Align.Right">@Fmt(p.NetToPay)</MudTd>
+                            <MudTd Align="Align.Right">@Fmt(p.AmountPaid)</MudTd>
+                            <MudTd>@p.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</MudTd>
+                            <MudTd Align="Align.Right">
+                                <AdminRowActionMenu AriaLabel="@SL["Actions"]">
+                                    @if (string.Equals(p.Status, "Draft", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <MudMenuItem Icon="@Icons.Material.Filled.TaskAlt"
+                                                     OnClick="@(() => ApprovePayout(p.Id))">
+                                            @Tr("Approuver", "Approve")
+                                        </MudMenuItem>
+                                    }
+                                    else if (string.Equals(p.Status, "Approved", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <MudMenuItem Icon="@Icons.Material.Filled.AttachMoney"
+                                                     OnClick="@(() => MarkPayoutPaid(p.Id))">
+                                            @Tr("Marquer paye", "Mark Paid")
+                                        </MudMenuItem>
+                                    }
+                                    else if (string.Equals(p.Status, "Paid", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <MudMenuItem Icon="@Icons.Material.Filled.Undo"
+                                                     OnClick="@(() => ReversePayout(p.Id))">
+                                            @Tr("Annuler", "Reverse")
+                                        </MudMenuItem>
+                                    }
+                                </AdminRowActionMenu>
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                    <MudDivider Class="my-4" />
+                }
+
+                <MudGrid Class="dm-equal-grid">
+                    <MudItem xs="12" md="6">
+                        <MudPaper Class="pa-3 dm-panel">
+                            <MudText Typo="Typo.h6">@SL["BankBalance"]</MudText>
+                            @if (_latestSnapshot is null)
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">@SL["NoData"]</MudText>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body1">@Fmt(_latestSnapshot.Balance)</MudText>
+                                <MudText Typo="Typo.caption">@_latestSnapshot.AsOfDateUtc.ToLocalTime():yyyy-MM-dd</MudText>
+                            }
+                            <MudDivider Class="my-2" />
+                            <MudNumericField T="decimal" Label="@SL["Balance"]" Variant="Variant.Outlined" @bind-Value="_newBalance" />
+                            <MudDatePicker Label="@SL["AsOfDate"]" Variant="Variant.Outlined" @bind-Date="_newBalanceDate" />
+                            <MudTextField T="string" Label="@SL["Note"]" Variant="Variant.Outlined" @bind-Value="_newBalanceNote" />
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveSnapshot">@SL["Save"]</MudButton>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudPaper Class="pa-3 dm-panel">
+                            <MudText Typo="Typo.h6">@SL["Reconciliation"]</MudText>
+                            <MudText Typo="Typo.body2">@SL["CashInExpected"]: @Fmt(_kpis?.CashInExpected ?? 0m)</MudText>
+                            <MudText Typo="Typo.body2">@SL["TotalPaidOut"]: @Fmt(_totalPaidOut)</MudText>
+                            <MudText Typo="Typo.body2">@SL["ExpectedBank"]: @Fmt(ExpectedBank())</MudText>
+                            <MudText Typo="Typo.body2">@SL["Gap"]: @Fmt(Gap())</MudText>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            }
+        </MudPaper>
+    }
+</AuthGuard>
+
+@code {
+    private bool _ready;
+    private bool _loading = true;
+    private string? _error;
+    private DateTime? _from = DateTime.UtcNow.AddDays(-30);
+    private DateTime? _to = DateTime.UtcNow;
+    private string _payoutStatusFilter = string.Empty;
+    private List<ShopReconciliationRow> _items = new();
+    private List<ShopPayoutDto> _payouts = new();
+    private List<PayoutCurrencySummaryRow> _payoutSummary = new();
+    private ReconciliationAssistantDto? _assistant;
+    private decimal _totalPaidOut;
+
+    private FinanceKpis? _kpis;
+    private BankBalanceSnapshotDto? _latestSnapshot;
+    private decimal _newBalance;
+    private DateTime? _newBalanceDate = DateTime.UtcNow;
+    private string? _newBalanceNote;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var t0 = DateTime.UtcNow;
+        while (!Auth.IsReady && (DateTime.UtcNow - t0).TotalSeconds < 5)
+            await Task.Delay(30);
+
+        _ready = true;
+        if (!Auth.IsAuthenticated || !Auth.IsAdmin)
+        {
+            StateHasChanged();
+            return;
+        }
+
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    private async Task Reload()
+    {
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            var query = BuildQuery();
+            var res = await GetJsonAsync<AdminReconciliationResponse>($"api/admin/reconciliation/shops{query}");
+            _items = res?.Items?.ToList() ?? new List<ShopReconciliationRow>();
+            _totalPaidOut = res?.TotalPaidOut ?? 0m;
+            _payouts = (await GetJsonAsync<List<ShopPayoutDto>>($"api/admin/reconciliation/payouts{query}")) ?? new();
+            _payoutSummary = (await GetJsonAsync<List<PayoutCurrencySummaryRow>>($"api/admin/reconciliation/payouts/summary{query}")) ?? new();
+            _assistant = await GetJsonAsync<ReconciliationAssistantDto>($"api/admin/reconciliation/assistant{query}");
+            _kpis = await GetJsonAsync<FinanceKpis>($"api/admin/analytics/kpis{query}");
+            _latestSnapshot = await GetJsonAsync<BankBalanceSnapshotDto>("api/admin/bank/balance-snapshot/latest");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private string BuildQuery()
+    {
+        var list = new List<string>();
+        if (_from.HasValue) list.Add($"from={Uri.EscapeDataString(_from.Value.ToString("yyyy-MM-dd"))}");
+        if (_to.HasValue) list.Add($"to={Uri.EscapeDataString(_to.Value.ToString("yyyy-MM-dd"))}");
+        if (!string.IsNullOrWhiteSpace(_payoutStatusFilter)) list.Add($"status={Uri.EscapeDataString(_payoutStatusFilter)}");
+        return list.Count == 0 ? string.Empty : "?" + string.Join("&", list);
+    }
+
+    private async Task<T?> GetJsonAsync<T>(string url)
+    {
+        using var response = await Http.GetAsync(url);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            var details = string.IsNullOrWhiteSpace(body) ? Tr("Aucun detail.", "No details.") : body;
+            throw new InvalidOperationException($"API {(int)response.StatusCode} {response.ReasonPhrase}: {details}");
+        }
+
+        if (response.Content.Headers.ContentLength == 0)
+        {
+            return default;
+        }
+
+        return await response.Content.ReadFromJsonAsync<T>();
+    }
+
+    private async Task OpenPayoutDialog(ShopReconciliationRow row)
+    {
+        var parameters = new DialogParameters<DoorMarket.Web.Components.AdminPayoutDialog>
+        {
+            { x => x.ShopId, row.ShopId },
+            { x => x.ShopName, row.Name },
+            { x => x.Currency, row.Currency },
+            { x => x.PeriodStart, _from ?? DateTime.UtcNow.AddDays(-30) },
+            { x => x.PeriodEnd, _to ?? DateTime.UtcNow }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await Dialog.ShowAsync<DoorMarket.Web.Components.AdminPayoutDialog>(SL["Payout"], parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            await LoadAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task ApprovePayout(Guid payoutId)
+    {
+        try
+        {
+            var res = await Http.PostAsJsonAsync($"api/admin/reconciliation/payouts/{payoutId}/approve", new { note = Tr("Approuve depuis le dashboard", "Approved from dashboard") });
+            if (!res.IsSuccessStatusCode)
+            {
+                throw await BuildApiError(res);
+            }
+
+            Snackbar.Add(Tr("Paiement approuve.", "Payout approved."), Severity.Success);
+            await LoadAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task MarkPayoutPaid(Guid payoutId)
+    {
+        try
+        {
+            var res = await Http.PostAsJsonAsync(
+                $"api/admin/reconciliation/payouts/{payoutId}/mark-paid",
+                new { paidOutAtUtc = DateTime.UtcNow, note = Tr("Marque paye depuis le dashboard", "Marked paid from dashboard") });
+            if (!res.IsSuccessStatusCode)
+            {
+                throw await BuildApiError(res);
+            }
+
+            Snackbar.Add(Tr("Paiement marque comme paye.", "Payout marked as paid."), Severity.Success);
+            await LoadAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task ReversePayout(Guid payoutId)
+    {
+        var confirm = await Dialog.ShowMessageBox(
+            title: Tr("Annuler le paiement", "Reverse payout"),
+            markupMessage: (MarkupString)Tr("Cette action va annuler le paiement. Continuer ?", "This action will reverse the payout. Continue?"),
+            yesText: Tr("Annuler", "Reverse"),
+            cancelText: Tr("Annuler", "Cancel"));
+        if (confirm != true)
+        {
+            return;
+        }
+
+        try
+        {
+            var res = await Http.PostAsJsonAsync(
+                $"api/admin/reconciliation/payouts/{payoutId}/reverse",
+                new { reason = Tr("Annule depuis le dashboard", "Reversed from dashboard") });
+            if (!res.IsSuccessStatusCode)
+            {
+                throw await BuildApiError(res);
+            }
+
+            Snackbar.Add(Tr("Paiement annule.", "Payout reversed."), Severity.Success);
+            await LoadAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task SaveSnapshot()
+    {
+        try
+        {
+            var req = new
+            {
+                asOfDateUtc = _newBalanceDate ?? DateTime.UtcNow,
+                balance = _newBalance,
+                note = _newBalanceNote
+            };
+            var res = await Http.PostAsJsonAsync("api/admin/bank/balance-snapshot", req);
+            if (!res.IsSuccessStatusCode)
+                throw await BuildApiError(res);
+
+            Snackbar.Add(SL["Saved"], Severity.Success);
+            _latestSnapshot = await Http.GetFromJsonAsync<BankBalanceSnapshotDto>("api/admin/bank/balance-snapshot/latest");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private decimal ExpectedBank()
+        => (_kpis?.CashInExpected ?? 0m) - _totalPaidOut;
+
+    private decimal Gap()
+        => (_latestSnapshot?.Balance ?? 0m) - ExpectedBank();
+
+    private async Task<Exception> BuildApiError(HttpResponseMessage res)
+    {
+        var body = await res.Content.ReadAsStringAsync();
+        return res.StatusCode switch
+        {
+            HttpStatusCode.Unauthorized => new InvalidOperationException(SL["Non autorise (401)."]),
+            HttpStatusCode.Forbidden => new InvalidOperationException(SL["Acces refuse (403). Admin requis."]),
+            HttpStatusCode.NotFound => new InvalidOperationException(SL["Route introuvable (404)."]),
+            HttpStatusCode.Conflict => new InvalidOperationException(string.IsNullOrWhiteSpace(body) ? SL["Conflit (409)."] : body),
+            _ => new InvalidOperationException($"{SL["Erreur API"]} ({(int)res.StatusCode}) : {body}")
+        };
+    }
+
+    private static string Fmt(decimal value) => value.ToString("0.##");
+
+    private static string Tr(string fr, string en)
+        => string.Equals(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "en", StringComparison.OrdinalIgnoreCase) ? en : fr;
+
+    private static string GetStatusBadgeCss(string? status)
+    {
+        return status?.Trim().ToLowerInvariant() switch
+        {
+            "draft" => "dm-status-badge dm-status-badge-draft",
+            "approved" => "dm-status-badge dm-status-badge-planned",
+            "paid" => "dm-status-badge dm-status-badge-live",
+            "reversed" => "dm-status-badge dm-status-badge-expired",
+            _ => "dm-status-badge dm-status-badge-inactive"
+        };
+    }
+
+    private static Color SeverityColor(string? severity)
+    {
+        return severity?.Trim().ToLowerInvariant() switch
+        {
+            "critical" => Color.Error,
+            "high" => Color.Warning,
+            "medium" => Color.Info,
+            _ => Color.Default
+        };
+    }
+
+    private sealed record ShopReconciliationRow(
+        Guid ShopId,
+        string Name,
+        string Currency,
+        int OrdersCount,
+        decimal GrossSalesItems,
+        decimal PlatformFee,
+        decimal NetToPay);
+
+    private sealed record AdminReconciliationResponse(IReadOnlyList<ShopReconciliationRow> Items, decimal TotalPaidOut);
+
+    private sealed record ShopPayoutDto(
+        Guid Id,
+        Guid ShopId,
+        string ShopName,
+        string Currency,
+        string Status,
+        DateTime PeriodStartUtc,
+        DateTime PeriodEndUtc,
+        decimal GrossSalesItems,
+        decimal PlatformFee,
+        decimal NetToPay,
+        decimal AmountPaid,
+        DateTime? PaidOutAtUtc,
+        string? Reference,
+        DateTime CreatedAtUtc,
+        DateTime? ApprovedAtUtc,
+        DateTime? ReversedAtUtc,
+        string? ReversalReason);
+
+    private sealed record FinanceKpis(
+        int OrdersCount,
+        int PaidOrdersCount,
+        decimal GrossSalesItems,
+        decimal DeliveryRevenue,
+        decimal PlatformFeeTotal,
+        decimal PlatformRevenueTotal,
+        decimal NetToShopsTotal,
+        decimal AvgBasket,
+        decimal CashInExpected);
+
+    private sealed record BankBalanceSnapshotDto(Guid Id, DateTime AsOfDateUtc, decimal Balance, string? Note, DateTime CreatedAtUtc);
+
+    private sealed record PayoutCurrencySummaryRow(
+        string Currency,
+        int TotalCount,
+        int DraftCount,
+        int ApprovedCount,
+        int PaidCount,
+        int ReversedCount,
+        decimal TotalNetToPay,
+        decimal TotalPaidOut);
+
+    private sealed record ReconciliationAssistantDto(
+        DateTime? FromUtc,
+        DateTime? ToUtc,
+        int DraftSlaDays,
+        int ApprovedSlaDays,
+        ReconciliationAssistantSummaryRow Summary,
+        List<ReconciliationInsightRow> Insights);
+
+    private sealed record ReconciliationAssistantSummaryRow(
+        int TotalPayouts,
+        int StaleDraftCount,
+        int StaleApprovedCount,
+        int PartialPaidCount,
+        int PaidWithoutReferenceCount,
+        int OverlapPairCount,
+        int ReversedCount,
+        decimal ReversalRatePercent,
+        decimal PartialGapTotal);
+
+    private sealed record ReconciliationInsightRow(
+        string Code,
+        string Severity,
+        string Detail,
+        string RecommendedAction,
+        int AffectedCount,
+        List<Guid> PayoutIds);
+}

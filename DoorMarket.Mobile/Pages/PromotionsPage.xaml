@@ -1,0 +1,83 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<local:LocalizedContentPage xmlns:local="clr-namespace:DoorMarket.Mobile.Localization"     x:Class="DoorMarket.Mobile.Pages.PromotionsPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:components="clr-namespace:DoorMarket.Mobile.Components"
+    xmlns:markup="clr-namespace:DoorMarket.Mobile.Markup"
+    xmlns:models="clr-namespace:DoorMarket.Mobile.Models"
+    NavigationPage.HasNavigationBar="False">
+
+    <Grid RowDefinitions="Auto,*">
+        <components:DmHeader
+            HasBack="True"
+            BackCommand="{Binding BackCommand}"
+            Subtitle="{markup:Translate PromotionsSubtitle}"
+            Title="{markup:Translate PromotionsTitle}" />
+
+        <Grid Grid.Row="1" Padding="24,16,24,0">
+            <CollectionView
+                ItemsSource="{Binding Promotions}"
+                SelectionChanged="OnProductSelected"
+                SelectionMode="Single">
+                <CollectionView.EmptyView>
+                    <Label
+                        Style="{StaticResource MutedLabelStyle}"
+                        Text="{markup:Translate NoPromotionActive}" />
+                </CollectionView.EmptyView>
+
+                <CollectionView.ItemsLayout>
+                    <GridItemsLayout HorizontalItemSpacing="16" Orientation="Vertical" Span="2" VerticalItemSpacing="16" />
+                </CollectionView.ItemsLayout>
+
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Frame
+                            BackgroundColor="{StaticResource White}"
+                            BorderColor="{StaticResource SoftGray}"
+                            CornerRadius="16"
+                            HasShadow="False"
+                            Padding="0">
+                            <Grid RowDefinitions="118,Auto" RowSpacing="0">
+                                <Frame
+                                    BackgroundColor="{StaticResource SurfaceAltLight}"
+                                    CornerRadius="12"
+                                    HasShadow="False"
+                                    Margin="8,8,8,0"
+                                    Padding="0">
+                                    <Image Aspect="AspectFill" Source="{Binding MainImageUrl}" />
+                                </Frame>
+                                <VerticalStackLayout Grid.Row="1" Padding="10" Spacing="8">
+                                    <Label FontFamily="Inter-SemiBold" FontSize="14" LineBreakMode="TailTruncation" Text="{Binding Name}" />
+                                    <Label Style="{StaticResource CaptionLabelStyle}" Text="{Binding ShopName}" />
+                                    <Label>
+                                        <Label.FormattedText>
+                                            <FormattedString>
+                                                <Span FontFamily="Inter-Bold" FontSize="16" Text="{Binding EffectivePrice, StringFormat='{}{0:0.##}'}" TextColor="{StaticResource DoorOrange}" />
+                                                <Span Text=" " />
+                                                <Span FontFamily="Inter-Bold" FontSize="16" Text="{Binding Currency}" TextColor="{StaticResource DoorOrange}" />
+                                            </FormattedString>
+                                        </Label.FormattedText>
+                                    </Label>
+                                    <Label
+                                        FontFamily="Inter-Regular"
+                                        FontSize="11"
+                                        IsVisible="{Binding HasActivePromotion}"
+                                        Text="{Binding Price, StringFormat='{markup:Translate NormalPriceFormat}'}"
+                                        TextColor="{StaticResource DarkGray}"
+                                        TextDecorations="Strikethrough" />
+                                </VerticalStackLayout>
+                            </Grid>
+                        </Frame>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <ActivityIndicator
+                HorizontalOptions="Center"
+                IsRunning="{Binding IsBusy}"
+                IsVisible="{Binding IsBusy}"
+                VerticalOptions="Center" />
+        </Grid>
+    </Grid>
+</local:LocalizedContentPage>
+

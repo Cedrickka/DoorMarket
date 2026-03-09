@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<?xaml-comp compile="true" ?>
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <!-- Brand -->
+    <Color x:Key="DoorBlue">#002D5E</Color>
+    <Color x:Key="DoorOrange">#FF7A00</Color>
+
+    <!-- Neutrals -->
+    <Color x:Key="SoftGray">#EAEAEA</Color>
+    <Color x:Key="DarkGray">#1A1A1A</Color>
+    <Color x:Key="White">#FFFFFF</Color>
+    <Color x:Key="Black">#000000</Color>
+
+    <Color x:Key="DoorBlue70">#B3002D5E</Color>
+    <Color x:Key="DoorBlue10">#1A002D5E</Color>
+    <Color x:Key="DoorBlue16">#29002D5E</Color>
+    <Color x:Key="DoorOrange12">#1FFF7A00</Color>
+    <Color x:Key="DoorOrange14">#24FF7A00</Color>
+
+    <!-- Semantic light -->
+    <Color x:Key="DmBgLight">#F2F4F7</Color>
+    <Color x:Key="DmSurfaceLight">#FFFFFF</Color>
+    <Color x:Key="DmSurfaceAltLight">#F7F8FA</Color>
+    <Color x:Key="DmBorderLight">#E6E8EC</Color>
+    <Color x:Key="DmTextPrimaryLight">#0F172A</Color>
+    <Color x:Key="DmTextSecondaryLight">#5B6572</Color>
+    <Color x:Key="DmTextMutedLight">#8A94A6</Color>
+    <Color x:Key="DmIconBgLight">#EEF2F8</Color>
+    <Color x:Key="DmOrangeSoftBgLight">#FFF1E6</Color>
+    <Color x:Key="DmSuccessLight">#22C55E</Color>
+    <Color x:Key="DmWarningLight">#F59E0B</Color>
+    <Color x:Key="DmErrorLight">#EF4444</Color>
+    <Color x:Key="DmShadowLight">#14000000</Color>
+    <Color x:Key="DmInputBgLight">#F7F8FA</Color>
+    <Color x:Key="DmChipBgLight">#F7F8FA</Color>
+    <Color x:Key="DmHeaderBgLight">#002D5E</Color>
+    <Color x:Key="DmHeaderTextLight">#FFFFFF</Color>
+    <Color x:Key="DmTopBarBgLight">#FFFFFF</Color>
+    <Color x:Key="DmTopBarBorderLight">#E6E8EC</Color>
+    <Color x:Key="DmBottomBarBgLight">#FFFFFF</Color>
+    <Color x:Key="DmBottomBarBorderLight">#E6E8EC</Color>
+    <Color x:Key="DmHeroStartLight">#0A366D</Color>
+    <Color x:Key="DmHeroEndLight">#002B57</Color>
+    <Color x:Key="DmSuccessSoftLight">#EAF9EF</Color>
+    <Color x:Key="DmWarningSoftLight">#FFF4E5</Color>
+    <Color x:Key="DmErrorSoftLight">#FEEBEC</Color>
+
+    <!-- Semantic dark -->
+    <Color x:Key="DmBgDark">#0B1220</Color>
+    <Color x:Key="DmSurfaceDark">#121B2D</Color>
+    <Color x:Key="DmSurfaceAltDark">#18223A</Color>
+    <Color x:Key="DmBorderDark">#22304F</Color>
+    <Color x:Key="DmTextPrimaryDark">#E9EEF6</Color>
+    <Color x:Key="DmTextSecondaryDark">#AAB4C3</Color>
+    <Color x:Key="DmTextMutedDark">#7E8AA0</Color>
+    <Color x:Key="DmIconBgDark">#1C2945</Color>
+    <Color x:Key="DmOrangeSoftBgDark">#2A1A10</Color>
+    <Color x:Key="DmSuccessDark">#22C55E</Color>
+    <Color x:Key="DmWarningDark">#F59E0B</Color>
+    <Color x:Key="DmErrorDark">#F87171</Color>
+    <Color x:Key="DmShadowDark">#66000000</Color>
+    <Color x:Key="DmInputBgDark">#18223A</Color>
+    <Color x:Key="DmChipBgDark">#18223A</Color>
+    <Color x:Key="DmHeaderBgDark">#001F44</Color>
+    <Color x:Key="DmHeaderTextDark">#FFFFFF</Color>
+    <Color x:Key="DmTopBarBgDark">#121B2D</Color>
+    <Color x:Key="DmTopBarBorderDark">#22304F</Color>
+    <Color x:Key="DmBottomBarBgDark">#121B2D</Color>
+    <Color x:Key="DmBottomBarBorderDark">#22304F</Color>
+    <Color x:Key="DmHeroStartDark">#0F315D</Color>
+    <Color x:Key="DmHeroEndDark">#0A274B</Color>
+    <Color x:Key="DmSuccessSoftDark">#173827</Color>
+    <Color x:Key="DmWarningSoftDark">#3A2A10</Color>
+    <Color x:Key="DmErrorSoftDark">#3B1D24</Color>
+
+    <!-- AppTheme bindings handled in styles/components via AppThemeBinding -->
+
+    <!-- Legacy aliases (kept for compatibility) -->
+    <Color x:Key="SuccessGreen">#22C55E</Color>
+    <Color x:Key="WarningYellow">#F59E0B</Color>
+    <Color x:Key="ErrorRed">#EF4444</Color>
+    <Color x:Key="BgLight">#F2F4F7</Color>
+    <Color x:Key="SurfaceLight">#FFFFFF</Color>
+    <Color x:Key="SurfaceAltLight">#F7F8FA</Color>
+</ResourceDictionary>

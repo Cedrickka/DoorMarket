@@ -1,0 +1,53 @@
+# Visual Studio / VS Code
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# OS
+.DS_Store
+Thumbs.db
+
+# .NET build outputs
+**/bin/
+**/obj/
+artifacts/
+TestResults/
+*.trx
+
+# Flutter / Dart
+**/.dart_tool/
+**/.packages
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.pub-cache/
+**/build/
+
+# Android / Gradle
+**/.gradle/
+**/local.properties
+**/key.properties
+**/*.jks
+**/*.keystore
+
+# iOS / Xcode
+**/Pods/
+**/.symlinks/
+**/Flutter/ephemeral/
+**/Runner.xcworkspace/xcuserdata/
+**/xcuserdata/
+**/*.xcuserstate
+
+# Secrets / env
+*.p8
+*.pem
+*.key
+*.env
+*.env.*
+**/appsettings.*.local.json
+
+# Local temp/debug files
+tmp_*.txt
+*.log

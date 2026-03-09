@@ -1,0 +1,337 @@
+﻿@page "/login"
+@using System.IdentityModel.Tokens.Jwt
+@using System.Net
+@using System.Net.Http.Headers
+@using System.Net.Http.Json
+@using System.Text.Json
+@using System.Globalization
+@using MudBlazor
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject DoorMarket.Web.Auth.TokenStore Tokens
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject ISnackbar Snackbar
+@inject DoorMarket.Web.Services.CartApiClient CartApi
+@inject DoorMarket.Web.Services.GuestCartService GuestCart
+
+<PageTitle>@SL["LoginPageTitle"]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-6">
+    <MudPaper Class="pa-5" Elevation="2">
+        <MudText Typo="Typo.h5" Style="font-weight:900">@SL["LoginPageTitle"]</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+            @SL["LoginSubtitle"]
+        </MudText>
+
+        <MudForm @ref="_form">
+            <MudTextField T="string"
+                          Label="@SL["EmailOrPhone"]"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          Immediate="true"
+                          @bind-Value="_login" />
+
+            <MudTextField T="string"
+                          Label="@SL["Password"]"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          InputType="@PasswordInputType"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@PasswordIcon"
+                          OnAdornmentClick="TogglePasswordVisibility"
+                          Immediate="true"
+                          Class="mt-3"
+                          @bind-Value="_password" />
+
+            <MudCheckBox T="bool" @bind-Checked="_rememberMe" Color="Color.Primary" Class="mt-3">
+                @SL["KeepSession"]
+            </MudCheckBox>
+
+            <MudButton Color="Color.Primary"
+                       Variant="Variant.Filled"
+                       Class="mt-4"
+                       FullWidth="true"
+                       Disabled="_loading"
+                       OnClick="DoLogin">
+                @if (_loading)
+                {
+                    <MudProgressCircular Indeterminate="true" Style="width:16px;height:16px" Class="me-2" />
+                    <span>@SL["SigningIn"]</span>
+                }
+                else
+                {
+                    <span>@SL["SignIn"]</span>
+                }
+            </MudButton>
+
+            <MudButton Variant="Variant.Outlined"
+                       FullWidth="true"
+                       Class="mt-2"
+                       Disabled="_loading"
+                       OnClick="@(() => Nav.NavigateTo(BuildRegisterUrl()))">
+                @SL["CreateAccount"]
+            </MudButton>
+        </MudForm>
+
+        <MudDivider Class="my-4" />
+        <MudText Typo="Typo.caption" Class="dm-muted dm-auth-legal">
+            @T("En continuant, vous acceptez nos", "By continuing, you agree to our")
+            <MudLink Href="/terms" Class="ms-1 me-1">@T("Conditions d'utilisation", "Terms of Service")</MudLink>
+            @T("et notre", "and our")
+            <MudLink Href="/privacy" Class="ms-1">@T("Politique de confidentialite", "Privacy Policy")</MudLink>.
+        </MudText>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private MudForm? _form;
+    private string _login = string.Empty;
+    private string _password = string.Empty;
+    private bool _showPassword;
+    private bool _rememberMe = true;
+    private bool _loading;
+    private string? _returnUrl;
+    private InputType PasswordInputType => _showPassword ? InputType.Text : InputType.Password;
+    private string PasswordIcon => _showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility;
+
+    protected override void OnInitialized()
+    {
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        if (Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query).TryGetValue("returnUrl", out var returnUrl))
+        {
+            var candidate = returnUrl.ToString();
+            if (IsSafeReturnUrl(candidate))
+            {
+                _returnUrl = NormalizeReturnUrl(candidate);
+            }
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        if (Auth.IsReady && Auth.IsAuthenticated)
+        {
+            Nav.NavigateTo(GetDashboardUrl(), forceLoad: false);
+            return;
+        }
+
+        try
+        {
+            _rememberMe = await Tokens.GetRememberMeAsync();
+            StateHasChanged();
+        }
+        catch
+        {
+            // Ignore storage availability issues during prerender.
+        }
+    }
+
+    private async Task DoLogin()
+    {
+        if (_loading)
+        {
+            return;
+        }
+
+        if (_form is not null)
+        {
+            await _form.Validate();
+            if (!_form.IsValid)
+            {
+                Snackbar.Add(SL["FillCredentials"], Severity.Warning);
+                return;
+            }
+        }
+
+        _loading = true;
+
+        try
+        {
+            var req = new LoginRequest(_login.Trim(), _password);
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+            var res = await Http.PostAsJsonAsync("api/auth/login", req, cts.Token);
+            if (!res.IsSuccessStatusCode)
+            {
+                var body = await res.Content.ReadAsStringAsync();
+                var apiError = ExtractApiError(body);
+                if (res.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+                {
+                    throw new InvalidOperationException(SL["InvalidCredentials"]);
+                }
+
+                var message = string.IsNullOrWhiteSpace(apiError)
+                    ? $"{SL["ApiError"]} ({(int)res.StatusCode})"
+                    : apiError;
+                throw new InvalidOperationException(message);
+            }
+
+            var auth = await res.Content.ReadFromJsonAsync<LoginResult>();
+            if (auth is null)
+            {
+                throw new InvalidOperationException(SL["InvalidToken"]);
+            }
+
+            if (auth.OtpRequired)
+            {
+                Snackbar.Add(SL["OtpLoginDisabled"], Severity.Warning);
+                return;
+            }
+
+            await HandleAuthSuccess(auth.AccessToken);
+        }
+        catch (TaskCanceledException)
+        {
+            Auth.SetUnauthenticated();
+            Snackbar.Add(SL["ApiTimeout"], Severity.Error);
+        }
+        catch (HttpRequestException ex)
+        {
+            Auth.SetUnauthenticated();
+            Snackbar.Add($"{SL["ApiError"]}: {ex.Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Auth.SetUnauthenticated();
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleAuthSuccess(string accessToken)
+    {
+        await Tokens.SetAsync(accessToken, _rememberMe);
+        Http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        try
+        {
+            await GuestCart.MergeIntoUserCartAsync(CartApi);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
+
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(accessToken);
+        var role =
+            jwt.Claims.FirstOrDefault(c => c.Type == "role")?.Value ??
+            jwt.Claims.FirstOrDefault(c => c.Type.EndsWith("/role"))?.Value;
+        var email =
+            jwt.Claims.FirstOrDefault(c => c.Type == "email")?.Value ??
+            jwt.Claims.FirstOrDefault(c => c.Type.EndsWith("/emailaddress"))?.Value;
+
+        Auth.SetAuthenticated(role, email);
+        Snackbar.Add(SL["LoginSuccess"], Severity.Success);
+        if (!string.IsNullOrWhiteSpace(_returnUrl))
+        {
+            Nav.NavigateTo(_returnUrl!, forceLoad: false);
+            return;
+        }
+
+        Nav.NavigateTo(GetDashboardUrl(role), forceLoad: false);
+    }
+
+    private string GetDashboardUrl(string? role = null)
+    {
+        role ??= Auth.Role;
+
+        if (string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(role, "SuperAdmin", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(role, "3", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(role, "4", StringComparison.OrdinalIgnoreCase))
+        {
+            return "/admin/users";
+        }
+
+        if (string.Equals(role, "Shop", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(role, "2", StringComparison.OrdinalIgnoreCase))
+        {
+            return "/shop/dashboard";
+        }
+
+        return "/";
+    }
+
+    private string BuildRegisterUrl()
+        => string.IsNullOrWhiteSpace(_returnUrl)
+            ? "/register"
+            : $"/register?returnUrl={Uri.EscapeDataString(_returnUrl)}";
+
+    private string BuildOtpUrl(string login)
+    {
+        var remember = _rememberMe ? "1" : "0";
+        var baseUrl = $"/login/otp?login={Uri.EscapeDataString(login)}&remember={remember}";
+        return string.IsNullOrWhiteSpace(_returnUrl)
+            ? baseUrl
+            : $"{baseUrl}&returnUrl={Uri.EscapeDataString(_returnUrl)}";
+    }
+
+    private static bool IsSafeReturnUrl(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        if (Uri.TryCreate(value, UriKind.Relative, out _))
+        {
+            return value.StartsWith("/");
+        }
+
+        return false;
+    }
+
+    private static string NormalizeReturnUrl(string value)
+        => value.StartsWith("/") ? value : "/" + value;
+
+    private void TogglePasswordVisibility()
+        => _showPassword = !_showPassword;
+
+    private static bool IsEn =>
+        string.Equals(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "en", StringComparison.OrdinalIgnoreCase);
+
+    private static string T(string fr, string en) => IsEn ? en : fr;
+
+    private sealed record LoginRequest(string Login, string Password);
+    private sealed record LoginResult(string AccessToken, bool OtpRequired);
+
+    private static string ExtractApiError(string body)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            if (root.ValueKind == JsonValueKind.Object)
+            {
+                if (root.TryGetProperty("error", out var errorProp))
+                {
+                    return errorProp.GetString() ?? body;
+                }
+
+                if (root.TryGetProperty("title", out var titleProp))
+                {
+                    return titleProp.GetString() ?? body;
+                }
+            }
+        }
+        catch
+        {
+            // ignore parse errors
+        }
+
+        return body;
+    }
+}

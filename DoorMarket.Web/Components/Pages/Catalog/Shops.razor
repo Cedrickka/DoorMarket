@@ -1,0 +1,197 @@
+@page "/shops"
+@using System.Net.Http.Json
+@using AppShopPage = DoorMarket.Application.Common.PagedResult<DoorMarket.Application.DTOs.Shops.ShopDto>
+@using MudBlazor
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject ISnackbar Snackbar
+
+<PageTitle>@SL["Shops"]</PageTitle>
+
+<h1 class="dm-page-h1">@SL["Shops"]</h1>
+<div class="dm-page-sub">@SL["ShopsSubtitle"]</div>
+
+<MudPaper Class="pa-4 mt-3 dm-content-card">
+    <MudGrid Spacing="2">
+        <MudItem xs="12" sm="6" md="4">
+            <MudTextField T="string"
+                          Label="@SL["Search"]"
+                          Variant="Variant.Outlined"
+                          Immediate="true"
+                          Value="_q"
+                          ValueChanged="OnFilterChanged" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudTextField T="string"
+                          Label="@SL["Country"]"
+                          Variant="Variant.Outlined"
+                          Immediate="true"
+                          Value="_countryTag"
+                          ValueChanged="OnCountryChanged" />
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3" Class="d-flex align-center">
+            <MudSwitch T="bool" Checked="_recommendedOnly" CheckedChanged="OnRecommendedChanged" Color="Color.Primary">@SL["Recommended"]</MudSwitch>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="2" Class="d-flex align-center justify-end">
+            <MudButton Variant="Variant.Outlined" OnClick="Reload" Disabled="_loading">@SL["Refresh"]</MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@if (_loading)
+{
+    <MudGrid Class="mt-3" Spacing="2">
+        @for (var i = 0; i < 6; i++)
+        {
+            <MudItem xs="12" sm="6" md="4">
+                <MudPaper Class="pa-4 dm-content-card">
+                    <MudSkeleton Height="24px" Width="70%" />
+                    <MudSkeleton Height="16px" Width="50%" Class="mt-2" />
+                    <MudSkeleton Height="36px" Class="mt-4" />
+                </MudPaper>
+            </MudItem>
+        }
+    </MudGrid>
+}
+else if (_error is not null)
+{
+    <MudPaper Class="pa-4 mt-3">
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_error</MudAlert>
+    </MudPaper>
+}
+else if (_shops.Items.Count == 0)
+{
+    <MudPaper Class="pa-4 mt-3">
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@SL["NoShopAvailable"]</MudAlert>
+    </MudPaper>
+}
+else
+{
+    <MudGrid Class="mt-3" Spacing="2">
+        @foreach (var shop in _shops.Items)
+        {
+            <MudItem xs="12" sm="6" md="4">
+                <article class="dm-shop-card">
+                    <img src="@MediaCatalog.Shop(shop.ImageUrl, shop.Name, shop.Id)" alt="@shop.Name" class="dm-shop-thumb" />
+                    <div class="dm-shop-body">
+                        <h3 class="dm-shop-name">@shop.Name</h3>
+                        <div class="dm-shop-meta">@shop.City, @shop.CountryTag</div>
+                        <div class="dm-shop-meta">@SL["Since"] @shop.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy")</div>
+                        <div class="dm-card-actions">
+                            <MudButton Color="Color.Primary"
+                                       Variant="Variant.Filled"
+                                       Class="dm-action-btn dm-action-btn-primary"
+                                       OnClick="@(() => OpenShop(shop.Id))">
+                                @SL["ViewProducts"]
+                            </MudButton>
+                        </div>
+                    </div>
+                </article>
+            </MudItem>
+        }
+    </MudGrid>
+
+    <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+        <div class="dm-muted">@SL["Page"] @_page / @TotalPages()</div>
+        <DmPager CurrentPage="_page" TotalPages="TotalPages()" OnPageChanged="OnPageChanged" />
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private string? _error;
+    private AppShopPage _shops = new();
+
+    private string _q = string.Empty;
+    private string _countryTag = string.Empty;
+    private bool _recommendedOnly;
+    private int _page = 1;
+    private const int PageSize = 12;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            var query = new List<string>
+            {
+                $"page={_page}",
+                $"pageSize={PageSize}",
+                "verifiedOnly=true"
+            };
+
+            if (!string.IsNullOrWhiteSpace(_q))
+            {
+                query.Add($"q={Uri.EscapeDataString(_q.Trim())}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(_countryTag))
+            {
+                query.Add($"countryTag={Uri.EscapeDataString(_countryTag.Trim())}");
+            }
+
+            if (_recommendedOnly)
+            {
+                query.Add("recommended=true");
+            }
+
+            query.Add("sort=relevance");
+            var url = $"api/search/shops?{string.Join("&", query)}";
+            _shops = await Http.GetFromJsonAsync<AppShopPage>(url) ?? new AppShopPage();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _shops = new AppShopPage();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private int TotalPages() => Math.Max(1, (int)Math.Ceiling(_shops.Total / (double)PageSize));
+
+    private async Task OnPageChanged(int page)
+    {
+        _page = Math.Clamp(page, 1, TotalPages());
+        await LoadAsync();
+    }
+
+    private async Task Reload()
+    {
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task OnFilterChanged(string value)
+    {
+        _q = value ?? string.Empty;
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task OnCountryChanged(string value)
+    {
+        _countryTag = value ?? string.Empty;
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task OnRecommendedChanged(bool value)
+    {
+        _recommendedOnly = value;
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private void OpenShop(Guid id) => Nav.NavigateTo($"/shops/{id}");
+}

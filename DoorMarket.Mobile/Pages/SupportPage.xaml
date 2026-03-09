@@ -1,0 +1,396 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<local:LocalizedContentPage xmlns:local="clr-namespace:DoorMarket.Mobile.Localization"     x:Class="DoorMarket.Mobile.Pages.SupportPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:components="clr-namespace:DoorMarket.Mobile.Components"
+    xmlns:markup="clr-namespace:DoorMarket.Mobile.Markup"
+    xmlns:models="clr-namespace:DoorMarket.Mobile.Models"
+    xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+    NavigationPage.HasNavigationBar="False">
+
+    <Grid RowDefinitions="Auto,*">
+        <Grid
+            BackgroundColor="{StaticResource DoorBlue}"
+            ColumnDefinitions="Auto,*"
+            ColumnSpacing="16"
+            Padding="{OnPlatform iOS='24,56,24,20', Default='24,50,24,20'}">
+            <ImageButton Clicked="OnBackClicked">
+                <ImageButton.Source>
+                    <FontImageSource FontFamily="fa-solid-900" Glyph="{x:Static models:IconGlyphs.Back}" Color="White" Size="16" />
+                </ImageButton.Source>
+            </ImageButton>
+            <VerticalStackLayout Grid.Column="1" Spacing="8" VerticalOptions="Center">
+                <Label FontFamily="Inter-Bold" FontSize="22" Text="{markup:Translate HelpTitle}" TextColor="White" />
+                <Label FontFamily="Inter-Regular" FontSize="13" Text="{markup:Translate HelpSubtitle}" TextColor="#DCE9F8" />
+            </VerticalStackLayout>
+        </Grid>
+
+        <ScrollView x:Name="HelpScroll" Grid.Row="1">
+            <VerticalStackLayout Padding="24,16,24,24" Spacing="16">
+                <components:DmCard x:Name="IntroSection" Margin="0">
+                    <VerticalStackLayout Spacing="10">
+                        <Label FontFamily="Inter-SemiBold" FontSize="13" Text="{markup:Translate HelpTagline}" TextColor="{StaticResource DoorOrange}" />
+                        <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate HelpIntroTitle}" />
+                        <Label Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpIntroBody}" />
+                    </VerticalStackLayout>
+                </components:DmCard>
+
+                <components:DmCard Margin="0">
+                    <VerticalStackLayout Spacing="12">
+                        <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate TocTitle}" />
+                        <ScrollView Orientation="Horizontal">
+                            <HorizontalStackLayout Spacing="10">
+                                <Frame Padding="10,6" CornerRadius="16" BackgroundColor="{StaticResource DoorBlue10}" BorderColor="{StaticResource DoorBlue}">
+                                    <Frame.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnTocTapped" CommandParameter="intro" />
+                                    </Frame.GestureRecognizers>
+                                    <Label FontFamily="Inter-SemiBold" FontSize="12" Text="{markup:Translate TocIntro}" TextColor="{StaticResource DoorBlue}" />
+                                </Frame>
+                                <Frame Padding="10,6" CornerRadius="16" BackgroundColor="{StaticResource DoorBlue10}" BorderColor="{StaticResource DoorBlue}">
+                                    <Frame.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnTocTapped" CommandParameter="how" />
+                                    </Frame.GestureRecognizers>
+                                    <Label FontFamily="Inter-SemiBold" FontSize="12" Text="{markup:Translate TocHow}" TextColor="{StaticResource DoorBlue}" />
+                                </Frame>
+                                <Frame Padding="10,6" CornerRadius="16" BackgroundColor="{StaticResource DoorBlue10}" BorderColor="{StaticResource DoorBlue}">
+                                    <Frame.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnTocTapped" CommandParameter="products" />
+                                    </Frame.GestureRecognizers>
+                                    <Label FontFamily="Inter-SemiBold" FontSize="12" Text="{markup:Translate HelpProductsTitle}" TextColor="{StaticResource DoorBlue}" />
+                                </Frame>
+                                <Frame Padding="10,6" CornerRadius="16" BackgroundColor="{StaticResource DoorBlue10}" BorderColor="{StaticResource DoorBlue}">
+                                    <Frame.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnTocTapped" CommandParameter="cart" />
+                                    </Frame.GestureRecognizers>
+                                    <Label FontFamily="Inter-SemiBold" FontSize="12" Text="{markup:Translate HelpCartTitle}" TextColor="{StaticResource DoorBlue}" />
+                                </Frame>
+                                <Frame Padding="10,6" CornerRadius="16" BackgroundColor="{StaticResource DoorBlue10}" BorderColor="{StaticResource DoorBlue}">
+                                    <Frame.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnTocTapped" CommandParameter="delivery" />
+                                    </Frame.GestureRecognizers>
+                                    <Label FontFamily="Inter-SemiBold" FontSize="12" Text="{markup:Translate TocDelivery}" TextColor="{StaticResource DoorBlue}" />
+                                </Frame>
+                                <Frame Padding="10,6" CornerRadius="16" BackgroundColor="{StaticResource DoorBlue10}" BorderColor="{StaticResource DoorBlue}">
+                                    <Frame.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnTocTapped" CommandParameter="payments" />
+                                    </Frame.GestureRecognizers>
+                                    <Label FontFamily="Inter-SemiBold" FontSize="12" Text="{markup:Translate TocPayments}" TextColor="{StaticResource DoorBlue}" />
+                                </Frame>
+                                <Frame Padding="10,6" CornerRadius="16" BackgroundColor="{StaticResource DoorBlue10}" BorderColor="{StaticResource DoorBlue}">
+                                    <Frame.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnTocTapped" CommandParameter="status" />
+                                    </Frame.GestureRecognizers>
+                                    <Label FontFamily="Inter-SemiBold" FontSize="12" Text="{markup:Translate TocStatus}" TextColor="{StaticResource DoorBlue}" />
+                                </Frame>
+                                <Frame Padding="10,6" CornerRadius="16" BackgroundColor="{StaticResource DoorBlue10}" BorderColor="{StaticResource DoorBlue}">
+                                    <Frame.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnTocTapped" CommandParameter="shop" />
+                                    </Frame.GestureRecognizers>
+                                    <Label FontFamily="Inter-SemiBold" FontSize="12" Text="{markup:Translate HelpShopTitle}" TextColor="{StaticResource DoorBlue}" />
+                                </Frame>
+                                <Frame Padding="10,6" CornerRadius="16" BackgroundColor="{StaticResource DoorBlue10}" BorderColor="{StaticResource DoorBlue}">
+                                    <Frame.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnTocTapped" CommandParameter="faq" />
+                                    </Frame.GestureRecognizers>
+                                    <Label FontFamily="Inter-SemiBold" FontSize="12" Text="{markup:Translate TocFaq}" TextColor="{StaticResource DoorBlue}" />
+                                </Frame>
+                                <Frame Padding="10,6" CornerRadius="16" BackgroundColor="{StaticResource DoorBlue10}" BorderColor="{StaticResource DoorBlue}">
+                                    <Frame.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnTocTapped" CommandParameter="support" />
+                                    </Frame.GestureRecognizers>
+                                    <Label FontFamily="Inter-SemiBold" FontSize="12" Text="{markup:Translate TocSupport}" TextColor="{StaticResource DoorBlue}" />
+                                </Frame>
+                            </HorizontalStackLayout>
+                        </ScrollView>
+                    </VerticalStackLayout>
+                </components:DmCard>
+
+                <components:DmCard x:Name="HowSection" Margin="0">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate HelpHowTitle}" />
+
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <Label Text="•" />
+                            <Label Grid.Column="1" Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpHowStep1}" />
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <Label Text="•" />
+                            <Label Grid.Column="1" Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpHowStep2}" />
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <Label Text="•" />
+                            <Label Grid.Column="1" Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpHowStep3}" />
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <Label Text="•" />
+                            <Label Grid.Column="1" Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpHowStep4}" />
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <Label Text="•" />
+                            <Label Grid.Column="1" Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpHowStep5}" />
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <Label Text="•" />
+                            <Label Grid.Column="1" Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpHowStep6}" />
+                        </Grid>
+
+                        <Frame BackgroundColor="#E8F6EF" BorderColor="#A9E5C0" CornerRadius="12" Padding="12" HasShadow="False">
+                            <Label Style="{StaticResource CaptionLabelStyle}" Text="{markup:Translate HelpHowTip}" TextColor="#2E7D32" />
+                        </Frame>
+                    </VerticalStackLayout>
+                </components:DmCard>
+
+                <components:DmCard x:Name="ProductsSection" Margin="0">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate HelpProductsTitle}" />
+                        <Label Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpProductsBody}" />
+                    </VerticalStackLayout>
+                </components:DmCard>
+
+                <components:DmCard x:Name="CartSection" Margin="0">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate HelpCartTitle}" />
+                        <Label Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpCartBody1}" />
+                        <Label Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpCartBody2}" />
+
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <Label Text="•" />
+                            <Label Grid.Column="1" Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpCartReason1}" />
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <Label Text="•" />
+                            <Label Grid.Column="1" Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpCartReason2}" />
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <Label Text="•" />
+                            <Label Grid.Column="1" Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpCartReason3}" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </components:DmCard>
+
+                <components:DmCard x:Name="DeliverySection" Margin="0">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate HelpDeliveryTitle}" />
+                        <Label Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpDeliveryBody1}" />
+                        <Label Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpDeliveryBody2}" />
+                        <Label Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpDeliveryBody3}" />
+
+                        <Frame BackgroundColor="#E8F3FF" BorderColor="#C2DAFF" CornerRadius="12" Padding="12" HasShadow="False">
+                            <Label Style="{StaticResource CaptionLabelStyle}" Text="{markup:Translate HelpDeliveryNote}" TextColor="#1E5AA8" />
+                        </Frame>
+                    </VerticalStackLayout>
+                </components:DmCard>
+
+                <components:DmCard x:Name="PaymentsSection" Margin="0">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate HelpPaymentsTitle}" />
+
+                        <Label FontFamily="Inter-SemiBold" FontSize="15" Text="{markup:Translate HelpStripeTitle}" />
+                        <Label Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpStripeBody}" />
+
+                        <Label FontFamily="Inter-SemiBold" FontSize="15" Text="{markup:Translate HelpPayPalTitle}" />
+                        <Label Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpPayPalBody}" />
+
+                        <Label FontFamily="Inter-SemiBold" FontSize="15" Text="{markup:Translate HelpPrepaidTitle}" />
+                        <Label Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpPrepaidBody}" />
+
+                        <Frame BackgroundColor="#FFF6E5" BorderColor="#FAD7A0" CornerRadius="12" Padding="12" HasShadow="False">
+                            <Label Style="{StaticResource CaptionLabelStyle}" Text="{markup:Translate HelpPaymentsNote}" TextColor="#B25E00" />
+                        </Frame>
+                    </VerticalStackLayout>
+                </components:DmCard>
+
+                <components:DmCard x:Name="AccountSection" Margin="0">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate HelpAccountTitle}" />
+                        <Label Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpAccountBody}" />
+
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <Label Text="•" />
+                            <Label Grid.Column="1" Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpAccountReason1}" />
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <Label Text="•" />
+                            <Label Grid.Column="1" Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpAccountReason2}" />
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <Label Text="•" />
+                            <Label Grid.Column="1" Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpAccountReason3}" />
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <Label Text="•" />
+                            <Label Grid.Column="1" Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpAccountReason4}" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </components:DmCard>
+
+                <components:DmCard x:Name="StatusSection" Margin="0">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate HelpStatusTitle}" />
+
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <Label Text="•" />
+                            <Label Grid.Column="1" Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpStatusItem1}" />
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <Label Text="•" />
+                            <Label Grid.Column="1" Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpStatusItem2}" />
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <Label Text="•" />
+                            <Label Grid.Column="1" Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpStatusItem3}" />
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <Label Text="•" />
+                            <Label Grid.Column="1" Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpStatusItem4}" />
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <Label Text="•" />
+                            <Label Grid.Column="1" Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpStatusItem5}" />
+                        </Grid>
+                        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                            <Label Text="•" />
+                            <Label Grid.Column="1" Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpStatusItem6}" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </components:DmCard>
+
+                <components:DmCard x:Name="ShopSection" Margin="0">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate HelpShopTitle}" />
+                        <Label Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpShopBody1}" />
+                        <Label Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpShopBody2}" />
+                    </VerticalStackLayout>
+                </components:DmCard>
+
+                <components:DmCard x:Name="FaqSection" Margin="0">
+                    <VerticalStackLayout Spacing="12">
+                        <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate HelpFaqTitle}" />
+
+                        <toolkit:Expander>
+                            <toolkit:Expander.Header>
+                                <Label FontFamily="Inter-SemiBold" Text="{markup:Translate HelpFaqQ1}" />
+                            </toolkit:Expander.Header>
+                            <toolkit:Expander.Content>
+                                <Label Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpFaqA1}" />
+                            </toolkit:Expander.Content>
+                        </toolkit:Expander>
+                        <toolkit:Expander>
+                            <toolkit:Expander.Header>
+                                <Label FontFamily="Inter-SemiBold" Text="{markup:Translate HelpFaqQ2}" />
+                            </toolkit:Expander.Header>
+                            <toolkit:Expander.Content>
+                                <Label Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpFaqA2}" />
+                            </toolkit:Expander.Content>
+                        </toolkit:Expander>
+                        <toolkit:Expander>
+                            <toolkit:Expander.Header>
+                                <Label FontFamily="Inter-SemiBold" Text="{markup:Translate HelpFaqQ3}" />
+                            </toolkit:Expander.Header>
+                            <toolkit:Expander.Content>
+                                <Label Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpFaqA3}" />
+                            </toolkit:Expander.Content>
+                        </toolkit:Expander>
+                        <toolkit:Expander>
+                            <toolkit:Expander.Header>
+                                <Label FontFamily="Inter-SemiBold" Text="{markup:Translate HelpFaqQ4}" />
+                            </toolkit:Expander.Header>
+                            <toolkit:Expander.Content>
+                                <Label Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpFaqA4}" />
+                            </toolkit:Expander.Content>
+                        </toolkit:Expander>
+                        <toolkit:Expander>
+                            <toolkit:Expander.Header>
+                                <Label FontFamily="Inter-SemiBold" Text="{markup:Translate HelpFaqQ5}" />
+                            </toolkit:Expander.Header>
+                            <toolkit:Expander.Content>
+                                <Label Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpFaqA5}" />
+                            </toolkit:Expander.Content>
+                        </toolkit:Expander>
+                        <toolkit:Expander>
+                            <toolkit:Expander.Header>
+                                <Label FontFamily="Inter-SemiBold" Text="{markup:Translate HelpFaqQ6}" />
+                            </toolkit:Expander.Header>
+                            <toolkit:Expander.Content>
+                                <Label Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpFaqA6}" />
+                            </toolkit:Expander.Content>
+                        </toolkit:Expander>
+                        <toolkit:Expander>
+                            <toolkit:Expander.Header>
+                                <Label FontFamily="Inter-SemiBold" Text="{markup:Translate HelpFaqQ7}" />
+                            </toolkit:Expander.Header>
+                            <toolkit:Expander.Content>
+                                <Label Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpFaqA7}" />
+                            </toolkit:Expander.Content>
+                        </toolkit:Expander>
+                    </VerticalStackLayout>
+                </components:DmCard>
+
+                <components:DmCard x:Name="SupportSection" Margin="0">
+                    <VerticalStackLayout Spacing="12">
+                        <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate HelpSupportTitle}" />
+                        <Label Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate HelpSupportBody}" />
+
+                        <Label>
+                            <Label.FormattedText>
+                                <FormattedString>
+                                    <Span FontAttributes="Bold" Text="{markup:Translate HelpSupportEmailLabel}" />
+                                    <Span Text=" " />
+                                    <Span Text="{markup:Translate HelpSupportEmail}" />
+                                </FormattedString>
+                            </Label.FormattedText>
+                        </Label>
+                        <Label>
+                            <Label.FormattedText>
+                                <FormattedString>
+                                    <Span FontAttributes="Bold" Text="{markup:Translate HelpSupportPhoneLabel}" />
+                                    <Span Text=" " />
+                                    <Span Text="{markup:Translate HelpSupportPhone}" />
+                                </FormattedString>
+                            </Label.FormattedText>
+                        </Label>
+                        <Label>
+                            <Label.FormattedText>
+                                <FormattedString>
+                                    <Span FontAttributes="Bold" Text="{markup:Translate HelpSupportHoursLabel}" />
+                                    <Span Text=" " />
+                                    <Span Text="{markup:Translate HelpSupportHours}" />
+                                </FormattedString>
+                            </Label.FormattedText>
+                        </Label>
+
+                        <components:DmSecondaryButton Clicked="OnEmailClicked" Text="{markup:Translate HelpSupportCta}" />
+                        <components:DmSecondaryButton Clicked="OnPhoneClicked" Text="{markup:Translate SupportPhoneAction}" />
+
+                        <Frame x:Name="ContactFormCard"
+                               IsVisible="False"
+                               BackgroundColor="#F7F9FC"
+                               BorderColor="#D9E2EF"
+                               CornerRadius="12"
+                               Padding="12"
+                               HasShadow="False">
+                            <VerticalStackLayout Spacing="10">
+                                <Label FontFamily="Inter-SemiBold" FontSize="14" Text="{markup:Translate SupportContactTitle}" />
+                                <Entry x:Name="ContactNameEntry"
+                                       Placeholder="{markup:Translate SupportContactName}"
+                                       Keyboard="Default" />
+                                <Entry x:Name="ContactEmailEntry"
+                                       Placeholder="{markup:Translate SupportContactEmailLabel}"
+                                       Keyboard="Email" />
+                                <Entry x:Name="ContactSubjectEntry"
+                                       Placeholder="{markup:Translate SupportContactSubject}"
+                                       Keyboard="Default" />
+                                <Editor x:Name="ContactMessageEditor"
+                                        Placeholder="{markup:Translate SupportContactMessage}"
+                                        AutoSize="TextChanges"
+                                        HeightRequest="120" />
+                                <components:DmPrimaryButton Clicked="OnSendContactClicked"
+                                                            Text="{markup:Translate SupportContactSend}" />
+                            </VerticalStackLayout>
+                        </Frame>
+                    </VerticalStackLayout>
+                </components:DmCard>
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</local:LocalizedContentPage>

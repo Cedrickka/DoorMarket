@@ -1,0 +1,930 @@
+@page "/search"
+@implements IDisposable
+@using Blazored.SessionStorage
+@using System.Globalization
+@using System.Net.Http.Json
+@using AppCategoryDto = DoorMarket.Application.DTOs.Categories.CategoryDto
+@using AppProductDto = DoorMarket.Application.DTOs.Products.ProductDto
+@using AppShopDto = DoorMarket.Application.DTOs.Shops.ShopDto
+@using AppSearchCategoryDto = DoorMarket.Application.DTOs.Search.SearchCategoryDto
+@using AppSearchSuggestionDto = DoorMarket.Application.DTOs.Search.SearchSuggestionDto
+@using AppProductPage = DoorMarket.Application.Common.PagedResult<DoorMarket.Application.DTOs.Products.ProductDto>
+@using AppShopPage = DoorMarket.Application.Common.PagedResult<DoorMarket.Application.DTOs.Shops.ShopDto>
+@using MudBlazor
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject ISessionStorageService SessionStorage
+
+<PageTitle>@T("Recherche", "Search")</PageTitle>
+
+<h1 class="dm-page-h1">@T("Recherche", "Search")</h1>
+<div class="dm-page-sub">@SearchSubtitle</div>
+
+<MudPaper Class="pa-4 mt-3 dm-content-card dm-content-card-soft">
+    <MudGrid Spacing="2">
+        <MudItem xs="12" md="8">
+            <MudTextField T="string"
+                          Label="@T("Requete", "Query")"
+                          Variant="Variant.Outlined"
+                          Immediate="true"
+                          Value="_qInput"
+                          ValueChanged="OnQueryChanged" />
+        </MudItem>
+        <MudItem xs="6" md="2" Class="d-flex align-center">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="w-100" OnClick="SearchAsync">@T("Rechercher", "Search")</MudButton>
+        </MudItem>
+        <MudItem xs="6" md="2" Class="d-flex align-center">
+            <MudButton Variant="Variant.Outlined" Class="w-100" OnClick="ClearAsync">@SL["Clear"]</MudButton>
+        </MudItem>
+    </MudGrid>
+
+    @if (_suggestions.Count > 0)
+    {
+        <div class="dm-search-suggestions mt-3">
+            @for (var i = 0; i < _suggestions.Count; i++)
+            {
+                var suggestion = _suggestions[i];
+                <button type="button" class="dm-search-suggestion-btn" @onclick="() => UseSuggestionAsync(suggestion, i + 1)">
+                    <span class="dm-search-type-chip">@TypeLabel(suggestion.Type)</span>
+                    <span class="dm-search-suggestion-main">@suggestion.Label</span>
+                </button>
+            }
+        </div>
+    }
+</MudPaper>
+
+<div class="dm-search-segments mt-3">
+    <button type="button" class="dm-search-segment @Seg(SearchTab.Products)" @onclick="() => SwitchAsync(SearchTab.Products)">@SL["Products"]</button>
+    <button type="button" class="dm-search-segment @Seg(SearchTab.Shops)" @onclick="() => SwitchAsync(SearchTab.Shops)">@SL["Shops"]</button>
+    <button type="button" class="dm-search-segment @Seg(SearchTab.Categories)" @onclick="() => SwitchAsync(SearchTab.Categories)">@SL["Categories"]</button>
+</div>
+
+@if (_tab == SearchTab.Products)
+{
+    <MudPaper Class="pa-4 mt-3 dm-content-card">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="4" md="3">
+                <MudSelect T="string" Label="@T("Tri", "Sort")" Variant="Variant.Outlined" @bind-Value="_productSort">
+                    <MudSelectItem Value="@("relevance")">@T("Pertinence", "Relevance")</MudSelectItem>
+                    <MudSelectItem Value="@("price_asc")">@T("Prix croissant", "Price low to high")</MudSelectItem>
+                    <MudSelectItem Value="@("price_desc")">@T("Prix decroissant", "Price high to low")</MudSelectItem>
+                    <MudSelectItem Value="@("rating_desc")">@T("Mieux notes", "Top rated")</MudSelectItem>
+                    <MudSelectItem Value="@("newest")">@T("Plus recents", "Newest")</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="4" md="3">
+                <MudSelect T="Guid?" Label="@SL["Category"]" Variant="Variant.Outlined" @bind-Value="_categoryId">
+                    <MudSelectItem T="Guid?" Value="@((Guid?)null)">@SL["All"]</MudSelectItem>
+                    @foreach (var c in _allCategories)
+                    {
+                        <MudSelectItem T="Guid?" Value="@((Guid?)c.Id)">@CategoryLabel(c)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" sm="4" md="2">
+                <MudNumericField T="decimal?" Label="@T("Prix min", "Min price")" Variant="Variant.Outlined" @bind-Value="_productMinPrice" />
+            </MudItem>
+            <MudItem xs="6" sm="4" md="2">
+                <MudNumericField T="decimal?" Label="@T("Prix max", "Max price")" Variant="Variant.Outlined" @bind-Value="_productMaxPrice" />
+            </MudItem>
+            <MudItem xs="6" sm="4" md="2">
+                <MudNumericField T="decimal?" Label="@T("Note min", "Min rating")" Variant="Variant.Outlined" Min="@(0m)" Max="@(5m)" Step="@(0.1m)" @bind-Value="_productRatingMin" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect T="Guid?" Label="@T("Boutique", "Shop")" Variant="Variant.Outlined" @bind-Value="_productShopId">
+                    <MudSelectItem T="Guid?" Value="@((Guid?)null)">@SL["All"]</MudSelectItem>
+                    @foreach (var shop in _shopLookup)
+                    {
+                        <MudSelectItem T="Guid?" Value="@((Guid?)shop.Id)">@shop.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" sm="3" md="2">
+                <MudTextField T="string" Label="@T("Ville", "City")" Variant="Variant.Outlined" @bind-Value="_productCity" />
+            </MudItem>
+            <MudItem xs="6" sm="3" md="2">
+                <MudTextField T="string" Label="@SL["Country"]" Variant="Variant.Outlined" @bind-Value="_productCountry" />
+            </MudItem>
+            <MudItem xs="6" sm="3" md="2" Class="d-flex align-center">
+                <MudSwitch T="bool" Color="Color.Primary" @bind-Checked="_inStockOnly">@T("En stock", "In stock")</MudSwitch>
+            </MudItem>
+            <MudItem xs="6" sm="3" md="2" Class="d-flex align-center">
+                <MudSwitch T="bool" Color="Color.Secondary" @bind-Checked="_promotedOnly">@T("Promo", "Promoted")</MudSwitch>
+            </MudItem>
+            <MudItem xs="12" sm="12" md="3" Class="d-flex align-center justify-end">
+                <MudButton Variant="Variant.Outlined" OnClick="ApplyProductFiltersAsync">@SL["Refresh"]</MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @if (_loadingProducts)
+    {
+        <MudPaper Class="pa-4 mt-3 dm-content-card"><MudProgressCircular Indeterminate="true" /></MudPaper>
+    }
+    else if (_productsError is not null)
+    {
+        <MudPaper Class="pa-4 mt-3 dm-content-card"><MudAlert Severity="Severity.Error">@_productsError</MudAlert></MudPaper>
+    }
+    else if (_products.Items.Count == 0)
+    {
+        <MudPaper Class="pa-4 mt-3 dm-content-card"><MudAlert Severity="Severity.Info">@SL["NoProductAvailable"]</MudAlert></MudPaper>
+    }
+    else
+    {
+        <MudGrid Class="mt-3" Spacing="2">
+            @for (var i = 0; i < _products.Items.Count; i++)
+            {
+                var product = _products.Items[i];
+                <MudItem xs="12" sm="6" md="4">
+                    <article class="dm-product-card">
+                        <img src="@MediaCatalog.Product(product.MainImageUrl, product.Name, product.CategoryName, product.Id)" alt="@product.Name" class="dm-product-thumb" />
+                        <div class="dm-product-body">
+                            <h3 class="dm-product-name">@product.Name</h3>
+                            <div class="dm-product-meta">@product.ShopName</div>
+                            <div class="dm-product-price">@product.EffectivePrice.ToString("0.00") @product.Currency</div>
+                            <div class="dm-card-actions">
+                                <MudButton Variant="Variant.Outlined" OnClick="@(() => OpenProductAsync(product, i + 1))">@SL["Details"]</MudButton>
+                            </div>
+                        </div>
+                    </article>
+                </MudItem>
+            }
+        </MudGrid>
+        <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+            <div class="dm-muted">@SL["Page"] @_productPage / @ProductPages()</div>
+            <DmPager CurrentPage="_productPage" TotalPages="ProductPages()" OnPageChanged="OnProductPageChanged" />
+        </div>
+    }
+}
+else if (_tab == SearchTab.Shops)
+{
+    <MudPaper Class="pa-4 mt-3 dm-content-card">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="4" md="3">
+                <MudSelect T="string" Label="@T("Tri", "Sort")" Variant="Variant.Outlined" @bind-Value="_shopSort">
+                    <MudSelectItem Value="@("relevance")">@T("Pertinence", "Relevance")</MudSelectItem>
+                    <MudSelectItem Value="@("rating_desc")">@T("Mieux notes", "Top rated")</MudSelectItem>
+                    <MudSelectItem Value="@("popular_desc")">@T("Populaires", "Popular")</MudSelectItem>
+                    <MudSelectItem Value="@("newest")">@T("Plus recentes", "Newest")</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="4" md="3">
+                <MudTextField T="string" Label="@SL["Country"]" Variant="Variant.Outlined" @bind-Value="_shopCountry" />
+            </MudItem>
+            <MudItem xs="12" sm="4" md="3">
+                <MudTextField T="string" Label="@T("Ville", "City")" Variant="Variant.Outlined" @bind-Value="_shopCity" />
+            </MudItem>
+            <MudItem xs="6" sm="4" md="2">
+                <MudNumericField T="decimal?" Label="@T("Note min", "Min rating")" Variant="Variant.Outlined" Min="@(0m)" Max="@(5m)" Step="@(0.1m)" @bind-Value="_shopRatingMin" />
+            </MudItem>
+            <MudItem xs="12" sm="4" md="2">
+                <MudSelect T="Guid?" Label="@SL["Category"]" Variant="Variant.Outlined" @bind-Value="_shopCategoryId">
+                    <MudSelectItem T="Guid?" Value="@((Guid?)null)">@SL["All"]</MudSelectItem>
+                    @foreach (var c in _allCategories)
+                    {
+                        <MudSelectItem T="Guid?" Value="@((Guid?)c.Id)">@CategoryLabel(c)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="6" sm="2" md="1" Class="d-flex align-center">
+                <MudSwitch T="bool" Color="Color.Primary" @bind-Checked="_verifiedOnly">@T("Verifiees", "Verified")</MudSwitch>
+            </MudItem>
+            <MudItem xs="6" sm="2" md="1" Class="d-flex align-center">
+                <MudSwitch T="bool" Color="Color.Secondary" @bind-Checked="_recommendedOnly">@SL["Recommended"]</MudSwitch>
+            </MudItem>
+            <MudItem xs="12" sm="12" md="2" Class="d-flex align-center justify-end">
+                <MudButton Variant="Variant.Outlined" OnClick="ApplyShopFiltersAsync">@SL["Refresh"]</MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @if (_loadingShops)
+    {
+        <MudPaper Class="pa-4 mt-3 dm-content-card"><MudProgressCircular Indeterminate="true" /></MudPaper>
+    }
+    else if (_shopsError is not null)
+    {
+        <MudPaper Class="pa-4 mt-3 dm-content-card"><MudAlert Severity="Severity.Error">@_shopsError</MudAlert></MudPaper>
+    }
+    else if (_shops.Items.Count == 0)
+    {
+        <MudPaper Class="pa-4 mt-3 dm-content-card"><MudAlert Severity="Severity.Info">@SL["NoShopAvailable"]</MudAlert></MudPaper>
+    }
+    else
+    {
+        <MudGrid Class="mt-3" Spacing="2">
+            @for (var i = 0; i < _shops.Items.Count; i++)
+            {
+                var shop = _shops.Items[i];
+                <MudItem xs="12" sm="6" md="4">
+                    <article class="dm-shop-card">
+                        <img src="@MediaCatalog.Shop(shop.ImageUrl, shop.Name, shop.Id)" alt="@shop.Name" class="dm-shop-thumb" />
+                        <div class="dm-shop-body">
+                            <h3 class="dm-shop-name">@shop.Name</h3>
+                            <div class="dm-shop-meta">@shop.City, @shop.CountryTag</div>
+                            <div class="dm-card-actions">
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => OpenShopAsync(shop, i + 1))">@SL["ViewProducts"]</MudButton>
+                            </div>
+                        </div>
+                    </article>
+                </MudItem>
+            }
+        </MudGrid>
+        <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+            <div class="dm-muted">@SL["Page"] @_shopPage / @ShopPages()</div>
+            <DmPager CurrentPage="_shopPage" TotalPages="ShopPages()" OnPageChanged="OnShopPageChanged" />
+        </div>
+    }
+}
+else
+{
+    <MudPaper Class="pa-4 mt-3 dm-content-card">
+        <MudButton Variant="Variant.Outlined" OnClick="LoadCategoriesAsync">@SL["Refresh"]</MudButton>
+    </MudPaper>
+
+    @if (_loadingCategories)
+    {
+        <MudPaper Class="pa-4 mt-3 dm-content-card"><MudProgressCircular Indeterminate="true" /></MudPaper>
+    }
+    else if (_categoriesError is not null)
+    {
+        <MudPaper Class="pa-4 mt-3 dm-content-card"><MudAlert Severity="Severity.Error">@_categoriesError</MudAlert></MudPaper>
+    }
+    else if (_categories.Count == 0)
+    {
+        <MudPaper Class="pa-4 mt-3 dm-content-card"><MudAlert Severity="Severity.Info">@T("Aucune categorie disponible.", "No category available.")</MudAlert></MudPaper>
+    }
+    else
+    {
+        <MudGrid Class="mt-3" Spacing="2">
+            @foreach (var c in _categories)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <article class="dm-search-category-card">
+                        <h3 class="dm-shop-name">@CategoryLabel(c.Name, c.NameEn)</h3>
+                        <div class="dm-search-category-metrics">
+                            <span class="dm-search-metric">@c.ActiveProductsCount @T("produits", "products")</span>
+                            <span class="dm-search-metric">@c.ActiveShopsCount @T("boutiques", "shops")</span>
+                        </div>
+                    </article>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+}
+
+@code {
+    private const int ProductSize = 12;
+    private const int ShopSize = 12;
+    private const string AnalyticsSessionStorageKey = "dm_search_analytics_session_id";
+    private string _qInput = string.Empty;
+    private string? _qApplied;
+    private SearchTab _tab = SearchTab.Products;
+    private List<AppSearchSuggestionDto> _suggestions = new();
+    private CancellationTokenSource? _suggestCts;
+    private string? _analyticsSessionId;
+    private bool _analyticsSessionReady;
+
+    private List<AppCategoryDto> _allCategories = new();
+    private List<AppShopDto> _shopLookup = new();
+    private Guid? _categoryId;
+    private Guid? _productShopId;
+    private bool _inStockOnly = true;
+    private bool _promotedOnly;
+    private decimal? _productMinPrice;
+    private decimal? _productMaxPrice;
+    private decimal? _productRatingMin;
+    private string _productCity = string.Empty;
+    private string _productCountry = string.Empty;
+    private string _productSort = "relevance";
+    private int _productPage = 1;
+    private AppProductPage _products = new();
+    private bool _loadingProducts;
+    private string? _productsError;
+
+    private bool _verifiedOnly = true;
+    private bool _recommendedOnly;
+    private string _shopCountry = string.Empty;
+    private string _shopCity = string.Empty;
+    private decimal? _shopRatingMin;
+    private Guid? _shopCategoryId;
+    private string _shopSort = "relevance";
+    private int _shopPage = 1;
+    private AppShopPage _shops = new();
+    private bool _loadingShops;
+    private string? _shopsError;
+
+    private List<AppSearchCategoryDto> _categories = new();
+    private bool _loadingCategories;
+    private string? _categoriesError;
+
+    private bool IsEn => string.Equals(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "en", StringComparison.OrdinalIgnoreCase);
+    private string SearchSubtitle => string.IsNullOrWhiteSpace(_qApplied)
+        ? T("Lancez une recherche produit, boutique ou categorie.", "Search products, shops, or categories.")
+        : string.Format(T("Resultats pour \"{0}\"", "Results for \"{0}\""), _qApplied);
+
+    protected override async Task OnInitializedAsync()
+    {
+        ReadUrl();
+        await EnsureAnalyticsSessionIdAsync();
+        await LoadLookupAsync();
+        await LoadTabAsync();
+    }
+
+    public void Dispose()
+    {
+        _suggestCts?.Cancel();
+        _suggestCts?.Dispose();
+    }
+
+    private async Task OnQueryChanged(string value)
+    {
+        _qInput = value ?? string.Empty;
+        await LoadSuggestionsAsync();
+    }
+
+    private async Task SearchAsync()
+    {
+        _qApplied = Normalize(_qInput);
+        _productPage = 1;
+        _shopPage = 1;
+        _suggestions.Clear();
+        UpdateUrl();
+        await LoadTabAsync();
+    }
+
+    private async Task ClearAsync()
+    {
+        _qInput = string.Empty;
+        _qApplied = null;
+        _productPage = 1;
+        _shopPage = 1;
+        _suggestions.Clear();
+        UpdateUrl();
+        await LoadTabAsync();
+    }
+
+    private async Task UseSuggestionAsync(AppSearchSuggestionDto suggestion, int position)
+    {
+        if (suggestion.EntityId.HasValue && TryNormalizeTargetType(suggestion.Type, out var targetType))
+        {
+            await TrackClickEventAsync(
+                query: Normalize(_qInput),
+                targetType: targetType!,
+                targetId: suggestion.EntityId.Value,
+                position: position,
+                page: null,
+                sort: null,
+                filtersHash: null,
+                countryTag: null);
+        }
+
+        _qInput = suggestion.Value;
+        await SearchAsync();
+    }
+
+    private async Task SwitchAsync(SearchTab tab)
+    {
+        _tab = tab;
+        UpdateUrl();
+        await LoadTabAsync();
+    }
+
+    private async Task ApplyProductFiltersAsync() { _productPage = 1; UpdateUrl(); await LoadProductsAsync(); }
+    private async Task ApplyShopFiltersAsync() { _shopPage = 1; UpdateUrl(); await LoadShopsAsync(); }
+    private async Task OnProductPageChanged(int p) { _productPage = p; UpdateUrl(); await LoadProductsAsync(); }
+    private async Task OnShopPageChanged(int p) { _shopPage = p; UpdateUrl(); await LoadShopsAsync(); }
+
+    private int ProductPages() => Math.Max(1, (int)Math.Ceiling(_products.Total / (double)ProductSize));
+    private int ShopPages() => Math.Max(1, (int)Math.Ceiling(_shops.Total / (double)ShopSize));
+
+    private async Task LoadTabAsync()
+    {
+        if (_tab == SearchTab.Products) await LoadProductsAsync();
+        else if (_tab == SearchTab.Shops) await LoadShopsAsync();
+        else await LoadCategoriesAsync();
+    }
+
+    private async Task LoadProductsAsync()
+    {
+        _loadingProducts = true; _productsError = null;
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            var q = new List<string> { $"page={_productPage}", $"pageSize={ProductSize}", $"sort={Uri.EscapeDataString(_productSort)}" };
+            if (!string.IsNullOrWhiteSpace(_qApplied)) q.Add($"q={Uri.EscapeDataString(_qApplied)}");
+            if (_inStockOnly) q.Add("inStockOnly=true");
+            if (_promotedOnly) q.Add("promotedOnly=true");
+            if (_categoryId.HasValue) q.Add($"categoryId={_categoryId.Value}");
+            if (_productShopId.HasValue) q.Add($"shopId={_productShopId.Value}");
+            if (_productMinPrice.HasValue) q.Add($"minPrice={_productMinPrice.Value.ToString(CultureInfo.InvariantCulture)}");
+            if (_productMaxPrice.HasValue) q.Add($"maxPrice={_productMaxPrice.Value.ToString(CultureInfo.InvariantCulture)}");
+            if (_productRatingMin.HasValue) q.Add($"ratingMin={_productRatingMin.Value.ToString(CultureInfo.InvariantCulture)}");
+            if (!string.IsNullOrWhiteSpace(_productCity)) q.Add($"city={Uri.EscapeDataString(_productCity.Trim())}");
+            if (!string.IsNullOrWhiteSpace(_productCountry)) q.Add($"countryTag={Uri.EscapeDataString(_productCountry.Trim())}");
+            _products = await Http.GetFromJsonAsync<AppProductPage>($"api/search/products?{string.Join("&", q)}") ?? new();
+            stopwatch.Stop();
+            await TrackQueryEventAsync(
+                query: _qApplied,
+                resultsCount: _products.Total,
+                durationMs: (int)stopwatch.ElapsedMilliseconds,
+                page: _productPage,
+                sort: _productSort,
+                filtersHash: BuildProductFiltersHash(),
+                countryTag: null);
+        }
+        catch (Exception ex)
+        {
+            _products = new();
+            _productsError = WebErrorUx.ForException(
+                ex,
+                SL,
+                "Impossible de charger les resultats produits.",
+                "Unable to load product results.");
+        }
+        finally { _loadingProducts = false; }
+    }
+
+    private async Task LoadShopsAsync()
+    {
+        _loadingShops = true; _shopsError = null;
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            var q = new List<string> { $"page={_shopPage}", $"pageSize={ShopSize}", $"sort={Uri.EscapeDataString(_shopSort)}" };
+            if (!string.IsNullOrWhiteSpace(_qApplied)) q.Add($"q={Uri.EscapeDataString(_qApplied)}");
+            if (_verifiedOnly) q.Add("verifiedOnly=true");
+            if (_recommendedOnly) q.Add("recommended=true");
+            if (!string.IsNullOrWhiteSpace(_shopCountry)) q.Add($"countryTag={Uri.EscapeDataString(_shopCountry.Trim())}");
+            if (!string.IsNullOrWhiteSpace(_shopCity)) q.Add($"city={Uri.EscapeDataString(_shopCity.Trim())}");
+            if (_shopRatingMin.HasValue) q.Add($"ratingMin={_shopRatingMin.Value.ToString(CultureInfo.InvariantCulture)}");
+            if (_shopCategoryId.HasValue) q.Add($"categoryId={_shopCategoryId.Value}");
+            _shops = await Http.GetFromJsonAsync<AppShopPage>($"api/search/shops?{string.Join("&", q)}") ?? new();
+            stopwatch.Stop();
+            await TrackQueryEventAsync(
+                query: _qApplied,
+                resultsCount: _shops.Total,
+                durationMs: (int)stopwatch.ElapsedMilliseconds,
+                page: _shopPage,
+                sort: _shopSort,
+                filtersHash: BuildShopFiltersHash(),
+                countryTag: _shopCountry);
+        }
+        catch (Exception ex)
+        {
+            _shops = new();
+            _shopsError = WebErrorUx.ForException(
+                ex,
+                SL,
+                "Impossible de charger les resultats boutiques.",
+                "Unable to load shop results.");
+        }
+        finally { _loadingShops = false; }
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        _loadingCategories = true; _categoriesError = null;
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            var q = new List<string> { "limit=24" };
+            if (!string.IsNullOrWhiteSpace(_qApplied)) q.Add($"q={Uri.EscapeDataString(_qApplied)}");
+            _categories = await Http.GetFromJsonAsync<List<AppSearchCategoryDto>>($"api/search/categories?{string.Join("&", q)}") ?? new();
+            stopwatch.Stop();
+            await TrackQueryEventAsync(
+                query: _qApplied,
+                resultsCount: _categories.Count,
+                durationMs: (int)stopwatch.ElapsedMilliseconds,
+                page: 1,
+                sort: "relevance",
+                filtersHash: "limit=24",
+                countryTag: null);
+        }
+        catch (Exception ex)
+        {
+            _categories = new();
+            _categoriesError = WebErrorUx.ForException(
+                ex,
+                SL,
+                "Impossible de charger les categories.",
+                "Unable to load categories.");
+        }
+        finally { _loadingCategories = false; }
+    }
+
+    private async Task LoadLookupAsync()
+    {
+        try
+        {
+            _allCategories = await Http.GetFromJsonAsync<List<AppCategoryDto>>("api/categories") ?? new();
+        }
+        catch
+        {
+            _allCategories = new();
+        }
+
+        try
+        {
+            var page = await Http.GetFromJsonAsync<AppShopPage>("api/search/shops?page=1&pageSize=120&sort=popular_desc");
+            _shopLookup = page?.Items
+                .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList() ?? new();
+        }
+        catch
+        {
+            _shopLookup = new();
+        }
+    }
+
+    private async Task LoadSuggestionsAsync()
+    {
+        _suggestCts?.Cancel();
+        _suggestCts?.Dispose();
+        _suggestCts = new CancellationTokenSource();
+        var ct = _suggestCts.Token;
+        var q = Normalize(_qInput);
+        if (string.IsNullOrWhiteSpace(q) || q.Length < 2) { _suggestions = new(); return; }
+        try
+        {
+            await Task.Delay(180, ct);
+            _suggestions = await Http.GetFromJsonAsync<List<AppSearchSuggestionDto>>($"api/search/suggestions?q={Uri.EscapeDataString(q)}&limit=8", ct) ?? new();
+        }
+        catch (OperationCanceledException) { }
+        catch { _suggestions = new(); }
+    }
+
+    private void ReadUrl()
+    {
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        _qInput = GetQuery(uri, "q") ?? string.Empty;
+        _qApplied = Normalize(_qInput);
+        _tab = ParseTab(GetQuery(uri, "t"));
+
+        _productPage = ParsePositiveInt(GetQuery(uri, "pp"), 1);
+        _productSort = NormalizeSort(GetQuery(uri, "psort")) ?? "relevance";
+        _categoryId = ParseGuid(GetQuery(uri, "pcat"));
+        _productShopId = ParseGuid(GetQuery(uri, "pshop"));
+        _inStockOnly = ParseBoolFlag(GetQuery(uri, "pstock"), true);
+        _promotedOnly = ParseBoolFlag(GetQuery(uri, "ppromo"), false);
+        _productMinPrice = ParseDecimal(GetQuery(uri, "pmin"));
+        _productMaxPrice = ParseDecimal(GetQuery(uri, "pmax"));
+        _productRatingMin = ParseDecimal(GetQuery(uri, "prating"));
+        _productCity = GetQuery(uri, "pcity") ?? string.Empty;
+        _productCountry = GetQuery(uri, "pcountry") ?? string.Empty;
+
+        _shopPage = ParsePositiveInt(GetQuery(uri, "sp"), 1);
+        _shopSort = NormalizeSort(GetQuery(uri, "ssort")) ?? "relevance";
+        _verifiedOnly = ParseBoolFlag(GetQuery(uri, "sverified"), true);
+        _recommendedOnly = ParseBoolFlag(GetQuery(uri, "sreco"), false);
+        _shopCategoryId = ParseGuid(GetQuery(uri, "scat"));
+        _shopRatingMin = ParseDecimal(GetQuery(uri, "srating"));
+        _shopCountry = GetQuery(uri, "scountry") ?? string.Empty;
+        _shopCity = GetQuery(uri, "scity") ?? string.Empty;
+    }
+
+    private void UpdateUrl()
+    {
+        var parts = new List<string> { $"t={TabKey(_tab)}" };
+        if (!string.IsNullOrWhiteSpace(_qApplied)) parts.Add($"q={Uri.EscapeDataString(_qApplied)}");
+
+        parts.Add($"pp={_productPage}");
+        parts.Add($"psort={Uri.EscapeDataString(_productSort)}");
+        if (_categoryId.HasValue) parts.Add($"pcat={_categoryId.Value}");
+        if (_productShopId.HasValue) parts.Add($"pshop={_productShopId.Value}");
+        parts.Add($"pstock={(_inStockOnly ? "1" : "0")}");
+        parts.Add($"ppromo={(_promotedOnly ? "1" : "0")}");
+        if (_productMinPrice.HasValue) parts.Add($"pmin={_productMinPrice.Value.ToString(CultureInfo.InvariantCulture)}");
+        if (_productMaxPrice.HasValue) parts.Add($"pmax={_productMaxPrice.Value.ToString(CultureInfo.InvariantCulture)}");
+        if (_productRatingMin.HasValue) parts.Add($"prating={_productRatingMin.Value.ToString(CultureInfo.InvariantCulture)}");
+        if (!string.IsNullOrWhiteSpace(_productCity)) parts.Add($"pcity={Uri.EscapeDataString(_productCity.Trim())}");
+        if (!string.IsNullOrWhiteSpace(_productCountry)) parts.Add($"pcountry={Uri.EscapeDataString(_productCountry.Trim())}");
+
+        parts.Add($"sp={_shopPage}");
+        parts.Add($"ssort={Uri.EscapeDataString(_shopSort)}");
+        parts.Add($"sverified={(_verifiedOnly ? "1" : "0")}");
+        parts.Add($"sreco={(_recommendedOnly ? "1" : "0")}");
+        if (_shopCategoryId.HasValue) parts.Add($"scat={_shopCategoryId.Value}");
+        if (_shopRatingMin.HasValue) parts.Add($"srating={_shopRatingMin.Value.ToString(CultureInfo.InvariantCulture)}");
+        if (!string.IsNullOrWhiteSpace(_shopCountry)) parts.Add($"scountry={Uri.EscapeDataString(_shopCountry.Trim())}");
+        if (!string.IsNullOrWhiteSpace(_shopCity)) parts.Add($"scity={Uri.EscapeDataString(_shopCity.Trim())}");
+
+        Nav.NavigateTo($"/search?{string.Join("&", parts)}", forceLoad: false, replace: true);
+    }
+
+    private async Task OpenProductAsync(AppProductDto product, int position)
+    {
+        await TrackClickEventAsync(
+            query: _qApplied,
+            targetType: "Product",
+            targetId: product.Id,
+            position: position,
+            page: _productPage,
+            sort: _productSort,
+            filtersHash: BuildProductFiltersHash(),
+            countryTag: null);
+        Nav.NavigateTo($"/products/{product.Id}");
+    }
+
+    private async Task OpenShopAsync(AppShopDto shop, int position)
+    {
+        await TrackClickEventAsync(
+            query: _qApplied,
+            targetType: "Shop",
+            targetId: shop.Id,
+            position: position,
+            page: _shopPage,
+            sort: _shopSort,
+            filtersHash: BuildShopFiltersHash(),
+            countryTag: _shopCountry);
+        Nav.NavigateTo($"/shops/{shop.Id}");
+    }
+
+    private async Task EnsureAnalyticsSessionIdAsync()
+    {
+        if (_analyticsSessionReady && !string.IsNullOrWhiteSpace(_analyticsSessionId))
+        {
+            return;
+        }
+
+        if (_analyticsSessionReady)
+        {
+            _analyticsSessionId ??= Guid.NewGuid().ToString("N");
+            return;
+        }
+
+        _analyticsSessionReady = true;
+        try
+        {
+            var existing = await SessionStorage.GetItemAsync<string>(AnalyticsSessionStorageKey);
+            if (!string.IsNullOrWhiteSpace(existing))
+            {
+                _analyticsSessionId = existing;
+                return;
+            }
+
+            _analyticsSessionId = Guid.NewGuid().ToString("N");
+            await SessionStorage.SetItemAsync(AnalyticsSessionStorageKey, _analyticsSessionId);
+        }
+        catch
+        {
+            _analyticsSessionId ??= Guid.NewGuid().ToString("N");
+        }
+    }
+
+    private async Task TrackQueryEventAsync(
+        string? query,
+        int resultsCount,
+        int durationMs,
+        int? page,
+        string? sort,
+        string? filtersHash,
+        string? countryTag)
+    {
+        var normalizedQuery = Normalize(query);
+        if (string.IsNullOrWhiteSpace(normalizedQuery))
+        {
+            return;
+        }
+
+        await EnsureAnalyticsSessionIdAsync();
+
+        try
+        {
+            await Http.PostAsJsonAsync(
+                "api/search/analytics/query",
+                new SearchAnalyticsQueryEvent(
+                    normalizedQuery,
+                    Math.Max(0, resultsCount),
+                    Math.Max(0, durationMs),
+                    page,
+                    NormalizeSort(sort),
+                    NormalizeFilterHash(filtersHash),
+                    _analyticsSessionId,
+                    "Web",
+                    NormalizeCountryTag(countryTag)));
+        }
+        catch
+        {
+        }
+    }
+
+    private async Task TrackClickEventAsync(
+        string? query,
+        string targetType,
+        Guid targetId,
+        int? position,
+        int? page,
+        string? sort,
+        string? filtersHash,
+        string? countryTag)
+    {
+        await EnsureAnalyticsSessionIdAsync();
+
+        try
+        {
+            await Http.PostAsJsonAsync(
+                "api/search/analytics/click",
+                new SearchAnalyticsClickEvent(
+                    Normalize(query),
+                    targetType,
+                    targetId,
+                    position,
+                    page,
+                    NormalizeSort(sort),
+                    NormalizeFilterHash(filtersHash),
+                    _analyticsSessionId,
+                    "Web",
+                    NormalizeCountryTag(countryTag)));
+        }
+        catch
+        {
+        }
+    }
+
+    private string BuildProductFiltersHash()
+    {
+        var category = _categoryId.HasValue ? _categoryId.Value.ToString("N") : "none";
+        var shop = _productShopId.HasValue ? _productShopId.Value.ToString("N") : "none";
+        var min = _productMinPrice?.ToString("0.##", CultureInfo.InvariantCulture) ?? "none";
+        var max = _productMaxPrice?.ToString("0.##", CultureInfo.InvariantCulture) ?? "none";
+        var rating = _productRatingMin?.ToString("0.##", CultureInfo.InvariantCulture) ?? "none";
+        var city = Normalize(_productCity) ?? "none";
+        var country = NormalizeCountryTag(_productCountry) ?? "none";
+        return $"stock={(_inStockOnly ? 1 : 0)}|promo={(_promotedOnly ? 1 : 0)}|cat={category}|shop={shop}|min={min}|max={max}|rating={rating}|city={city}|country={country}";
+    }
+
+    private string BuildShopFiltersHash()
+    {
+        var country = NormalizeCountryTag(_shopCountry) ?? "none";
+        var city = Normalize(_shopCity) ?? "none";
+        var rating = _shopRatingMin?.ToString("0.##", CultureInfo.InvariantCulture) ?? "none";
+        var category = _shopCategoryId.HasValue ? _shopCategoryId.Value.ToString("N") : "none";
+        return $"verified={(_verifiedOnly ? 1 : 0)}|reco={(_recommendedOnly ? 1 : 0)}|country={country}|city={city}|rating={rating}|cat={category}";
+    }
+
+    private static bool TryNormalizeTargetType(string? value, out string? normalized)
+    {
+        if (string.Equals(value, "product", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = "Product";
+            return true;
+        }
+
+        if (string.Equals(value, "shop", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = "Shop";
+            return true;
+        }
+
+        if (string.Equals(value, "category", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = "Category";
+            return true;
+        }
+
+        normalized = null;
+        return false;
+    }
+
+    private string Seg(SearchTab tab) => _tab == tab ? "active" : string.Empty;
+    private string T(string fr, string en) => IsEn ? en : fr;
+    private string TypeLabel(string type) => type.ToLowerInvariant() switch
+    {
+        "product" => T("Produit", "Product"),
+        "shop" => T("Boutique", "Shop"),
+        "category" => T("Categorie", "Category"),
+        "query" => T("Populaire", "Popular"),
+        _ => type
+    };
+    private string CategoryLabel(AppCategoryDto c) => CategoryLabel(c.Name, c.NameEn);
+    private string CategoryLabel(string name, string? en) => IsEn && !string.IsNullOrWhiteSpace(en) ? en! : name;
+    private static string? NormalizeSort(string? value)
+    {
+        var normalized = (value ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return null;
+        }
+
+        return normalized.Length <= 40 ? normalized : normalized[..40];
+    }
+
+    private static string? NormalizeFilterHash(string? value)
+    {
+        var normalized = (value ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return null;
+        }
+
+        return normalized.Length <= 80 ? normalized : normalized[..80];
+    }
+
+    private static string? NormalizeCountryTag(string? value)
+        => Normalize(value)?.ToUpperInvariant();
+
+    private static string? Normalize(string? v) { var n = (v ?? string.Empty).Trim(); if (string.IsNullOrWhiteSpace(n)) return null; return n.Length <= 80 ? n : n[..80]; }
+    private static string TabKey(SearchTab tab) => tab switch { SearchTab.Shops => "shops", SearchTab.Categories => "categories", _ => "products" };
+    private static SearchTab ParseTab(string? tab) => (tab ?? string.Empty).Trim().ToLowerInvariant() switch { "shops" => SearchTab.Shops, "categories" => SearchTab.Categories, _ => SearchTab.Products };
+    private static string? GetQuery(Uri uri, string key)
+    {
+        var q = uri.Query;
+        if (string.IsNullOrWhiteSpace(q)) return null;
+        var raw = q.StartsWith('?') ? q[1..] : q;
+        foreach (var p in raw.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var idx = p.IndexOf('=');
+            if (idx < 0) continue;
+            var k = Uri.UnescapeDataString(p[..idx]);
+            if (!string.Equals(k, key, StringComparison.OrdinalIgnoreCase)) continue;
+            return Uri.UnescapeDataString(p[(idx + 1)..].Replace('+', ' '));
+        }
+        return null;
+    }
+
+    private static int ParsePositiveInt(string? value, int fallback)
+    {
+        if (!int.TryParse(value, out var parsed))
+        {
+            return fallback;
+        }
+
+        return parsed <= 0 ? fallback : parsed;
+    }
+
+    private static Guid? ParseGuid(string? value)
+    {
+        if (!Guid.TryParse(value, out var parsed))
+        {
+            return null;
+        }
+
+        return parsed;
+    }
+
+    private static decimal? ParseDecimal(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        if (decimal.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var invariant))
+        {
+            return invariant;
+        }
+
+        if (decimal.TryParse(value, NumberStyles.Any, CultureInfo.CurrentCulture, out var current))
+        {
+            return current;
+        }
+
+        return null;
+    }
+
+    private static bool ParseBoolFlag(string? value, bool fallback)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return fallback;
+        }
+
+        var normalized = value.Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "1" => true,
+            "true" => true,
+            "0" => false,
+            "false" => false,
+            _ => fallback
+        };
+    }
+
+    private enum SearchTab { Products, Shops, Categories }
+
+    private sealed record SearchAnalyticsQueryEvent(
+        string? Query,
+        int? ResultsCount,
+        int? DurationMs,
+        int? Page,
+        string? Sort,
+        string? FiltersHash,
+        string? SessionId,
+        string? Source,
+        string? CountryTag);
+
+    private sealed record SearchAnalyticsClickEvent(
+        string? Query,
+        string TargetType,
+        Guid TargetId,
+        int? Position,
+        int? Page,
+        string? Sort,
+        string? FiltersHash,
+        string? SessionId,
+        string? Source,
+        string? CountryTag);
+}
+
+

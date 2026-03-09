@@ -1,0 +1,118 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<local:LocalizedContentPage xmlns:local="clr-namespace:DoorMarket.Mobile.Localization"     x:Class="DoorMarket.Mobile.Pages.AddressesPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:components="clr-namespace:DoorMarket.Mobile.Components"
+    xmlns:markup="clr-namespace:DoorMarket.Mobile.Markup"
+    xmlns:me="clr-namespace:DoorMarket.Application.DTOs.Me;assembly=DoorMarket.Application"
+    xmlns:models="clr-namespace:DoorMarket.Mobile.Models"
+    NavigationPage.HasNavigationBar="False">
+
+    <Grid RowDefinitions="Auto,*">
+        <Grid
+            BackgroundColor="{StaticResource DoorBlue}"
+            ColumnDefinitions="Auto,*,Auto"
+            ColumnSpacing="16"
+            Padding="{OnPlatform iOS='24,56,24,20', Default='24,50,24,20'}">
+            <ImageButton Clicked="OnBackClicked">
+                <ImageButton.Source>
+                    <FontImageSource FontFamily="fa-solid-900" Glyph="{x:Static models:IconGlyphs.Back}" Color="White" Size="16" />
+                </ImageButton.Source>
+            </ImageButton>
+            <Label
+                Grid.Column="1"
+                FontFamily="Inter-Bold"
+                FontSize="22"
+                Text="{markup:Translate MyAddressesTitle}"
+                TextColor="White"
+                VerticalOptions="Center" />
+            <Button
+                Grid.Column="2"
+                BackgroundColor="#1AFFFFFF"
+                BorderColor="White"
+                BorderWidth="1"
+                Clicked="OnAddClicked"
+                FontFamily="Inter-SemiBold"
+                FontSize="13"
+                HeightRequest="36"
+                Text="{markup:Translate AddAction}"
+                TextColor="White" />
+        </Grid>
+
+        <Grid Grid.Row="1" Padding="24,16,24,0">
+            <CollectionView ItemsSource="{Binding Addresses}">
+                <CollectionView.EmptyView>
+                    <Label Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate NoAddressesYet}" />
+                </CollectionView.EmptyView>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <SwipeView>
+                            <SwipeView.RightItems>
+                                <SwipeItems Mode="Execute">
+                                    <SwipeItem
+                                        BackgroundColor="{StaticResource DoorBlue}"
+                                        CommandParameter="{Binding .}"
+                                        Invoked="OnEditInvoked"
+                                        Text="{markup:Translate EditAction}" />
+                                    <SwipeItem
+                                        BackgroundColor="{StaticResource ErrorRed}"
+                                        CommandParameter="{Binding .}"
+                                        Invoked="OnDeleteInvoked"
+                                        Text="{markup:Translate DeleteAction}" />
+                                </SwipeItems>
+                            </SwipeView.RightItems>
+                            <components:DmCard Margin="0,0,0,12">
+                                <VerticalStackLayout Spacing="8">
+                                    <Label FontFamily="Inter-SemiBold" Text="{Binding Label}" />
+                                    <Label Style="{StaticResource CaptionLabelStyle}" Text="{Binding FullName}" />
+                                    <Label Style="{StaticResource CaptionLabelStyle}" Text="{Binding Phone}" />
+                                    <Label Style="{StaticResource CaptionLabelStyle}" Text="{Binding Street}" />
+                                    <Label Style="{StaticResource CaptionLabelStyle}" Text="{Binding City}" />
+                                    <Label
+                                        FontFamily="Inter-Medium"
+                                        FontSize="12"
+                                        IsVisible="{Binding IsDefault}"
+                                        Text="{markup:Translate DefaultAddressLabel}"
+                                        TextColor="{StaticResource DoorOrange}" />
+                                    <HorizontalStackLayout Spacing="8">
+                                        <Button
+                                            BackgroundColor="{StaticResource DoorBlue10}"
+                                            Clicked="OnEditClicked"
+                                            CommandParameter="{Binding .}"
+                                            CornerRadius="10"
+                                            FontFamily="Inter-SemiBold"
+                                            FontSize="12"
+                                            HeightRequest="32"
+                                            Padding="10,0"
+                                            Text="{markup:Translate EditAction}"
+                                            TextColor="{StaticResource DoorBlue}" />
+                                        <Button
+                                            BackgroundColor="#22E63946"
+                                            Clicked="OnDeleteClicked"
+                                            CommandParameter="{Binding .}"
+                                            CornerRadius="10"
+                                            FontFamily="Inter-SemiBold"
+                                            FontSize="12"
+                                            HeightRequest="32"
+                                            Padding="10,0"
+                                            Text="{markup:Translate DeleteAction}"
+                                            TextColor="{StaticResource ErrorRed}" />
+                                    </HorizontalStackLayout>
+                                </VerticalStackLayout>
+                            </components:DmCard>
+                        </SwipeView>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <ActivityIndicator
+                HorizontalOptions="Center"
+                IsRunning="{Binding IsBusy}"
+                IsVisible="{Binding IsBusy}"
+                VerticalOptions="Center" />
+        </Grid>
+    </Grid>
+</local:LocalizedContentPage>
+
+
+

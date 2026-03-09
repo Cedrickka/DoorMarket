@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentView
+    x:Class="DoorMarket.Mobile.Components.DmInput"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:controls="clr-namespace:DoorMarket.Mobile.Controls"
+    x:Name="Root">
+
+    <VerticalStackLayout Spacing="8">
+        <Label Text="{Binding Label, Source={x:Reference Root}}"
+               FontFamily="Inter-Medium"
+               FontSize="13"
+               TextColor="{AppThemeBinding Light={StaticResource DmTextPrimaryLight}, Dark={StaticResource DmTextPrimaryDark}}"
+               IsVisible="{Binding HasLabel, Source={x:Reference Root}}" />
+
+        <Border BackgroundColor="{AppThemeBinding Light={StaticResource DmInputBgLight}, Dark={StaticResource DmInputBgDark}}"
+               Stroke="{AppThemeBinding Light={StaticResource DmBorderLight}, Dark={StaticResource DmBorderDark}}"
+               StrokeThickness="1"
+               HeightRequest="48"
+               Padding="12,0">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="12" />
+            </Border.StrokeShape>
+
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" VerticalOptions="Center">
+                <Label FontFamily="MaterialIcons"
+                       Text="{Binding LeftIconGlyph, Source={x:Reference Root}}"
+                       FontSize="18"
+                       TextColor="{AppThemeBinding Light={StaticResource DmTextSecondaryLight}, Dark={StaticResource DmTextSecondaryDark}}"
+                       IsVisible="{Binding HasLeftIcon, Source={x:Reference Root}}"
+                       VerticalOptions="Center" />
+                <controls:BorderlessEntry x:Name="InputEntry"
+                                          Grid.Column="1"
+                                          Style="{StaticResource InputEntryStyle}"
+                                          Text="{Binding Text, Source={x:Reference Root}, Mode=TwoWay}"
+                                          Placeholder="{Binding Placeholder, Source={x:Reference Root}}"
+                                          Keyboard="{Binding Keyboard, Source={x:Reference Root}}"
+                                          IsPassword="{Binding IsPassword, Source={x:Reference Root}}"
+                                          ReturnType="{Binding ReturnType, Source={x:Reference Root}}"
+                                          Completed="OnEntryCompleted"
+                                          TextChanged="OnEntryTextChanged" />
+            </Grid>
+        </Border>
+    </VerticalStackLayout>
+</ContentView>
+
+
+

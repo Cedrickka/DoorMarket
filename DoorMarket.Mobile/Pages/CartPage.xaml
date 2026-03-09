@@ -1,0 +1,396 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<local:LocalizedContentPage xmlns:local="clr-namespace:DoorMarket.Mobile.Localization"     x:Class="DoorMarket.Mobile.Pages.CartPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:components="clr-namespace:DoorMarket.Mobile.Components"
+    xmlns:markup="clr-namespace:DoorMarket.Mobile.Markup"
+    xmlns:models="clr-namespace:DoorMarket.Mobile.Models"
+    NavigationPage.HasNavigationBar="False">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        <components:DmHeader
+            BackCommand="{Binding BackCommand}"
+            HasBack="True"
+            Subtitle="{markup:Translate CartSubtitle}"
+            Title="{markup:Translate CartTitle}" />
+
+        <Grid Grid.Row="1">
+            <ScrollView>
+                <VerticalStackLayout Padding="24,16,24,24" Spacing="16">
+                    <components:DmCard Margin="0">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                            <Frame
+                                BackgroundColor="{StaticResource DoorBlue10}"
+                                CornerRadius="12"
+                                HasShadow="False"
+                                HeightRequest="36"
+                                Padding="8"
+                                VerticalOptions="Center"
+                                WidthRequest="36">
+                                <Image Source="{FontImageSource FontFamily=fa-solid-900, Glyph={x:Static models:IconGlyphs.Cart}, Color={StaticResource DoorBlue}, Size=16}" />
+                            </Frame>
+                            <VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
+                                <Label FontFamily="Inter-SemiBold" FontSize="15" Text="{Binding ItemCountLabel}" />
+                                <Label Style="{StaticResource CaptionLabelStyle}" Text="{markup:Translate CartCurrentTotal}" />
+                            </VerticalStackLayout>
+                            <Label
+                                Grid.Column="2"
+                                Style="{StaticResource MetricValueLabelStyle}"
+                                FontSize="24"
+                                Text="{Binding TotalText}"
+                                TextColor="{StaticResource DoorOrange}"
+                                VerticalOptions="Center" />
+                        </Grid>
+                    </components:DmCard>
+
+                    <HorizontalStackLayout IsVisible="{Binding HasItems}" Spacing="8">
+                        <Frame Style="{StaticResource ChipFrameStyle}">
+                            <Label
+                                FontFamily="Inter-SemiBold"
+                                FontSize="12"
+                                Text="{Binding ItemCountLabel}"
+                                TextColor="{StaticResource DoorBlue}" />
+                        </Frame>
+                        <Frame
+                            BackgroundColor="{StaticResource DoorOrange12}"
+                            BorderColor="{AppThemeBinding Light={StaticResource DmBorderLight}, Dark={StaticResource DmBorderDark}}"
+                            CornerRadius="10"
+                            HasShadow="False"
+                            IsVisible="{Binding HasActivePromo}"
+                            Padding="10,4">
+                            <Label
+                                FontFamily="Inter-SemiBold"
+                                FontSize="12"
+                                Text="{Binding ActivePromoBadgeText}"
+                                TextColor="{StaticResource DoorOrange}" />
+                        </Frame>
+                    </HorizontalStackLayout>
+
+                    <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate CartItemsTitle}" />
+
+                    <CollectionView
+                        IsVisible="{Binding HasItems}"
+                        ItemsSource="{Binding CartItems}"
+                        SelectionMode="None">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <components:DmCard Margin="0,0,0,12">
+                                    <Grid ColumnDefinitions="84,*,Auto" ColumnSpacing="12">
+                                        <Frame
+                                            BackgroundColor="{AppThemeBinding Light={StaticResource DmSurfaceAltLight}, Dark={StaticResource DmSurfaceAltDark}}"
+                                            CornerRadius="12"
+                                            HasShadow="False"
+                                            HeightRequest="84"
+                                            Padding="0"
+                                            WidthRequest="84">
+                                            <Image Aspect="AspectFill" Source="{Binding ImageUrl}" />
+                                        </Frame>
+
+                                        <VerticalStackLayout Grid.Column="1" Spacing="8" VerticalOptions="Center">
+                                            <Label FontFamily="Inter-SemiBold" FontSize="15" LineBreakMode="TailTruncation" Text="{Binding Name}" />
+                                            <Label Style="{StaticResource CaptionLabelStyle}" Text="{Binding UnitPrice, StringFormat='{markup:Translate ItemPriceFormat}'}" />
+
+                                            <HorizontalStackLayout Spacing="8">
+                                                <Frame
+                                                    BackgroundColor="{StaticResource DoorBlue10}"
+                                                    CornerRadius="10"
+                                                    HasShadow="False"
+                                                    Padding="0">
+                                                    <Button
+                                                        BackgroundColor="Transparent"
+                                                        Clicked="OnDecreaseQtyClicked"
+                                                        CommandParameter="{Binding .}"
+                                                        CornerRadius="10"
+                                                        FontFamily="Inter-Bold"
+                                                        FontSize="16"
+                                                        HeightRequest="30"
+                                                        Padding="0"
+                                                        Text="-"
+                                                        TextColor="{StaticResource DoorBlue}"
+                                                        WidthRequest="30" />
+                                                </Frame>
+                                                <Frame
+                                                    BackgroundColor="{AppThemeBinding Light={StaticResource DmChipBgLight}, Dark={StaticResource DmChipBgDark}}"
+                                                    CornerRadius="10"
+                                                    HasShadow="False"
+                                                    Padding="10,4">
+                                                    <Label
+                                                        FontFamily="Inter-SemiBold"
+                                                        FontSize="13"
+                                                        Text="{Binding Quantity}"
+                                                        VerticalOptions="Center" />
+                                                </Frame>
+                                                <Frame
+                                                    BackgroundColor="{StaticResource DoorBlue10}"
+                                                    CornerRadius="10"
+                                                    HasShadow="False"
+                                                    Padding="0">
+                                                    <Button
+                                                        BackgroundColor="Transparent"
+                                                        Clicked="OnIncreaseQtyClicked"
+                                                        CommandParameter="{Binding .}"
+                                                        CornerRadius="10"
+                                                        FontFamily="Inter-Bold"
+                                                        FontSize="16"
+                                                        HeightRequest="30"
+                                                        Padding="0"
+                                                        Text="+"
+                                                        TextColor="{StaticResource DoorBlue}"
+                                                        WidthRequest="30" />
+                                                </Frame>
+                                            </HorizontalStackLayout>
+                                        </VerticalStackLayout>
+
+                                        <VerticalStackLayout Grid.Column="2" HorizontalOptions="End" Spacing="8" VerticalOptions="Center">
+                                            <Label
+                                                FontFamily="Inter-Bold"
+                                                FontSize="16"
+                                                HorizontalTextAlignment="End"
+                                                Text="{Binding LineTotal, StringFormat='{}{0:0.##}'}"
+                                                TextColor="{StaticResource DoorOrange}" />
+                                            <Label
+                                                FontFamily="Inter-SemiBold"
+                                                FontSize="12"
+                                                HorizontalTextAlignment="End"
+                                                Text="{Binding Currency}"
+                                                TextColor="{StaticResource DoorOrange}" />
+                                            <Frame
+                                                BackgroundColor="{AppThemeBinding Light={StaticResource DmErrorSoftLight}, Dark={StaticResource DmErrorSoftDark}}"
+                                                BorderColor="{AppThemeBinding Light={StaticResource DmErrorLight}, Dark={StaticResource DmErrorDark}}"
+                                                CornerRadius="10"
+                                                HasShadow="False"
+                                                Padding="8,4">
+                                                <Frame.GestureRecognizers>
+                                                    <TapGestureRecognizer CommandParameter="{Binding .}" Tapped="OnRemoveItemTapped" />
+                                                </Frame.GestureRecognizers>
+                                                <HorizontalStackLayout Spacing="6">
+                                                    <Image Source="{FontImageSource FontFamily=fa-solid-900, Glyph={x:Static models:IconGlyphs.Trash}, Color={StaticResource ErrorRed}, Size=12}" />
+                                                    <Label
+                                                        FontFamily="Inter-SemiBold"
+                                                        FontSize="12"
+                                                        HorizontalTextAlignment="Center"
+                                                        Text="{markup:Translate Remove}"
+                                                        TextColor="{StaticResource ErrorRed}" />
+                                                </HorizontalStackLayout>
+                                            </Frame>
+                                        </VerticalStackLayout>
+                                    </Grid>
+                                </components:DmCard>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+
+                    <components:DmCard IsVisible="{Binding ShowEmptyCart}" Margin="0">
+                        <VerticalStackLayout Spacing="8">
+                            <Label FontFamily="Inter-SemiBold" FontSize="18" Text="{markup:Translate CartEmptyTitle}" />
+                            <Label Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate CartEmptyHint}" />
+                            <components:DmSecondaryButton
+                                Clicked="OnExploreCatalogClicked"
+                                HeightRequest="44"
+                                HorizontalOptions="Start"
+                                Padding="18,0"
+                                Text="{markup:Translate ExploreCatalog}" />
+                        </VerticalStackLayout>
+                    </components:DmCard>
+
+                    <components:DmCard Margin="0">
+                        <VerticalStackLayout Spacing="16">
+                            <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate PromoCodeTitle}" />
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <components:DmInput
+                                    x:Name="PromoEntry"
+                                    Grid.Column="0"
+                                    Label="{markup:Translate PromoCodeLabel}"
+                                    Placeholder="{markup:Translate PromoCodePlaceholder}"
+                                    Text="{Binding PromoCodeInput, Mode=TwoWay}" />
+                                <components:DmSecondaryButton
+                                    Grid.Column="1"
+                                    Clicked="OnApplyPromoClicked"
+                                    HeightRequest="48"
+                                    Text="{markup:Translate ApplyAction}" />
+                            </Grid>
+                            <Label
+                                IsVisible="{Binding HasPromoMessage}"
+                                Style="{StaticResource CaptionLabelStyle}"
+                                Text="{Binding PromoMessage}"
+                                TextColor="{Binding PromoMessageColor}" />
+                        </VerticalStackLayout>
+                    </components:DmCard>
+
+                    <components:DmCard
+                        IsVisible="{Binding HasReadinessError}"
+                        Margin="0">
+                        <Frame
+                            BackgroundColor="{AppThemeBinding Light={StaticResource DmWarningSoftLight}, Dark={StaticResource DmWarningSoftDark}}"
+                            BorderColor="{StaticResource WarningYellow}"
+                            CornerRadius="12"
+                            HasShadow="False"
+                            Padding="12,10">
+                            <HorizontalStackLayout Spacing="8">
+                                <Image Source="{FontImageSource FontFamily=fa-solid-900, Glyph={x:Static models:IconGlyphs.InfoCircle}, Color={StaticResource WarningYellow}, Size=14}" />
+                                <Label Style="{StaticResource CaptionLabelStyle}" Text="{Binding ReadinessError}" />
+                            </HorizontalStackLayout>
+                        </Frame>
+                    </components:DmCard>
+
+                    <components:DmCard
+                        IsVisible="{Binding HasBlockingIssues}"
+                        Margin="0">
+                        <VerticalStackLayout Spacing="8">
+                            <Label
+                                FontFamily="Inter-Bold"
+                                FontSize="16"
+                                Text="{markup:Translate CartCheckoutBlockedTitle}"
+                                TextColor="{StaticResource WarningYellow}" />
+                            <VerticalStackLayout BindableLayout.ItemsSource="{Binding BlockingIssues}" Spacing="6">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate>
+                                        <Label Style="{StaticResource CaptionLabelStyle}" Text="{Binding ., StringFormat='- {0}'}" />
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
+                    </components:DmCard>
+
+                    <components:DmCard
+                        IsVisible="{Binding ShowCheckoutReady}"
+                        Margin="0">
+                        <Frame
+                            BackgroundColor="{AppThemeBinding Light={StaticResource DmSuccessSoftLight}, Dark={StaticResource DmSuccessSoftDark}}"
+                            BorderColor="{StaticResource SuccessGreen}"
+                            CornerRadius="12"
+                            HasShadow="False"
+                            Padding="12,10">
+                            <HorizontalStackLayout Spacing="8">
+                                <Image Source="{FontImageSource FontFamily=fa-solid-900, Glyph={x:Static models:IconGlyphs.CheckCircle}, Color={StaticResource SuccessGreen}, Size=14}" />
+                                <Label Style="{StaticResource CaptionLabelStyle}" Text="{markup:Translate CartCheckoutReadyHint}" />
+                            </HorizontalStackLayout>
+                        </Frame>
+                    </components:DmCard>
+
+                    <components:DmCard
+                        IsVisible="{Binding HasCheckoutWarnings}"
+                        Margin="0">
+                        <VerticalStackLayout Spacing="8">
+                            <Label
+                                FontFamily="Inter-Bold"
+                                FontSize="16"
+                                Text="{markup:Translate CartCheckoutWarningsTitle}" />
+                            <VerticalStackLayout BindableLayout.ItemsSource="{Binding CheckoutWarnings}" Spacing="6">
+                                <BindableLayout.ItemTemplate>
+                                    <DataTemplate>
+                                        <Label Style="{StaticResource CaptionLabelStyle}" Text="{Binding ., StringFormat='- {0}'}" />
+                                    </DataTemplate>
+                                </BindableLayout.ItemTemplate>
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
+                    </components:DmCard>
+
+                    <components:DmCard
+                        IsVisible="{Binding HasFixActions}"
+                        Margin="0">
+                        <VerticalStackLayout Spacing="8">
+                            <Label
+                                FontFamily="Inter-Bold"
+                                FontSize="16"
+                                Text="{markup:Translate CartFixActionsTitle}" />
+                            <components:DmSecondaryButton
+                                Clicked="OnFixAddressClicked"
+                                HeightRequest="44"
+                                IsVisible="{Binding ShowAddressFixAction}"
+                                Text="{markup:Translate ManageAddresses}" />
+                            <components:DmSecondaryButton
+                                Clicked="OnFixPaymentsClicked"
+                                HeightRequest="44"
+                                IsVisible="{Binding ShowPaymentFixAction}"
+                                Text="{markup:Translate PaymentsTitle}" />
+                            <components:DmSecondaryButton
+                                Clicked="OnFixCatalogClicked"
+                                HeightRequest="44"
+                                IsVisible="{Binding ShowCatalogFixAction}"
+                                Text="{markup:Translate ExploreCatalog}" />
+                            <components:DmSecondaryButton
+                                Clicked="OnRetryReadinessClicked"
+                                HeightRequest="44"
+                                IsVisible="{Binding ShowRetryReadinessAction}"
+                                Text="{markup:Translate RetryAction}" />
+                        </VerticalStackLayout>
+                    </components:DmCard>
+
+                    <components:DmCard Margin="0">
+                        <VerticalStackLayout Spacing="12">
+                            <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate SummaryTitle}" />
+
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label Style="{StaticResource SummaryRowLabelStyle}" Text="{markup:Translate SubtotalLabel}" />
+                                <Label Grid.Column="1" Style="{StaticResource SummaryValueLabelStyle}" Text="{Binding SubtotalText}" />
+                            </Grid>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label Style="{StaticResource SummaryRowLabelStyle}" Text="{markup:Translate PromoDiscountLabel}" />
+                                <Label Grid.Column="1" Style="{StaticResource SummaryValueLabelStyle}" Text="{Binding DiscountText}" />
+                            </Grid>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label Style="{StaticResource SummaryRowLabelStyle}" Text="{markup:Translate DeliveryLabel}" />
+                                <Label Grid.Column="1" Style="{StaticResource SummaryValueLabelStyle}" Text="{Binding DeliveryText}" />
+                            </Grid>
+
+                            <BoxView BackgroundColor="{AppThemeBinding Light={StaticResource DmBorderLight}, Dark={StaticResource DmBorderDark}}" HeightRequest="1" />
+
+                            <Frame
+                                BackgroundColor="{StaticResource DoorBlue10}"
+                                CornerRadius="12"
+                                HasShadow="False"
+                                Padding="12,10">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                    <Label FontFamily="Inter-Bold" FontSize="16" Text="{markup:Translate TotalLabel}" />
+                                    <Label
+                                        Grid.Column="1"
+                                        FontFamily="Inter-Bold"
+                                        FontSize="18"
+                                        Text="{Binding TotalText}"
+                                        TextColor="{StaticResource DoorOrange}" />
+                                </Grid>
+                            </Frame>
+                        </VerticalStackLayout>
+                    </components:DmCard>
+
+                    <Frame
+                        BackgroundColor="{StaticResource DoorBlue10}"
+                        CornerRadius="12"
+                        HasShadow="False"
+                        IsVisible="{Binding ShowBusyInline}"
+                        Padding="12,8">
+                        <HorizontalStackLayout Spacing="8">
+                            <ActivityIndicator IsRunning="True" IsVisible="True" Scale="0.8" />
+                            <Label
+                                FontFamily="Inter-Medium"
+                                FontSize="13"
+                                Text="{markup:Translate CartUpdating}"
+                                TextColor="{StaticResource DoorBlue}"
+                                VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+                    </Frame>
+                </VerticalStackLayout>
+            </ScrollView>
+
+            <ActivityIndicator
+                HorizontalOptions="Center"
+                IsRunning="{Binding IsBusy}"
+                IsVisible="{Binding IsBusy}"
+                VerticalOptions="Center" />
+        </Grid>
+
+        <Grid Grid.Row="2" Style="{StaticResource BottomSurfaceGridStyle}" ColumnDefinitions="Auto,*" ColumnSpacing="12" Padding="{OnPlatform iOS='24,12,24,32', Default='24,12'}">
+            <VerticalStackLayout Spacing="2" VerticalOptions="Center">
+                <Label Style="{StaticResource SummaryRowLabelStyle}" Text="{markup:Translate TotalLabel}" />
+                <Label Style="{StaticResource MetricValueLabelStyle}" FontSize="22" Text="{Binding TotalText}" TextColor="{StaticResource DoorOrange}" />
+            </VerticalStackLayout>
+            <components:DmPrimaryButton
+                Grid.Column="1"
+                Clicked="OnCheckoutClicked"
+                IsEnabled="{Binding CanCheckout}"
+                Text="{Binding CheckoutButtonText}" />
+        </Grid>
+    </Grid>
+</local:LocalizedContentPage>
+

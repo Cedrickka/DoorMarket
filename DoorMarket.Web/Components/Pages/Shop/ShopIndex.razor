@@ -1,0 +1,557 @@
+﻿@page "/shop"
+
+@using System.Net
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Forms
+@using MudBlazor
+@using System.Net.Http.Headers
+@using DoorMarket.Web.Utils
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject NavigationManager Nav
+
+<h1 class="dm-page-h1">@SL["ShopSpace"]</h1>
+<div class="dm-page-sub">@SL["ShopSpaceSubtitle"]</div>
+
+<AuthGuard>
+    @if (_loading)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudSkeleton Height="26px" Width="260px" Class="mb-2" />
+            <MudSkeleton Height="18px" Width="420px" Class="mb-4" />
+            <MudSkeleton Height="180px" />
+        </MudPaper>}
+    else if (_error is not null)
+    {<MudPaper Class="pa-4 mt-3">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_error</MudAlert>
+            <MudButton Variant="Variant.Outlined" Class="mt-3" OnClick="Reload">@SL["Retry"]</MudButton>
+        </MudPaper>}
+    else
+    {<MudGrid Class="mt-3" Spacing="3">
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-4">
+                    <MudText Typo="Typo.h6">@SL["Application"]</MudText>
+
+                    @if (_app is null)
+                    {
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-3">@SL["NoApplication"]</MudAlert>}
+                    else
+                    {<MudAlert Severity="@StatusSeverity(_app.Status)" Variant="Variant.Outlined" Class="mt-3">@SL["Status"] : <b>@_app.Status</b>
+                            @if (!string.IsNullOrWhiteSpace(_app.ReviewNote))
+                            {
+                                <div class="mt-1 dm-muted">@_app.ReviewNote</div>
+                            }
+                        </MudAlert>
+                    }
+
+                    <MudForm @ref="_form">
+                        <MudTextField T="string"
+                                      Label="@SL["ShopName"]"
+                                      Variant="Variant.Outlined"
+                                      @bind-Value="_name"
+                                      Required="true"
+                                      Class="mt-3"
+                                      Disabled="@(!_canEdit)" />
+
+                        <MudTextField T="string"
+                                      Label="@SL["CountryTag"]"
+                                      Variant="Variant.Outlined"
+                                      HelperText="@SL["CountryTagHint"]"
+                                      @bind-Value="_countryTag"
+                                      Required="true"
+                                      Class="mt-3"
+                                      Disabled="@(!_canEdit)" />
+
+                        <MudTextField T="string"
+                                      Label="@SL["City"]"
+                                      Variant="Variant.Outlined"
+                                      @bind-Value="_city"
+                                      Required="true"
+                                      Class="mt-3"
+                                      Disabled="@(!_canEdit)" />
+                    </MudForm>
+
+                    <div class="d-flex gap-2 mt-3 flex-wrap">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   OnClick="SaveDraft"
+                                   Disabled="@(!_canEdit)">@SL["Save"]</MudButton>
+
+                        <MudButton Variant="Variant.Outlined"
+                                   OnClick="Submit"
+                                   Disabled="@(!_canSubmit)">@SL["Submit"]</MudButton>
+                    </div>
+
+                    @if (!_canEdit && _app is not null)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
+                            @string.Format(SL["ApplicationLockedStatus"], _app.Status)
+                        </MudText>
+                    }
+
+                    @if (_app is not null && _app.Status == "Draft" && _app.Documents.Count == 0)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">@SL["AddDocumentToSubmit"]</MudText>
+                    }
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-4">
+                    <MudText Typo="Typo.h6">@SL["ShopImage"]</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@SL["ShopImageHint"]</MudText>
+
+                    @if (_app is null)
+                    {
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-3">@SL["SaveApplicationFirst"]</MudAlert>
+                    }
+                    else
+                    {
+                        <img src="@ShopImagePreview" alt="@_app.Name" class="mt-3" style="width:100%;max-height:220px;object-fit:cover;border-radius:12px;" />
+                        @if (string.IsNullOrWhiteSpace(_app.ImageUrl))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">@SL["DefaultImageNote"]</MudText>
+                        }
+
+                        <MudFileUpload T="IBrowserFile"
+                                       FilesChanged="OnLogoPicked"
+                                       Disabled="@(!_canSelectLogo)"
+                                       Class="mt-3">
+                            <ActivatorContent>
+                                <MudButton Variant="Variant.Outlined" Disabled="@(!_canSelectLogo)">@SL["ChooseFile"]</MudButton>
+                            </ActivatorContent>
+                        </MudFileUpload>
+
+                        @if (_logoFile is not null)
+                        {
+                            <MudText Typo="Typo.caption" Class="mt-2">@SL["SelectedFile"] : <b>@_logoFile.Name</b> (@FormatSize(_logoFile.Size))</MudText>
+                        }
+
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Class="mt-3"
+                                   Disabled="@(!_canUploadLogo)"
+                                   OnClick="UploadLogo">
+                            @if (_uploadingLogo)
+                            {
+                                <MudProgressCircular Indeterminate="true" Style="width:16px;height:16px" Class="me-1" />
+                                <span>@SL["Uploading"]</span>
+                            }
+                            else
+                            {
+                                <span>@SL["Upload"]</span>
+                            }
+                        </MudButton>
+                        <MudDivider Class="my-4" />
+
+                        <MudText Typo="Typo.h6">@SL["Documents"]</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">@SL["DocumentsHint"]</MudText>
+
+                        <MudSelect T="string"
+                                   Label="@SL["DocumentType"]"
+                                   Variant="Variant.Outlined"
+                                   @bind-Value="_docType"
+                                   Class="mt-3"
+                                   Disabled="@(!_canEdit)">
+                            <MudSelectItem Value="@("ID")">ID</MudSelectItem>
+                            <MudSelectItem Value="@("RCCM")">RCCM</MudSelectItem>
+                            <MudSelectItem Value="@("TAX")">TAX</MudSelectItem>
+                            <MudSelectItem Value="@("OTHER")">OTHER</MudSelectItem>
+                        </MudSelect>
+
+                        <MudFileUpload T="IBrowserFile"
+                                       FilesChanged="OnFilePicked"
+                                       Disabled="@(!_canEdit)"
+                                       Class="mt-3">
+                            <ActivatorContent>
+                                <MudButton Variant="Variant.Outlined" Disabled="@(!_canEdit)">@SL["ChooseFile"]</MudButton>
+                            </ActivatorContent>
+                        </MudFileUpload>
+
+                        @if (_file is not null)
+                        {
+                            <MudText Typo="Typo.caption" Class="mt-2">@SL["SelectedFile"] : <b>@_file.Name</b> (@FormatSize(_file.Size))</MudText>
+                        }
+
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Class="mt-3"
+                                   Disabled="@(!_canUpload)"
+                                   OnClick="Upload">@SL["Upload"]</MudButton>
+
+                        <MudDivider Class="my-3" />
+
+                        @if (_app.Documents.Count == 0)
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@SL["NoDocuments"]</MudText>}
+                        else
+                        {<MudTable Items="_app.Documents" Dense="true" Hover="true" Bordered="true">
+                                <HeaderContent>
+                                    <MudTh>@SL["Type"]</MudTh>
+                                    <MudTh>@SL["File"]</MudTh>
+                                    <MudTh>@SL["Size"]</MudTh>
+                                    <MudTh>@SL["Date"]</MudTh>
+                                    <MudTh>@SL["Action"]</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd>@context.DocType</MudTd>
+                                    <MudTd>@context.FileName</MudTd>
+                                    <MudTd>@FormatSize(context.SizeBytes)</MudTd>
+                                    <MudTd>@context.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</MudTd>
+                                    <MudTd>
+                                        <MudButton Size="Size.Small"
+                                                   Variant="Variant.Outlined"
+                                                   OnClick="@(() => OpenDoc(context.PublicUrl))">
+                                            @SL["Open"]
+                                        </MudButton>
+                                    </MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        }
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</AuthGuard>
+
+@code {
+    private bool _loading = true;
+    private string? _error;
+
+    private MudForm? _form;
+    private ShopApplicationDto? _app;
+
+    private string _name = "";
+    private string _countryTag = "RDC";
+    private string _city = "Kinshasa";
+
+    private string _docType = "ID";
+    private IBrowserFile? _file;
+    private IBrowserFile? _logoFile;
+    private bool _uploadingLogo;
+
+    private bool _canEdit => _app is null || _app.Status is "Draft" or "Rejected";
+    private bool _canSubmit => _app is not null && _app.Status == "Draft" && _app.Documents.Count > 0;
+    private bool _canUpload => _app is not null && _canEdit && _file is not null;
+    private bool _canUploadLogo => _app is not null && (_canEdit || _app.Status == "Approved") && _logoFile is not null && !_uploadingLogo;
+    private bool _canSelectLogo => _app is not null && (_canEdit || _app.Status == "Approved");
+    private string ShopImagePreview => _app is null ? string.Empty : MediaCatalog.Shop(_app.ImageUrl, _app.Name, _app.Id);
+
+    private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx"
+    };
+
+    private static readonly HashSet<string> AllowedImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".jpg", ".jpeg", ".png", ".webp"
+    };
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            var res = await Http.GetAsync("api/shop-applications/mine");
+
+            if (res.StatusCode == HttpStatusCode.NotFound)
+            {
+                _app = null;
+                return;
+            }
+
+            res.EnsureSuccessStatusCode();
+
+            _app = await res.Content.ReadFromJsonAsync<ShopApplicationDto>();
+
+            if (_app is not null)
+            {
+                _name = _app.Name ?? "";
+                _countryTag = _app.CountryTag ?? "RDC";
+                _city = _app.City ?? "Kinshasa";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private Task Reload() => LoadAsync();
+
+    private async Task SaveDraft()
+    {
+        if (!_canEdit) return;
+
+        await (_form?.Validate() ?? Task.CompletedTask);
+        if (_form is not null && !_form.IsValid)
+        {
+            Snackbar.Add(SL["InvalidFields"], Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var body = new { Name = _name, CountryTag = _countryTag, City = _city };
+            var res = await Http.PostAsJsonAsync("api/shop-applications", body);
+
+            if (!res.IsSuccessStatusCode)
+                throw new InvalidOperationException(await res.Content.ReadAsStringAsync());
+
+            Snackbar.Add(SL["ApplicationSaved"], Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task Submit()
+    {
+        if (_app is null) return;
+
+        if (!_canSubmit)
+        {
+            Snackbar.Add(SL["AddDocumentToSubmit"], Severity.Warning);
+            return;
+        }
+
+        var confirm = await Dialog.ShowMessageBox(
+            SL["Submit"],
+            new MarkupString(SL["SubmitApplicationPrompt"].Value),
+            yesText: SL["Submit"],
+            cancelText: SL["Annuler"]);
+
+        if (confirm != true) return;
+
+        try
+        {
+            var res = await Http.PostAsync($"api/shop-applications/{_app.Id}/submit", null);
+
+            if (!res.IsSuccessStatusCode)
+                throw new InvalidOperationException(await res.Content.ReadAsStringAsync());
+
+            Snackbar.Add(SL["ApplicationSubmitted"], Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    // ? Signature conforme MudBlazor 8.15 : FilesChanged="OnFilePicked" avec IBrowserFile
+    private void OnFilePicked(IBrowserFile file)
+    {
+        if (file is null) return;
+
+        if (file.Size > 10 * 1024 * 1024)
+        {
+            Snackbar.Add(SL["FileTooLarge"], Severity.Error);
+            _file = null;
+            return;
+        }
+
+        var ext = System.IO.Path.GetExtension(file.Name) ?? "";
+        if (!AllowedExtensions.Contains(ext))
+        {
+            Snackbar.Add(SL["FileTypeNotAllowed"], Severity.Error);
+            _file = null;
+            return;
+        }
+
+        _file = file; // ? active le bouton Upload
+        Snackbar.Add(string.Format(SL["SelectedFileSnackbar"].Value, file.Name), Severity.Info);
+    }
+
+    private void OnLogoPicked(IBrowserFile file)
+    {
+        if (file is null) return;
+
+        if (file.Size > 10 * 1024 * 1024)
+        {
+            Snackbar.Add(SL["ImageTooLarge"], Severity.Error);
+            _logoFile = null;
+            return;
+        }
+
+        var ext = System.IO.Path.GetExtension(file.Name) ?? "";
+        if (!AllowedImageExtensions.Contains(ext))
+        {
+            Snackbar.Add(SL["FileTypeNotAllowed"], Severity.Error);
+            _logoFile = null;
+            return;
+        }
+
+        _logoFile = file;
+        Snackbar.Add(string.Format(SL["SelectedFileSnackbar"].Value, file.Name), Severity.Info);
+    }
+
+    private async Task Upload()
+    {
+        if (_app is null)
+        {
+            Snackbar.Add(SL["SaveApplicationFirst"], Severity.Warning);
+            return;
+        }
+
+        if (!_canEdit)
+        {
+            Snackbar.Add(SL["UploadBlockedApplication"], Severity.Warning);
+            return;
+        }
+
+        if (_file is null)
+        {
+            Snackbar.Add(SL["ChooseFileFirst"], Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            content.Add(new StringContent(_docType), "docType");
+
+            using var stream = _file.OpenReadStream(maxAllowedSize: 10_000_000);
+
+            var fileContent = new StreamContent(stream);
+            // ? TRÈS IMPORTANT : pousser le MIME type réel
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(_file.ContentType);
+
+            content.Add(fileContent, "file", _file.Name);
+
+            var res = await Http.PostAsync($"api/shop-applications/{_app.Id}/documents", content);
+
+            if (!res.IsSuccessStatusCode)
+                throw new InvalidOperationException(await res.Content.ReadAsStringAsync());
+
+            Snackbar.Add(SL["DocumentUploaded"], Severity.Success);
+            _file = null;
+
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task UploadLogo()
+    {
+        if (_app is null)
+        {
+            Snackbar.Add(SL["SaveApplicationFirst"], Severity.Warning);
+            return;
+        }
+
+        if (!_canEdit && _app.Status != "Approved")
+        {
+            Snackbar.Add(SL["UploadBlockedApplication"], Severity.Warning);
+            return;
+        }
+
+        if (_logoFile is null)
+        {
+            Snackbar.Add(SL["ChooseFileFirst"], Severity.Warning);
+            return;
+        }
+
+        _uploadingLogo = true;
+
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            using var stream = _logoFile.OpenReadStream(maxAllowedSize: 10_000_000);
+
+            var fileContent = new StreamContent(stream);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(_logoFile.ContentType);
+
+            content.Add(fileContent, "file", _logoFile.Name);
+
+            var res = await Http.PostAsync($"api/shop-applications/{_app.Id}/image", content);
+
+            if (!res.IsSuccessStatusCode)
+                throw new InvalidOperationException(await res.Content.ReadAsStringAsync());
+
+            var payload = await res.Content.ReadFromJsonAsync<ShopImageUploadResponse>();
+            if (payload is null || string.IsNullOrWhiteSpace(payload.Url))
+                throw new InvalidOperationException(SL["UploadImageFailed"]);
+
+            _app = _app with { ImageUrl = payload.Url };
+            Snackbar.Add(SL["ImageUploadedSuccess"], Severity.Success);
+            _logoFile = null;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _uploadingLogo = false;
+        }
+    }
+
+
+    private void OpenDoc(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return;
+        Nav.NavigateTo(url, forceLoad: true);
+    }
+
+    private static Severity StatusSeverity(string status) => status switch
+    {
+        "Draft" => Severity.Info,
+        "Submitted" => Severity.Warning,
+        "Approved" => Severity.Success,
+        "Rejected" => Severity.Error,
+        _ => Severity.Info
+    };
+
+    private static string FormatSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        var kb = bytes / 1024d;
+        if (kb < 1024) return $"{kb:0.0} KB";
+        var mb = kb / 1024d;
+        return $"{mb:0.0} MB";
+    }
+
+    private sealed record ShopApplicationDto(
+        Guid Id,
+        string Status,
+        string Name,
+        string? ImageUrl,
+        string CountryTag,
+        string City,
+        string? ReviewNote,
+        DateTime CreatedAtUtc,
+        List<ShopApplicationDocumentDto> Documents);
+
+    private sealed record ShopApplicationDocumentDto(
+        Guid Id,
+        string DocType,
+        string FileName,
+        string PublicUrl,
+        long SizeBytes,
+        DateTime CreatedAtUtc);
+
+    private sealed record ShopImageUploadResponse(string Url, string FileName, string ContentType, long SizeBytes);
+}
+
+
+
+
+
+
+

@@ -1,0 +1,293 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<local:LocalizedContentPage xmlns:local="clr-namespace:DoorMarket.Mobile.Localization"     x:Class="DoorMarket.Mobile.Pages.OrderDetailsPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:components="clr-namespace:DoorMarket.Mobile.Components"
+    xmlns:markup="clr-namespace:DoorMarket.Mobile.Markup"
+    xmlns:models="clr-namespace:DoorMarket.Mobile.Models"
+    xmlns:orders="clr-namespace:DoorMarket.Application.DTOs.Orders;assembly=DoorMarket.Application"
+    NavigationPage.HasNavigationBar="False">
+
+    <Grid RowDefinitions="Auto,*">
+        <Grid
+            BackgroundColor="{StaticResource White}"
+            ColumnDefinitions="Auto,*"
+            ColumnSpacing="16"
+            Padding="{OnPlatform iOS='24,56,24,20', Default='24,50,24,20'}">
+            <ImageButton Clicked="OnBackClicked">
+                <ImageButton.Source>
+                    <FontImageSource FontFamily="fa-solid-900" Glyph="{x:Static models:IconGlyphs.Back}" Color="{StaticResource DoorBlue}" Size="16" />
+                </ImageButton.Source>
+            </ImageButton>
+            <VerticalStackLayout Grid.Column="1" Spacing="8" VerticalOptions="Center">
+                <Label FontFamily="Inter-Bold" FontSize="22" Text="{markup:Translate OrderDetailsTitle}" TextColor="{StaticResource DoorBlue}" />
+                <Label FontFamily="Inter-Regular" FontSize="13" Text="{markup:Translate OrderDetailsSubtitle}" TextColor="{StaticResource DarkGray}" />
+            </VerticalStackLayout>
+        </Grid>
+
+        <Grid Grid.Row="1">
+            <ScrollView>
+                <VerticalStackLayout Padding="24,16,24,24" Spacing="16">
+                    <components:DmCard Margin="0">
+                        <VerticalStackLayout Spacing="12">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                <VerticalStackLayout Spacing="4">
+                                    <Label FontFamily="Inter-Bold" FontSize="20" Text="{Binding OrderCode}" />
+                                    <Label Style="{StaticResource CaptionLabelStyle}" Text="{Binding CreatedAtLabel}" />
+                                </VerticalStackLayout>
+                                <Frame
+                                    Grid.Column="1"
+                                    BackgroundColor="{Binding StatusBackgroundColor}"
+                                    BorderColor="{Binding StatusBorderColor}"
+                                    CornerRadius="12"
+                                    HasShadow="False"
+                                    Padding="10,4"
+                                    VerticalOptions="Center">
+                                    <Label
+                                        FontFamily="Inter-SemiBold"
+                                        FontSize="12"
+                                        Text="{Binding StatusLabel}"
+                                        TextColor="{Binding StatusTextColor}" />
+                                </Frame>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                <Label Style="{StaticResource CaptionLabelStyle}" Text="{markup:Translate PaymentTitle}" />
+                                <Frame
+                                    Grid.Column="1"
+                                    BackgroundColor="{Binding PaymentStatusBackground}"
+                                    BorderColor="{Binding PaymentStatusBorder}"
+                                    CornerRadius="10"
+                                    HasShadow="False"
+                                    Padding="8,2"
+                                    VerticalOptions="Center">
+                                    <HorizontalStackLayout Spacing="6">
+                                        <Label
+                                            FontFamily="Inter-SemiBold"
+                                            FontSize="12"
+                                            Text="{Binding PaymentStatusLabel}"
+                                            TextColor="{Binding PaymentStatusColor}" />
+                                        <Label
+                                            FontFamily="Inter-Medium"
+                                            FontSize="12"
+                                            Text="{Binding PaymentProviderLabel}"
+                                            TextColor="{Binding PaymentStatusColor}" />
+                                    </HorizontalStackLayout>
+                                </Frame>
+                            </Grid>
+
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                <Label Style="{StaticResource CaptionLabelStyle}" Text="{markup:Translate ItemsTitle}" />
+                                <Label Grid.Column="1" FontFamily="Inter-SemiBold" FontSize="13" Text="{Binding ItemsCountLabel}" />
+                            </Grid>
+                        </VerticalStackLayout>
+                    </components:DmCard>
+
+                    <components:DmCard Margin="0">
+                        <VerticalStackLayout Spacing="12">
+                            <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate ProgressTitle}" />
+                            <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8">
+                                <Frame
+                                    BackgroundColor="{Binding CreatedStageBackground}"
+                                    CornerRadius="12"
+                                    HasShadow="False"
+                                    Padding="8,6">
+                                    <Label
+                                        FontFamily="Inter-Medium"
+                                        FontSize="12"
+                                        HorizontalTextAlignment="Center"
+                                        Text="{markup:Translate StageCreated}"
+                                        TextColor="{Binding CreatedStageTextColor}" />
+                                </Frame>
+                                <Frame
+                                    Grid.Column="1"
+                                    BackgroundColor="{Binding PreparingStageBackground}"
+                                    CornerRadius="12"
+                                    HasShadow="False"
+                                    Padding="8,6">
+                                    <Label
+                                        FontFamily="Inter-Medium"
+                                        FontSize="12"
+                                        HorizontalTextAlignment="Center"
+                                        Text="{markup:Translate StagePreparing}"
+                                        TextColor="{Binding PreparingStageTextColor}" />
+                                </Frame>
+                                <Frame
+                                    Grid.Column="2"
+                                    BackgroundColor="{Binding ReadyStageBackground}"
+                                    CornerRadius="12"
+                                    HasShadow="False"
+                                    Padding="8,6">
+                                    <Label
+                                        FontFamily="Inter-Medium"
+                                        FontSize="12"
+                                        HorizontalTextAlignment="Center"
+                                        Text="{markup:Translate StageReady}"
+                                        TextColor="{Binding ReadyStageTextColor}" />
+                                </Frame>
+                                <Frame
+                                    Grid.Column="3"
+                                    BackgroundColor="{Binding DeliveredStageBackground}"
+                                    CornerRadius="12"
+                                    HasShadow="False"
+                                    Padding="8,6">
+                                    <Label
+                                        FontFamily="Inter-Medium"
+                                        FontSize="12"
+                                        HorizontalTextAlignment="Center"
+                                        Text="{markup:Translate StageDelivered}"
+                                        TextColor="{Binding DeliveredStageTextColor}" />
+                                </Frame>
+                            </Grid>
+                            <Label Style="{StaticResource MutedLabelStyle}" Text="{Binding StatusDescription}" />
+                        </VerticalStackLayout>
+                    </components:DmCard>
+
+                    <components:DmCard IsVisible="{Binding ShowPaymentActions}" Margin="0">
+                        <VerticalStackLayout Spacing="12">
+                            <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate FinalizePaymentTitle}" />
+                            <Label Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate FinalizePaymentHint}" />
+
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                                <components:DmSecondaryButton
+                                    Clicked="OnPayNowWithPayPalClicked"
+                                    HeightRequest="44"
+                                    IsEnabled="{Binding CanPayNow}"
+                                    IsVisible="{Binding ShowProviderPaymentAction}"
+                                    Text="{Binding PrimaryPaymentActionLabel}" />
+                                <components:DmPrimaryButton
+                                    Grid.Column="1"
+                                    Clicked="OnPayNowWithPrepaidClicked"
+                                    HeightRequest="44"
+                                    IsEnabled="{Binding CanPayNowWithPrepaid}"
+                                    Text="{markup:Translate PrepaidCardLabel}" />
+                            </Grid>
+
+                            <components:DmSecondaryButton
+                                Clicked="OnRefreshPaymentStatusClicked"
+                                HeightRequest="42"
+                                IsEnabled="{Binding CanRefreshPaymentStatus}"
+                                Text="{markup:Translate RefreshStatusAction}" />
+
+                            <components:DmSecondaryButton
+                                Clicked="OnOpenSupportClicked"
+                                HeightRequest="42"
+                                Text="{markup:Translate NeedSupportAction}" />
+
+                            <components:DmInput
+                                Label="{markup:Translate PrepaidCardNumberLabel}"
+                                Placeholder="4111 1111 1111 1111"
+                                Text="{Binding PaymentPrepaidCode, Mode=TwoWay}" />
+                            <Label
+                                IsVisible="{Binding HasPaymentActionHint}"
+                                Style="{StaticResource CaptionLabelStyle}"
+                                Text="{Binding PaymentActionHint}"
+                                TextColor="{Binding PaymentActionHintColor}" />
+                            <Label
+                                IsVisible="{Binding ShowPaymentAutoRefreshHint}"
+                                Style="{StaticResource CaptionLabelStyle}"
+                                Text="{Binding PaymentAutoRefreshHint}" />
+                        </VerticalStackLayout>
+                    </components:DmCard>
+
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate ItemsTitle}" />
+                        <Label
+                            Grid.Column="1"
+                            FontFamily="Inter-Medium"
+                            FontSize="13"
+                            Text="{Binding ItemsCountLabel}"
+                            TextColor="{StaticResource DarkGray}"
+                            VerticalOptions="Center" />
+                    </Grid>
+
+                    <CollectionView ItemsSource="{Binding Items}" SelectionMode="None">
+                        <CollectionView.EmptyView>
+                            <components:DmCard Margin="0">
+                                <Label Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate NoItems}" />
+                            </components:DmCard>
+                        </CollectionView.EmptyView>
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <components:DmCard Margin="0,0,0,12">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                        <VerticalStackLayout Spacing="8">
+                                            <Label FontFamily="Inter-SemiBold" FontSize="15" Text="{Binding ProductName}" />
+                                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                                <Frame
+                                                    BackgroundColor="{StaticResource DoorBlue10}"
+                                                    CornerRadius="10"
+                                                    HasShadow="False"
+                                                    Padding="8,2">
+                                                    <Label
+                                                        FontFamily="Inter-SemiBold"
+                                                        FontSize="12"
+                                                        Text="{Binding Qty, StringFormat='x{0}'}"
+                                                        TextColor="{StaticResource DoorBlue}" />
+                                                </Frame>
+                                                <Label
+                                                    Grid.Column="1"
+                                                    Style="{StaticResource CaptionLabelStyle}"
+                                                    Text="{Binding UnitPrice, StringFormat='{markup:Translate UnitPriceFormat}'}"
+                                                    VerticalOptions="Center" />
+                                            </Grid>
+                                        </VerticalStackLayout>
+
+                                        <VerticalStackLayout Grid.Column="1" HorizontalOptions="End" Spacing="4" VerticalOptions="Center">
+                                            <Label FontFamily="Inter-Bold" FontSize="16" Text="{Binding LineTotal, StringFormat='{}{0:0.##}'}" TextColor="{StaticResource DoorOrange}" />
+                                            <Label FontFamily="Inter-SemiBold" FontSize="12" HorizontalTextAlignment="End" Text="{Binding Currency}" TextColor="{StaticResource DoorOrange}" />
+                                        </VerticalStackLayout>
+                                    </Grid>
+                                </components:DmCard>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+
+                    <components:DmCard Margin="0">
+                        <VerticalStackLayout Spacing="12">
+                            <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate AmountsTitle}" />
+
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label Style="{StaticResource CaptionLabelStyle}" Text="{markup:Translate SubtotalLabel}" />
+                                <Label Grid.Column="1" FontFamily="Inter-SemiBold" Text="{Binding SubtotalText}" />
+                            </Grid>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label Style="{StaticResource CaptionLabelStyle}" Text="{markup:Translate DeliveryLabel}" />
+                                <Label Grid.Column="1" FontFamily="Inter-SemiBold" Text="{Binding DeliveryText}" />
+                            </Grid>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Label Style="{StaticResource CaptionLabelStyle}" Text="{markup:Translate DiscountLabel}" />
+                                <Label Grid.Column="1" FontFamily="Inter-SemiBold" Text="{Binding DiscountText}" />
+                            </Grid>
+
+                            <BoxView BackgroundColor="{StaticResource SoftGray}" HeightRequest="1" />
+
+                            <Frame
+                                BackgroundColor="{StaticResource DoorBlue10}"
+                                CornerRadius="12"
+                                HasShadow="False"
+                                Padding="12,10">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                                    <Label FontFamily="Inter-Bold" FontSize="16" Text="{markup:Translate TotalLabel}" />
+                                    <Label
+                                        Grid.Column="1"
+                                        FontFamily="Inter-Bold"
+                                        FontSize="18"
+                                        Text="{Binding TotalText}"
+                                        TextColor="{StaticResource DoorOrange}" />
+                                </Grid>
+                            </Frame>
+                        </VerticalStackLayout>
+                    </components:DmCard>
+                </VerticalStackLayout>
+            </ScrollView>
+
+            <ActivityIndicator
+                HorizontalOptions="Center"
+                IsRunning="{Binding IsBusy}"
+                IsVisible="{Binding IsBusy}"
+                VerticalOptions="Center" />
+        </Grid>
+    </Grid>
+</local:LocalizedContentPage>
+

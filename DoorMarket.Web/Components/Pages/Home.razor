@@ -1,0 +1,548 @@
+@page "/"
+@implements IDisposable
+@using System.Net.Http.Json
+@using AppCategoryDto = DoorMarket.Application.DTOs.Categories.CategoryDto
+@using AppProductDto = DoorMarket.Application.DTOs.Products.ProductDto
+@using AppShopDto = DoorMarket.Application.DTOs.Shops.ShopDto
+@using AppProductPage = DoorMarket.Application.Common.PagedResult<DoorMarket.Application.DTOs.Products.ProductDto>
+@using AppShopPage = DoorMarket.Application.Common.PagedResult<DoorMarket.Application.DTOs.Shops.ShopDto>
+@using System.Globalization
+@using MudBlazor
+@inject NavigationManager Nav
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject HttpClient Http
+@inject DoorMarket.Web.Services.CartApiClient CartApi
+@inject DoorMarket.Web.Services.GuestCartService GuestCart
+@inject DoorMarket.Web.Services.WishlistService Wishlist
+@inject DoorMarket.Web.Services.RecentlyViewedService RecentlyViewed
+@inject ISnackbar Snackbar
+
+<PageTitle>@SL["HomePageTitle"]</PageTitle>
+
+<h1 class="dm-page-h1">@SL["AppName"]</h1>
+<div class="dm-page-sub">@string.Format(SL["HomeGreeting"], DisplayName)</div>
+
+<MudPaper Class="pa-4 mt-3 dm-content-card dm-content-card-soft">
+    <MudGrid Spacing="2">
+        <MudItem xs="12" md="8">
+            <MudTextField T="string"
+                          Placeholder="@SL["SearchProductPlaceholder"]"
+                          Variant="Variant.Outlined"
+                          Immediate="true"
+                          Value="_search"
+                          ValueChanged="OnSearchChanged" />
+        </MudItem>
+        <MudItem xs="12" md="4" Class="d-flex align-center justify-end">
+            <MudButton Variant="Variant.Outlined" Class="dm-action-btn dm-action-btn-outline" OnClick="@(() => Nav.NavigateTo("/shops"))">
+                @SL["ViewAllShops"]
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@if (_loading)
+{
+    <MudGrid Class="mt-3" Spacing="2">
+        <MudItem xs="12"><MudSkeleton Height="100px" /></MudItem>
+        <MudItem xs="12"><MudSkeleton Height="180px" /></MudItem>
+        <MudItem xs="12"><MudSkeleton Height="180px" /></MudItem>
+    </MudGrid>
+}
+else if (_error is not null)
+{
+    <MudPaper Class="pa-4 mt-3 dm-content-card">
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_error</MudAlert>
+    </MudPaper>
+}
+else
+{
+    <MudPaper Class="pa-4 mt-3 dm-content-card">
+        <MudText Typo="Typo.h6" Class="mb-2">@SL["CategoriesTitle"]</MudText>
+        <div class="d-flex gap-2 flex-wrap">
+            @foreach (var category in _categories.Take(10))
+            {
+                <MudChip T="string"
+                         Variant="Variant.Outlined"
+                         Color="@(_selectedCategoryId == category.Id ? Color.Primary : Color.Default)"
+                         OnClick="@(() => SelectCategory(category.Id))">
+                    @CategoryLabel(category)
+                </MudChip>
+            }
+            @if (_selectedCategoryId is not null)
+            {
+                <MudChip T="string" Variant="Variant.Filled" Color="Color.Secondary" OnClick="ClearCategory">@SL["Clear"]</MudChip>
+            }
+        </div>
+    </MudPaper>
+
+    <MudPaper Class="pa-4 mt-3">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+            <MudText Typo="Typo.h6">@SL["PopularShops"]</MudText>
+            <MudButton Variant="Variant.Text" Class="dm-action-btn" OnClick="@(() => Nav.NavigateTo("/shops"))">@SL["ViewAll"]</MudButton>
+        </div>
+
+        @if (_shops.Items.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@SL["NoShopAvailable"]</MudAlert>
+        }
+        else
+        {
+            <MudGrid Spacing="2">
+                @foreach (var shop in _shops.Items.Take(6))
+                {
+                    <MudItem xs="12" sm="6" md="4">
+                        <article class="dm-shop-card">
+                            <img src="@MediaCatalog.Shop(shop.ImageUrl, shop.Name, shop.Id)" alt="@shop.Name" class="dm-shop-thumb" />
+                            <div class="dm-shop-body">
+                                <h3 class="dm-shop-name">@shop.Name</h3>
+                                <div class="dm-shop-meta">@shop.City, @shop.CountryTag</div>
+                                <div class="dm-card-actions">
+                                    <MudButton Variant="Variant.Outlined"
+                                               Class="dm-action-btn dm-action-btn-outline"
+                                               OnClick="@(() => Nav.NavigateTo($"/shops/{shop.Id}"))">
+                                        @SL["ViewProducts"]
+                                    </MudButton>
+                                </div>
+                            </div>
+                        </article>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+    </MudPaper>
+
+    <MudPaper Class="pa-4 mt-3 dm-content-card">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+            <MudText Typo="Typo.h6">@SL["SpecialOffers"]</MudText>
+            <MudButton Variant="Variant.Text" Class="dm-action-btn" OnClick="@(() => Nav.NavigateTo("/offers"))">@SL["ViewAll"]</MudButton>
+        </div>
+
+        @if (_promotedProducts.Items.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@SL["NoPromotionActive"]</MudAlert>
+        }
+        else
+        {
+            <div class="dm-promo-carousel">
+                @foreach (var promo in _promotedProducts.Items.Take(12))
+                {
+                    <article class="dm-promo-card">
+                        <img src="@MediaCatalog.Product(promo.MainImageUrl, promo.Name, promo.CategoryName, promo.Id)"
+                             alt="@promo.Name"
+                             class="dm-promo-thumb" />
+                        <div class="dm-promo-body">
+                            <span class="dm-promo-badge">@PromotionBadge(promo)</span>
+                            <div class="dm-promo-shop">@promo.ShopName</div>
+                            <h3 class="dm-promo-name">@promo.Name</h3>
+                            <div class="dm-promo-prices">
+                                <span class="dm-promo-price-now">@promo.EffectivePrice.ToString("0.00") @promo.Currency</span>
+                                <span class="dm-promo-price-old">@promo.Price.ToString("0.00") @promo.Currency</span>
+                            </div>
+                            <div class="dm-card-actions">
+                                <MudButton Variant="Variant.Outlined"
+                                           Class="dm-action-btn dm-action-btn-outline"
+                                           OnClick="@(() => Nav.NavigateTo($"/products/{promo.Id}"))">
+                                    @SL["Details"]
+                                </MudButton>
+                            </div>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </MudPaper>
+
+    <MudPaper Class="pa-4 mt-3 dm-content-card">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+            <MudText Typo="Typo.h6">@T("Recemment consultes", "Recently viewed")</MudText>
+            <MudButton Variant="Variant.Text"
+                       Class="dm-action-btn"
+                       Disabled="@(_recentlyViewed.Count == 0)"
+                       OnClick="ClearRecentlyViewed">
+                @SL["Clear"]
+            </MudButton>
+        </div>
+
+        @if (_recentlyViewed.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@T("Aucun produit recemment consulte.", "No recently viewed products.")</MudAlert>
+        }
+        else
+        {
+            <MudGrid Spacing="2">
+                @foreach (var item in _recentlyViewed)
+                {
+                    <MudItem xs="12" sm="6" md="3">
+                        <article class="dm-product-card">
+                            <img src="@MediaCatalog.Product(item.MainImageUrl, item.ProductName, item.ShopName, item.ProductId)"
+                                 alt="@item.ProductName"
+                                 class="dm-product-thumb" />
+                            <div class="dm-product-body">
+                                <h3 class="dm-product-name">@item.ProductName</h3>
+                                <div class="dm-product-meta">@item.ShopName</div>
+                                @if (item.HasActivePromotion)
+                                {
+                                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                                        <div class="dm-product-price">@item.EffectivePrice.ToString("0.00") @item.Currency</div>
+                                        <div class="dm-product-meta" style="text-decoration:line-through">@item.Price.ToString("0.00") @item.Currency</div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="dm-product-price">@item.Price.ToString("0.00") @item.Currency</div>
+                                }
+                                <div class="dm-card-actions">
+                                    <MudButton Variant="Variant.Outlined"
+                                               Class="dm-action-btn dm-action-btn-outline"
+                                               OnClick="@(() => Nav.NavigateTo($"/products/{item.ProductId}"))">
+                                        @SL["Details"]
+                                    </MudButton>
+                                </div>
+                            </div>
+                        </article>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+    </MudPaper>
+
+    <MudPaper Class="pa-4 mt-3 dm-content-card">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+            <MudText Typo="Typo.h6">@T("Wishlist", "Wishlist")</MudText>
+            <MudButton Variant="Variant.Text"
+                       Class="dm-action-btn"
+                       Disabled="@(_wishlistItems.Count == 0)"
+                       OnClick="ClearWishlist">
+                @SL["Clear"]
+            </MudButton>
+        </div>
+
+        @if (_wishlistItems.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@T("Votre wishlist est vide.", "Your wishlist is empty.")</MudAlert>
+        }
+        else
+        {
+            <MudGrid Spacing="2">
+                @foreach (var item in _wishlistItems.Take(8))
+                {
+                    <MudItem xs="12" sm="6" md="3">
+                        <article class="dm-product-card">
+                            <img src="@MediaCatalog.Product(item.MainImageUrl, item.ProductName, item.ShopName, item.ProductId)"
+                                 alt="@item.ProductName"
+                                 class="dm-product-thumb" />
+                            <div class="dm-product-body">
+                                <h3 class="dm-product-name">@item.ProductName</h3>
+                                <div class="dm-product-meta">@item.ShopName</div>
+                                @if (item.HasActivePromotion)
+                                {
+                                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                                        <div class="dm-product-price">@item.EffectivePrice.ToString("0.00") @item.Currency</div>
+                                        <div class="dm-product-meta" style="text-decoration:line-through">@item.Price.ToString("0.00") @item.Currency</div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="dm-product-price">@item.Price.ToString("0.00") @item.Currency</div>
+                                }
+                                <div class="dm-card-actions">
+                                    <MudButton Variant="Variant.Outlined"
+                                               Class="dm-action-btn dm-action-btn-outline"
+                                               OnClick="@(() => Nav.NavigateTo($"/products/{item.ProductId}"))">
+                                        @SL["Details"]
+                                    </MudButton>
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Secondary"
+                                               Class="dm-action-btn dm-action-btn-outline"
+                                               OnClick="@(() => RemoveFromWishlist(item.ProductId))">
+                                        @T("Retirer", "Remove")
+                                    </MudButton>
+                                </div>
+                            </div>
+                        </article>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+    </MudPaper>
+
+    <MudPaper Class="pa-4 mt-3 dm-content-card">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+            <MudText Typo="Typo.h6">@SL["TopProducts"]</MudText>
+            <MudButton Variant="Variant.Text" Class="dm-action-btn" OnClick="@(() => Nav.NavigateTo("/shops"))">@SL["Explore"]</MudButton>
+        </div>
+
+        @if (_products.Items.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@SL["NoProductAvailable"]</MudAlert>
+        }
+        else
+        {
+            <MudGrid Spacing="2">
+                @foreach (var product in _products.Items.Take(16))
+                {
+                    <MudItem xs="12" sm="6" md="3">
+                        <article class="dm-product-card">
+                            <img src="@MediaCatalog.Product(product.MainImageUrl, product.Name, product.CategoryName, product.Id)"
+                                 alt="@product.Name"
+                                 class="dm-product-thumb" />
+                            <div class="dm-product-body">
+                                <h3 class="dm-product-name">@product.Name</h3>
+                                <div class="dm-product-meta">@product.ShopName</div>
+                                @if (product.HasActivePromotion)
+                                {
+                                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                                        <div class="dm-product-price">@product.EffectivePrice.ToString("0.00") @product.Currency</div>
+                                        <div class="dm-product-meta" style="text-decoration:line-through">@product.Price.ToString("0.00") @product.Currency</div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="dm-product-price">@product.Price.ToString("0.00") @product.Currency</div>
+                                }
+                                <div class="dm-card-actions">
+                                    <MudButton Variant="Variant.Outlined"
+                                               Class="dm-action-btn dm-action-btn-outline"
+                                               OnClick="@(() => Nav.NavigateTo($"/products/{product.Id}"))">
+                                        @SL["Details"]
+                                    </MudButton>
+                                    <MudButton Variant="Variant.Filled"
+                                               Color="Color.Primary"
+                                               Class="dm-action-btn dm-action-btn-primary"
+                                               Disabled="@(product.StockQty <= 0 || _addingProductId == product.Id)"
+                                               OnClick="@(() => AddToCart(product))">
+                                        @if (_addingProductId == product.Id)
+                                        {
+                                            <MudProgressCircular Indeterminate="true" Style="width:16px;height:16px" Class="me-1" />
+                                            <span>@SL["Adding"]</span>
+                                        }
+                                        else
+                                        {
+                                            <span>@SL["Add"]</span>
+                                        }
+                                    </MudButton>
+                                </div>
+                            </div>
+                        </article>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+    </MudPaper>
+}
+
+@code {
+    private bool _loading = true;
+    private string? _error;
+
+    private AppProductPage _products = new();
+    private AppProductPage _promotedProducts = new();
+    private AppShopPage _shops = new();
+
+    private static bool IsEnglish()
+        => string.Equals(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "en", StringComparison.OrdinalIgnoreCase);
+
+    private static string T(string fr, string en) => IsEnglish() ? en : fr;
+
+    private static string CategoryLabel(AppCategoryDto category)
+        => IsEnglish() && !string.IsNullOrWhiteSpace(category.NameEn) ? category.NameEn! : category.Name;
+    private List<AppCategoryDto> _categories = new();
+
+    private string _search = string.Empty;
+    private Guid? _selectedCategoryId;
+    private Guid? _addingProductId;
+    private List<WishlistItem> _wishlistItems = new();
+    private List<RecentlyViewedProduct> _recentlyViewed = new();
+
+    private string DisplayName
+        => string.IsNullOrWhiteSpace(Auth.Email) ? SL["AnonymousClient"] : Auth.Email!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Auth.OnChange += OnAuthChanged;
+        Wishlist.OnChange += OnWishlistChanged;
+        RecentlyViewed.OnChange += OnRecentlyViewedChanged;
+        await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        await TryLoadClientCollectionsAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            _categories = await Http.GetFromJsonAsync<List<AppCategoryDto>>("api/categories") ?? new List<AppCategoryDto>();
+
+            var productsQuery = new List<string>
+            {
+                "page=1",
+                "pageSize=20",
+                "inStockOnly=true",
+                "sort=relevance"
+            };
+
+            if (_selectedCategoryId.HasValue)
+            {
+                productsQuery.Add($"categoryId={_selectedCategoryId.Value}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(_search))
+            {
+                productsQuery.Add($"q={Uri.EscapeDataString(_search.Trim())}");
+            }
+
+            _products = await Http.GetFromJsonAsync<AppProductPage>($"api/search/products?{string.Join("&", productsQuery)}")
+                ?? new AppProductPage();
+
+            _promotedProducts = await Http.GetFromJsonAsync<AppProductPage>(
+                "api/search/products?page=1&pageSize=20&inStockOnly=true&promotedOnly=true&sort=newest")
+                ?? new AppProductPage();
+
+            _shops = await Http.GetFromJsonAsync<AppShopPage>("api/search/shops?page=1&pageSize=8&verifiedOnly=true&sort=popular_desc")
+                ?? new AppShopPage();
+        }
+        catch (Exception ex)
+        {
+            _error = WebErrorUx.ForException(
+                ex,
+                SL,
+                "Impossible de charger l'accueil pour le moment.",
+                "Unable to load home data right now.");
+            _products = new AppProductPage();
+            _promotedProducts = new AppProductPage();
+            _shops = new AppShopPage();
+            _categories = new List<AppCategoryDto>();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnSearchChanged(string value)
+    {
+        _search = value ?? string.Empty;
+        await LoadAsync();
+    }
+
+    private async Task SelectCategory(Guid categoryId)
+    {
+        _selectedCategoryId = categoryId;
+        await LoadAsync();
+    }
+
+    private async Task ClearCategory()
+    {
+        _selectedCategoryId = null;
+        await LoadAsync();
+    }
+
+    private async Task AddToCart(AppProductDto product)
+    {
+        _addingProductId = product.Id;
+
+        try
+        {
+            if (Auth.IsAuthenticated)
+            {
+                await CartApi.AddItemAsync(product.Id, 1);
+            }
+            else
+            {
+                var price = product.HasActivePromotion ? product.EffectivePrice : product.Price;
+                await GuestCart.AddItemAsync(
+                    new GuestCartProduct(product.Id, product.Name, price, product.Currency, product.MainImageUrl),
+                    1);
+            }
+            Snackbar.ShowSuccess(SL["ProductAddedCart"]);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.ShowError(WebErrorUx.ForException(
+                ex,
+                SL,
+                "Ajout au panier impossible.",
+                "Unable to add item to cart."));
+        }
+        finally
+        {
+            _addingProductId = null;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RemoveFromWishlist(Guid productId)
+    {
+        await Wishlist.RemoveAsync(productId);
+        Snackbar.ShowInfo(T("Produit retire de la wishlist", "Product removed from wishlist"));
+    }
+
+    private async Task ClearWishlist()
+    {
+        await Wishlist.ClearAsync();
+        Snackbar.ShowInfo(T("Wishlist videe", "Wishlist cleared"));
+    }
+
+    private async Task ClearRecentlyViewed()
+    {
+        await RecentlyViewed.ClearAsync();
+        Snackbar.ShowInfo(T("Historique recemment consulte vide", "Recently viewed cleared"));
+    }
+
+    private string PromotionBadge(AppProductDto product)
+    {
+        if (product.PromotionPercent.HasValue && product.PromotionPercent.Value > 0m)
+        {
+            return $"-{product.PromotionPercent.Value:0.#}%";
+        }
+
+        return SL["Promo"];
+    }
+
+    private async void OnAuthChanged()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnWishlistChanged()
+    {
+        await TryLoadClientCollectionsAsync();
+    }
+
+    private async void OnRecentlyViewedChanged()
+    {
+        await TryLoadClientCollectionsAsync();
+    }
+
+    private async Task TryLoadClientCollectionsAsync()
+    {
+        try
+        {
+            _wishlistItems = (await Wishlist.GetItemsAsync()).ToList();
+            _recentlyViewed = (await RecentlyViewed.GetProductsAsync(8)).ToList();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (InvalidOperationException)
+        {
+            // Local storage is JS-based and may be unavailable during prerender.
+        }
+    }
+
+    public void Dispose()
+    {
+        Auth.OnChange -= OnAuthChanged;
+        Wishlist.OnChange -= OnWishlistChanged;
+        RecentlyViewed.OnChange -= OnRecentlyViewedChanged;
+    }
+}

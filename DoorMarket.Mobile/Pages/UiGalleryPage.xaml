@@ -1,0 +1,92 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<local:LocalizedContentPage xmlns:local="clr-namespace:DoorMarket.Mobile.Localization" 
+    x:Class="DoorMarket.Mobile.Pages.UiGalleryPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:components="clr-namespace:DoorMarket.Mobile.Components"
+    xmlns:models="clr-namespace:DoorMarket.Mobile.Models"
+    xmlns:sharpnado="clr-namespace:Sharpnado.CollectionView;assembly=Sharpnado.CollectionView.Maui"
+    x:Name="RootPage"
+    NavigationPage.HasNavigationBar="False">
+
+    <Grid RowDefinitions="Auto,*">
+        <Grid
+            BackgroundColor="{AppThemeBinding Light={StaticResource DmHeaderBgLight}, Dark={StaticResource DmHeaderBgDark}}"
+            ColumnDefinitions="Auto,*"
+            Padding="{OnPlatform iOS='24,56,24,18', Default='24,44,24,18'}">
+            <ImageButton Clicked="OnBackClicked">
+                <ImageButton.Source>
+                    <FontImageSource FontFamily="MaterialIcons" Glyph="{x:Static models:MaterialIcons.ArrowBack}" Color="{AppThemeBinding Light={StaticResource DmHeaderTextLight}, Dark={StaticResource DmHeaderTextDark}}" Size="18" />
+                </ImageButton.Source>
+            </ImageButton>
+            <Label
+                Grid.Column="1"
+                FontFamily="Inter-SemiBold"
+                FontSize="20"
+                Text="UI Gallery"
+                TextColor="{AppThemeBinding Light={StaticResource DmHeaderTextLight}, Dark={StaticResource DmHeaderTextDark}}"
+                VerticalOptions="Center" />
+        </Grid>
+
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="24,16,24,24" Spacing="16">
+                <components:DmCard>
+                    <VerticalStackLayout Spacing="12">
+                        <Label Style="{StaticResource H2LabelStyle}" Text="Theme" />
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                            <Label Style="{StaticResource MutedLabelStyle}" Text="Basculer Light / Dark" VerticalOptions="Center" />
+                            <Switch Grid.Column="1" IsToggled="{Binding IsDarkMode}" Toggled="OnThemeToggled" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </components:DmCard>
+
+                <components:DmSearchBar Placeholder="Rechercher un composant..." />
+
+                <HorizontalStackLayout Spacing="8">
+                    <components:DmChip Text="Fruits" />
+                    <components:DmChip Text="Legumes" />
+                    <components:DmPromoBadge Text="-30%" />
+                </HorizontalStackLayout>
+
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                    <components:DmPrimaryButton Text="Primary" />
+                    <components:DmSecondaryButton Grid.Column="1" Text="Ghost" />
+                </Grid>
+
+                <components:DmInput Label="Email" Placeholder="client@doormarket.com" />
+
+                <components:DmCard>
+                    <Grid>
+                        <components:DmBlobBackground HeightRequest="120" />
+                        <Label
+                            FontFamily="Inter-SemiBold"
+                            FontSize="18"
+                            Margin="16"
+                            Text="Skia accent"
+                            TextColor="{AppThemeBinding Light={StaticResource DmTextPrimaryLight}, Dark={StaticResource DmTextPrimaryDark}}" />
+                    </Grid>
+                </components:DmCard>
+
+                <Label Style="{StaticResource H3LabelStyle}" Text="Sharpnado Horizontal" />
+                <sharpnado:CollectionView
+                    CollectionPadding="0,0,0,0"
+                    ItemSpacing="12"
+                    ItemWidth="130"
+                    ItemsSource="{Binding Source={x:Reference RootPage}, Path=GalleryItems}">
+                    <sharpnado:CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <components:DmCard Margin="0">
+                                <VerticalStackLayout Spacing="8">
+                                    <Label FontFamily="Inter-SemiBold" FontSize="14" Text="{Binding}" />
+                                    <Label Style="{StaticResource CaptionLabelStyle}" Text="Sharpnado item" />
+                                </VerticalStackLayout>
+                            </components:DmCard>
+                        </DataTemplate>
+                    </sharpnado:CollectionView.ItemTemplate>
+                </sharpnado:CollectionView>
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</local:LocalizedContentPage>
+
+

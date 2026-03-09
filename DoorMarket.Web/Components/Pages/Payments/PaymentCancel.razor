@@ -1,0 +1,42 @@
+@page "/payment/cancel"
+@using MudBlazor
+@inject NavigationManager Nav
+
+<PageTitle>@SL["Payment"]</PageTitle>
+
+<h1 class="dm-page-h1">@SL["PaymentCanceledTitle"]</h1>
+<div class="dm-page-sub">@SL["PaymentCanceledSubtitle"]</div>
+
+<MudPaper Class="pa-4 mt-3">
+    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-3">@SL["PaymentCanceledMessage"]</MudAlert>
+
+    @if (_orderId is not null)
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary">@SL["Order"] : <b>#@ShortId(_orderId.Value)</b></MudText>
+    }
+
+    <MudDivider Class="my-3" />
+
+    <div class="d-flex gap-2 flex-wrap">
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="GoCheckout">@SL["ResumePayment"]</MudButton>
+        <MudButton Variant="Variant.Outlined" OnClick="GoCart">@SL["BackToCart"]</MudButton>
+    </div>
+
+    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-3">@SL["PaymentCancelTip"]</MudText>
+</MudPaper>
+
+@code {
+    [SupplyParameterFromQuery] public Guid? orderId { get; set; }
+
+    private Guid? _orderId;
+
+    protected override void OnParametersSet()
+    {
+        _orderId = orderId;
+    }
+
+    private void GoCheckout() => Nav.NavigateTo("/checkout");
+    private void GoCart() => Nav.NavigateTo("/cart");
+
+    private static string ShortId(Guid id) => id.ToString("N")[..8];
+}

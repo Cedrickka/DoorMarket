@@ -1,0 +1,24 @@
+﻿@using MudBlazor
+@inject IStringLocalizer<SharedResource> L
+
+<MudDialog>
+    <DialogContent>
+        <div class="dm-dialog-text">@ContentText</div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Class="dm-action-btn" OnClick="Cancel">@L["Cancel"]</MudButton>
+        <MudButton Color="@Color" Variant="Variant.Filled" Class="dm-action-btn dm-action-btn-primary" OnClick="Submit">@ButtonText</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public string ContentText { get; set; } = "Confirm?";
+    [Parameter] public string ButtonText { get; set; } = "Confirm";
+    [Parameter] public Color Color { get; set; } = Color.Primary;
+
+    private void Submit() => MudDialog.Close(DialogResult.Ok(true));
+    private void Cancel() => MudDialog.Cancel();
+}
+

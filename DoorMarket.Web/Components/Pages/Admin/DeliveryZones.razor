@@ -1,0 +1,254 @@
+﻿@page "/admin/delivery-zones"
+@using System.Net.Http.Json
+@using DoorMarket.Application.DTOs.Delivery
+@using MudBlazor
+@inject HttpClient Http
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+
+<h1 class="dm-page-h1">@SL["DeliveryZonesTitle"]</h1>
+<div class="dm-page-sub">@SL["DeliveryZonesSubtitle"]</div>
+
+<AuthGuard>
+    @if (!_ready)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudSkeleton Height="32px" Width="220px" Class="mb-2" />
+            <MudSkeleton Height="18px" Width="380px" />
+        </MudPaper>
+    }
+    else if (!Auth.IsAdmin)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@SL["AdminOnlyAccess"]</MudAlert>
+            <MudButton Variant="Variant.Outlined" Class="mt-3" OnClick="@(() => Nav.NavigateTo("/"))">@SL["Back"]</MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        <MudGrid Class="mt-3" Spacing="3">
+            <MudItem xs="12" md="4">
+                <MudPaper Class="pa-4 dm-content-card">
+                    <MudText Typo="Typo.h6" Class="mb-2">@SL["NewZone"]</MudText>
+                    <MudTextField T="string" Label="@SL["Code"]" Variant="Variant.Outlined" @bind-Value="_form.Code" />
+                    <MudTextField T="string" Label="@SL["Name"]" Variant="Variant.Outlined" Class="mt-2" @bind-Value="_form.Name" />
+                    <MudTextField T="string" Label="@SL["Country"]" Variant="Variant.Outlined" Class="mt-2" @bind-Value="_form.Country" />
+                    <MudTextField T="string" Label="@SL["StateOptional"]" Variant="Variant.Outlined" Class="mt-2" @bind-Value="_form.StateCode" />
+                    <MudNumericField T="decimal" Label="@SL["FeeUsd"]" Variant="Variant.Outlined" Class="mt-2" Min="0" @bind-Value="_form.FeeUsd" />
+                    <MudSwitch T="bool" Class="mt-2" @bind-Value="_form.IsActive">@SL["ActiveZone"]</MudSwitch>
+                    <MudButton Color="Color.Primary" Variant="Variant.Filled" Class="mt-3" Disabled="_saving" OnClick="SaveZone">
+                        @(_editingZoneId.HasValue ? SL["Update"] : SL["CreateZone"])
+                    </MudButton>
+                    @if (_editingZoneId.HasValue)
+                    {
+                        <MudButton Variant="Variant.Outlined" Class="mt-3 ms-2" Disabled="_saving" OnClick="CancelEditZone">@SL["CancelEdit"]</MudButton>
+                    }
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" md="8">
+                <MudPaper Class="pa-4 dm-content-card">
+                    <MudText Typo="Typo.h6" Class="mb-2">@SL["ConfiguredZones"]</MudText>
+                    @if (_loading)
+                    {
+                        <MudSkeleton Height="40px" />
+                        <MudSkeleton Height="40px" Class="mt-2" />
+                    }
+                    else if (_zones.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@SL["NoZones"]</MudAlert>
+                    }
+                    else
+                    {
+                        <MudTable T="DeliveryZoneDto" Items="_zones" Dense="true" Hover="true" Bordered="true" Striped="true">
+                            <HeaderContent>
+                                <MudTh>@SL["Code"]</MudTh>
+                                <MudTh>@SL["Zone"]</MudTh>
+                                <MudTh>@SL["Location"]</MudTh>
+                                <MudTh>@SL["Fee"]</MudTh>
+                                <MudTh>@SL["Status"]</MudTh>
+                                <MudTh Align="Align.Right">@SL["Actions"]</MudTh>
+                            </HeaderContent>
+                            <RowTemplate Context="z">
+                                <MudTd>@z.Code</MudTd>
+                                <MudTd>@z.Name</MudTd>
+                                <MudTd>@z.Country @z.StateCode</MudTd>
+                                <MudTd>@z.FeeUsd.ToString("0.##") USD</MudTd>
+                                <MudTd>
+                                    <MudChip T="string" Variant="Variant.Filled" Color="@(z.IsActive ? Color.Success : Color.Default)" Label="true">
+                                        @(z.IsActive ? SL["Active"] : SL["Inactive"])
+                                    </MudChip>
+                                </MudTd>
+                                <MudTd Align="Align.Right">
+                                    <AdminRowActionMenu Disabled="_saving" AriaLabel="@SL["Actions"]">
+                                        <MudMenuItem Icon="@Icons.Material.Filled.Edit"
+                                                     OnClick="@(() => EditZone(z))">
+                                            @SL["Edit"]
+                                        </MudMenuItem>
+                                        <MudMenuItem Icon="@Icons.Material.Filled.Delete"
+                                                     OnClick="@(() => DeleteZone(z))">
+                                            @SL["Delete"]
+                                        </MudMenuItem>
+                                    </AdminRowActionMenu>
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</AuthGuard>
+
+@code {
+    private bool _ready;
+    private bool _loading = true;
+    private bool _saving;
+    private List<DeliveryZoneDto> _zones = new();
+    private ZoneForm _form = ZoneForm.Default();
+    private Guid? _editingZoneId;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        while (!Auth.IsReady)
+            await Task.Delay(30);
+
+        _ready = true;
+        if (!Auth.IsAuthenticated || !Auth.IsAdmin)
+        {
+            StateHasChanged();
+            return;
+        }
+
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _zones = await Http.GetFromJsonAsync<List<DeliveryZoneDto>>("api/admin/delivery-zones") ?? new();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            _zones = new();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SaveZone()
+    {
+        _saving = true;
+        try
+        {
+            var req = new UpsertDeliveryZoneRequest(_form.Code, _form.Name, _form.Country, _form.StateCode, _form.FeeUsd, _form.IsActive);
+            HttpResponseMessage res;
+            if (_editingZoneId.HasValue)
+            {
+                res = await Http.PutAsJsonAsync($"api/admin/delivery-zones/{_editingZoneId.Value}", req);
+            }
+            else
+            {
+                res = await Http.PostAsJsonAsync("api/admin/delivery-zones", req);
+            }
+            if (!res.IsSuccessStatusCode)
+            {
+                var body = await res.Content.ReadAsStringAsync();
+                throw new InvalidOperationException($"{SL["Erreur API"]} ({(int)res.StatusCode}) : {body}");
+            }
+
+            _form = ZoneForm.Default();
+            _editingZoneId = null;
+            Snackbar.Add(SL["ZoneSaved"], Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private Task EditZone(DeliveryZoneDto zone)
+    {
+        _editingZoneId = zone.Id;
+        _form = new ZoneForm
+        {
+            Code = zone.Code,
+            Name = zone.Name,
+            Country = zone.Country,
+            StateCode = zone.StateCode,
+            FeeUsd = zone.FeeUsd,
+            IsActive = zone.IsActive
+        };
+        return Task.CompletedTask;
+    }
+
+    private Task CancelEditZone()
+    {
+        _editingZoneId = null;
+        _form = ZoneForm.Default();
+        return Task.CompletedTask;
+    }
+
+    private async Task DeleteZone(DeliveryZoneDto zone)
+    {
+        var confirm = await Dialog.ShowMessageBox(
+            title: SL["Supprimer zone"],
+            markupMessage: (MarkupString)$"{SL["Supprimer"]} <b>{zone.Code} - {zone.Name}</b> ?",
+            yesText: SL["Supprimer"],
+            cancelText: SL["Annuler"]);
+        if (confirm != true)
+            return;
+
+        _saving = true;
+        try
+        {
+            var res = await Http.DeleteAsync($"api/admin/delivery-zones/{zone.Id}");
+            if (!res.IsSuccessStatusCode)
+            {
+                var body = await res.Content.ReadAsStringAsync();
+                throw new InvalidOperationException($"{SL["Erreur API"]} ({(int)res.StatusCode}) : {body}");
+            }
+
+            Snackbar.Add(SL["ZoneDeleted"], Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private sealed class ZoneForm
+    {
+        public string Code { get; set; } = "US-A";
+        public string Name { get; set; } = "Zone A";
+        public string Country { get; set; } = "US";
+        public string? StateCode { get; set; } = "NY";
+        public decimal FeeUsd { get; set; } = 5m;
+        public bool IsActive { get; set; } = true;
+
+        public static ZoneForm Default() => new();
+    }
+}
+

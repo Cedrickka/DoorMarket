@@ -1,0 +1,92 @@
+@page "/privacy"
+@using System.Globalization
+@using MudBlazor
+
+<PageTitle>@T("Politique de confidentialite", "Privacy Policy") - DoorMarket</PageTitle>
+
+<div class="dm-page-header">
+    <div class="dm-page-title-wrap">
+        <h1 class="dm-page-h1">@T("Politique de confidentialite", "Privacy Policy")</h1>
+        <div class="dm-page-sub">@T("Comment DoorMarket collecte, utilise et protege vos donnees.", "How DoorMarket collects, uses, and protects your data.")</div>
+    </div>
+</div>
+
+<MudPaper Class="pa-4 mt-3 dm-content-card dm-page-shell">
+    <MudText Typo="Typo.body2" Class="dm-muted">
+        @T("Derniere mise a jour : 07 mars 2026", "Last updated: March 7, 2026")
+    </MudText>
+
+    <MudDivider Class="my-3" />
+
+    <MudText Typo="Typo.h6">@T("1. Responsable du traitement", "1. Data Controller")</MudText>
+    <MudText Typo="Typo.body2" Class="mt-1">
+        @T("DoorMarket exploite une plateforme de mise en relation clients, boutiques et livreurs. Pour toute question sur vos donnees: contact@door-market.com.", "DoorMarket operates a marketplace platform connecting clients, shops, and delivery operations. For any data question: support@door-market.com.")
+    </MudText>
+
+    <MudText Typo="Typo.h6" Class="mt-4">@T("2. Donnees collectees", "2. Data We Collect")</MudText>
+    <MudList T="string" Dense="true" Class="mt-1">
+        <MudListItem T="string">@T("Identite et contact: nom, email, telephone, role.", "Identity and contact: name, email, phone, role.")</MudListItem>
+        <MudListItem T="string">@T("Compte et securite: hash mot de passe, sessions, confirmations email.", "Account and security: password hash, sessions, email confirmations.")</MudListItem>
+        <MudListItem T="string">@T("Commandes et paiements: panier, commandes, statuts, references de paiement.", "Orders and payments: cart, orders, statuses, payment references.")</MudListItem>
+        <MudListItem T="string">@T("Adresses et livraison: pays, ville, quartier, zone de livraison.", "Addresses and delivery: country, city, district, delivery zone.")</MudListItem>
+        <MudListItem T="string">@T("Support et notifications: tickets, emails transactionnels, alertes systeme.", "Support and notifications: tickets, transactional emails, system alerts.")</MudListItem>
+        <MudListItem T="string">@T("Mesure produit: evenements de recherche, checkout et qualite de service.", "Product analytics: search, checkout, and service quality events.")</MudListItem>
+    </MudList>
+
+    <MudText Typo="Typo.h6" Class="mt-4">@T("3. Finalites", "3. Purposes")</MudText>
+    <MudList T="string" Dense="true" Class="mt-1">
+        <MudListItem T="string">@T("Fournir le service (compte, commande, paiement, livraison).", "Provide the service (account, order, payment, delivery).")</MudListItem>
+        <MudListItem T="string">@T("Securiser la plateforme et prevenir la fraude.", "Secure the platform and prevent fraud.")</MudListItem>
+        <MudListItem T="string">@T("Assurer le support client et la gestion des incidents.", "Provide customer support and incident handling.")</MudListItem>
+        <MudListItem T="string">@T("Ameliorer l'experience (analytics, performance, recommandations).", "Improve experience (analytics, performance, recommendations).")</MudListItem>
+        <MudListItem T="string">@T("Respecter les obligations legales et comptables.", "Comply with legal and accounting obligations.")</MudListItem>
+    </MudList>
+
+    <MudText Typo="Typo.h6" Class="mt-4">@T("4. Base legale", "4. Legal Basis")</MudText>
+    <MudText Typo="Typo.body2" Class="mt-1">
+        @T("Nous traitons les donnees selon: execution du contrat, interet legitime (securite/qualite), consentement quand requis, et obligations legales.", "We process data based on: contract performance, legitimate interest (security/quality), consent when required, and legal obligations.")
+    </MudText>
+
+    <MudText Typo="Typo.h6" Class="mt-4">@T("5. Partage des donnees", "5. Data Sharing")</MudText>
+    <MudText Typo="Typo.body2" Class="mt-1">
+        @T("Vos donnees peuvent etre partagees uniquement avec les parties necessaires: boutiques concernees, prestataires de paiement, prestataires d'email/push et hebergeur. DoorMarket ne vend pas vos donnees personnelles.", "Your data may be shared only with necessary parties: relevant shops, payment providers, email/push providers, and hosting infrastructure. DoorMarket does not sell personal data.")
+    </MudText>
+
+    <MudText Typo="Typo.h6" Class="mt-4">@T("6. Conservation", "6. Data Retention")</MudText>
+    <MudText Typo="Typo.body2" Class="mt-1">
+        @T("Nous conservons les donnees pendant la duree necessaire au service, au support, a la lutte anti-fraude et aux obligations legales. Les donnees inutiles sont supprimees ou anonymisees.", "We retain data for the period required for service operations, support, anti-fraud, and legal obligations. Unneeded data is deleted or anonymized.")
+    </MudText>
+
+    <MudText Typo="Typo.h6" Class="mt-4">@T("7. Vos droits", "7. Your Rights")</MudText>
+    <MudList T="string" Dense="true" Class="mt-1">
+        <MudListItem T="string">@T("Acces, correction et suppression de vos donnees.", "Access, correction, and deletion of your data.")</MudListItem>
+        <MudListItem T="string">@T("Opposition a certains traitements ou limitation.", "Objection to certain processing or restriction.")</MudListItem>
+        <MudListItem T="string">@T("Portabilite des donnees lorsque applicable.", "Data portability where applicable.")</MudListItem>
+        <MudListItem T="string">@T("Retrait du consentement pour les traitements bases sur consentement.", "Withdrawal of consent for consent-based processing.")</MudListItem>
+    </MudList>
+    <MudText Typo="Typo.body2" Class="mt-1">
+        @T("Pour exercer ces droits, contactez contact@door-market.com.", "To exercise these rights, contact contact@door-market.com.")
+    </MudText>
+
+    <MudText Typo="Typo.h6" Class="mt-4">@T("8. Cookies et sessions", "8. Cookies and Sessions")</MudText>
+    <MudText Typo="Typo.body2" Class="mt-1">
+        @T("DoorMarket utilise des cookies techniques et de session pour l'authentification, la securite et la continute d'utilisation. Certains traceurs analytiques peuvent etre utilises pour la qualite de service.", "DoorMarket uses technical/session cookies for authentication, security, and continuity of use. Limited analytics tracking may be used for service quality.")
+    </MudText>
+
+    <MudText Typo="Typo.h6" Class="mt-4">@T("9. Securite", "9. Security")</MudText>
+    <MudText Typo="Typo.body2" Class="mt-1">
+        @T("Nous mettons en place des controles techniques et organisationnels raisonnables (chiffrement en transit, controles d'acces, journalisation, surveillance). Aucun systeme n'est infaillible, mais nous travaillons activement a reduire les risques.", "We apply reasonable technical and organizational controls (encryption in transit, access controls, audit logs, monitoring). No system is perfect, but we continuously reduce risk.")
+    </MudText>
+
+    <MudText Typo="Typo.h6" Class="mt-4">@T("10. Modifications", "10. Changes")</MudText>
+    <MudText Typo="Typo.body2" Class="mt-1">
+        @T("Cette politique peut etre mise a jour. La date de mise a jour en haut de page fait foi.", "This policy may be updated. The last-updated date at the top of this page is authoritative.")
+    </MudText>
+</MudPaper>
+
+@code {
+    private static bool IsEn =>
+        string.Equals(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "en", StringComparison.OrdinalIgnoreCase);
+
+    private static string T(string fr, string en) => IsEn ? en : fr;
+}

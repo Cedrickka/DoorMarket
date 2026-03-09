@@ -1,0 +1,564 @@
+@page "/admin/commissions"
+@using System.Net
+@using System.Net.Http.Json
+@using MudBlazor
+@inject HttpClient Http
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<div class="dm-page-header">
+    <div class="dm-page-title-wrap">
+        <h1 class="dm-page-h1">@Tr("Commissions dynamiques", "Dynamic commissions")</h1>
+        <div class="dm-page-sub">@Tr("Moteur de commissions par regles (global/boutique/categorie/produit) avec previsualisation.", "Rules-based commission engine (global/shop/category/product) with preview.")</div>
+    </div>
+</div>
+
+<AuthGuard>
+    @if (!_ready)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudSkeleton Height="32px" Width="220px" Class="mb-2" />
+            <MudSkeleton Height="18px" Width="380px" />
+        </MudPaper>
+    }
+    else if (!Auth.IsAdmin)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@Tr("Acces administrateur requis.", "Admin access required.")</MudAlert>
+            <MudButton Variant="Variant.Outlined" Class="mt-3" OnClick="@(() => Nav.NavigateTo("/"))">@Tr("Retour", "Back")</MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Class="pa-4 mt-3 dm-content-card dm-page-shell">
+            <div class="dm-toolbar-row mb-2">
+                <MudTextField T="string"
+                              Label="@Tr("Recherche", "Search")"
+                              Variant="Variant.Outlined"
+                              Dense="true"
+                              Immediate="true"
+                              DebounceInterval="300"
+                              Value="@_q"
+                              ValueChanged="@(async (string v) => await OnSearchChanged(v))" />
+                <MudSelect T="string" Label="@Tr("Portee", "Scope")" Variant="Variant.Outlined" Dense="true" @bind-Value="_scopeFilter">
+                    <MudSelectItem T="string" Value="@string.Empty">@Tr("Tous", "All")</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Global")">@Tr("Global", "Global")</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Shop")">@Tr("Boutique", "Shop")</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Category")">@Tr("Categorie", "Category")</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("Product")">@Tr("Produit", "Product")</MudSelectItem>
+                </MudSelect>
+                <MudSelect T="string" Label="@Tr("Statut", "Status")" Variant="Variant.Outlined" Dense="true" @bind-Value="_activeFilter">
+                    <MudSelectItem T="string" Value="@string.Empty">@Tr("Tous", "All")</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("true")">@Tr("Actif", "Active")</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("false")">@Tr("Inactif", "Inactive")</MudSelectItem>
+                </MudSelect>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Reload">@Tr("Actualiser", "Refresh")</MudButton>
+            </div>
+
+            <MudGrid Spacing="2" Class="mb-2">
+                <MudItem xs="12" md="4">
+                    <MudTextField T="string" Label="@Tr("Nom de la regle", "Rule name")" Variant="Variant.Outlined" Dense="true" @bind-Value="_form.Name" />
+                </MudItem>
+                <MudItem xs="12" md="2">
+                    <MudSelect T="string" Label="@Tr("Portee", "Scope")" Variant="Variant.Outlined" Dense="true" @bind-Value="_form.ScopeType">
+                        <MudSelectItem T="string" Value="@("Global")">@Tr("Global", "Global")</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("Shop")">@Tr("Boutique", "Shop")</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("Category")">@Tr("Categorie", "Category")</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("Product")">@Tr("Produit", "Product")</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="3">
+                    <MudTextField T="string" Label="@Tr("ID entite portee (GUID)", "Scope entity ID (GUID)")" Variant="Variant.Outlined" Dense="true" @bind-Value="_form.ScopeEntityIdRaw" />
+                </MudItem>
+                <MudItem xs="6" md="1">
+                    <MudTextField T="string" Label="@Tr("Devise", "Currency")" Variant="Variant.Outlined" Dense="true" @bind-Value="_form.Currency" />
+                </MudItem>
+                <MudItem xs="6" md="2">
+                    <MudSelect T="string" Label="@Tr("Mode frais", "Fee mode")" Variant="Variant.Outlined" Dense="true" @bind-Value="_form.PlatformFeeMode">
+                        <MudSelectItem T="string" Value="@("Flat")">@Tr("Fixe", "Flat")</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("Percent")">@Tr("Pourcentage", "Percent")</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="6" md="2">
+                    @if (string.Equals(_form.PlatformFeeMode, "Percent", StringComparison.OrdinalIgnoreCase))
+                    {
+                        <MudNumericField T="decimal?" Label="@Tr("Pourcentage", "Percent")" Variant="Variant.Outlined" Dense="true" @bind-Value="_form.PlatformFeePercent" Min="@(0.01m)" Max="@(100m)" />
+                    }
+                    else
+                    {
+                        <MudNumericField T="decimal" Label="@Tr("Montant fixe", "Flat amount")" Variant="Variant.Outlined" Dense="true" @bind-Value="_form.PlatformFeeAmount" Min="0m" />
+                    }
+                </MudItem>
+                <MudItem xs="6" md="2">
+                    <MudNumericField T="decimal?" Label="@Tr("Prix unitaire min", "Min unit price")" Variant="Variant.Outlined" Dense="true" @bind-Value="_form.MinUnitPrice" Min="0m" />
+                </MudItem>
+                <MudItem xs="6" md="2">
+                    <MudNumericField T="decimal?" Label="@Tr("Prix unitaire max", "Max unit price")" Variant="Variant.Outlined" Dense="true" @bind-Value="_form.MaxUnitPrice" Min="0m" />
+                </MudItem>
+                <MudItem xs="6" md="2">
+                    <MudDatePicker Label="@Tr("Debut", "Start")" Variant="Variant.Outlined" @bind-Date="_form.StartsAtUtc" />
+                </MudItem>
+                <MudItem xs="6" md="2">
+                    <MudDatePicker Label="@Tr("Fin", "End")" Variant="Variant.Outlined" @bind-Date="_form.EndsAtUtc" />
+                </MudItem>
+                <MudItem xs="6" md="2">
+                    <MudNumericField T="int" Label="@Tr("Priorite", "Priority")" Variant="Variant.Outlined" Dense="true" @bind-Value="_form.Priority" />
+                </MudItem>
+                <MudItem xs="6" md="2" Class="d-flex align-items-center">
+                    <MudSwitch T="bool" Color="Color.Primary" @bind-Checked="_form.IsActive">@Tr("Actif", "Active")</MudSwitch>
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField T="string" Label="@Tr("Description", "Description")" Variant="Variant.Outlined" Dense="true" @bind-Value="_form.Description" />
+                </MudItem>
+                <MudItem xs="12" md="4" Class="d-flex align-items-center gap-2">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_saving" OnClick="SaveRuleAsync">
+                        @(_form.EditId.HasValue ? Tr("Mettre a jour la regle", "Update rule") : Tr("Creer la regle", "Create rule"))
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined" Disabled="_saving" OnClick="ResetForm">@Tr("Effacer", "Clear")</MudButton>
+                </MudItem>
+            </MudGrid>
+
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mb-2">@_error</MudAlert>
+            }
+
+            <MudDivider Class="my-3" />
+            <MudText Typo="Typo.h6" Class="mb-2">@Tr("Regles", "Rules") (@_items.Count)</MudText>
+
+            @if (_loading)
+            {
+                <MudSkeleton Height="42px" />
+                <MudSkeleton Height="42px" Class="mt-2" />
+            }
+            else if (_items.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@Tr("Aucune regle de commission.", "No commission rules.")</MudAlert>
+            }
+            else
+            {
+                <MudTable T="CommissionRuleRow" Items="_items" Dense="true" Hover="true" Bordered="true" Striped="true">
+                    <HeaderContent>
+                        <MudTh>@Tr("Nom", "Name")</MudTh>
+                        <MudTh>@Tr("Portee", "Scope")</MudTh>
+                        <MudTh>@Tr("Frais", "Fee")</MudTh>
+                        <MudTh>@Tr("Periode", "Window")</MudTh>
+                        <MudTh Align="Align.Right">@Tr("Priorite", "Priority")</MudTh>
+                        <MudTh>@Tr("Statut", "Status")</MudTh>
+                        <MudTh Align="Align.Right">@Tr("Actions", "Actions")</MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="r">
+                        <MudTd>@r.Name</MudTd>
+                        <MudTd>@RenderScope(r)</MudTd>
+                        <MudTd>@RenderFee(r)</MudTd>
+                        <MudTd>@RenderWindow(r)</MudTd>
+                        <MudTd Align="Align.Right">@r.Priority</MudTd>
+                        <MudTd>
+                            <MudChip T="string" Color="@(r.IsActive ? Color.Success : Color.Default)" Size="Size.Small">
+                                @(r.IsActive ? Tr("Actif", "Active") : Tr("Inactif", "Inactive"))
+                            </MudChip>
+                        </MudTd>
+                        <MudTd Align="Align.Right">
+                            <AdminRowActionMenu AriaLabel="@Tr("Actions", "Actions")">
+                                <MudMenuItem Icon="@Icons.Material.Filled.Edit"
+                                             OnClick="@(() => EditRule(r))">
+                                    @Tr("Modifier", "Edit")
+                                </MudMenuItem>
+                                <MudMenuItem Icon="@Icons.Material.Filled.Delete"
+                                             OnClick="@(() => DeleteRuleAsync(r.Id))">
+                                    @Tr("Supprimer", "Delete")
+                                </MudMenuItem>
+                            </AdminRowActionMenu>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+
+            <MudDivider Class="my-4" />
+            <MudText Typo="Typo.h6" Class="mb-2">@Tr("Previsualisation des frais", "Fee preview")</MudText>
+            <MudGrid Spacing="2">
+                <MudItem xs="12" md="4">
+                    <MudTextField T="string" Label="@Tr("ID produit (GUID)", "Product ID (GUID)")" Variant="Variant.Outlined" Dense="true" @bind-Value="_previewProductIdRaw" />
+                </MudItem>
+                <MudItem xs="12" md="3">
+                    <MudNumericField T="decimal" Label="@Tr("Prix unitaire", "Unit price")" Variant="Variant.Outlined" Dense="true" @bind-Value="_previewUnitPrice" Min="0.01m" />
+                </MudItem>
+                <MudItem xs="12" md="3" Class="d-flex align-items-center">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="PreviewAsync">@Tr("Previsualiser les frais", "Preview fee")</MudButton>
+                </MudItem>
+            </MudGrid>
+            @if (_previewResult is not null)
+            {
+                <MudPaper Class="pa-3 mt-2 dm-content-card-soft dm-panel dm-panel-soft">
+                    <MudText Typo="Typo.body2">@Tr("Produit", "Product"): @_previewResult.ProductName (@_previewResult.ProductId)</MudText>
+                    <MudText Typo="Typo.body2">@Tr("Frais appliques", "Applied fee"): @_previewResult.AppliedFee (@Tr("source", "source"): @_previewResult.Source)</MudText>
+                    @if (_previewResult.RuleId.HasValue)
+                    {
+                        <MudText Typo="Typo.caption">@Tr("Regle", "Rule"): @_previewResult.RuleName / @_previewResult.RuleScopeType</MudText>
+                    }
+                </MudPaper>
+            }
+        </MudPaper>
+    }
+</AuthGuard>
+
+@code {
+    private bool _ready;
+    private bool _loading = true;
+    private bool _saving;
+    private string? _error;
+    private string _q = string.Empty;
+    private string _scopeFilter = string.Empty;
+    private string _activeFilter = string.Empty;
+    private List<CommissionRuleRow> _items = new();
+
+    private RuleFormModel _form = RuleFormModel.CreateDefault();
+    private string _previewProductIdRaw = string.Empty;
+    private decimal _previewUnitPrice = 1m;
+    private CommissionPreviewDto? _previewResult;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var t0 = DateTime.UtcNow;
+        while (!Auth.IsReady && (DateTime.UtcNow - t0).TotalSeconds < 5)
+            await Task.Delay(30);
+
+        _ready = true;
+        if (!Auth.IsAuthenticated || !Auth.IsAdmin)
+        {
+            StateHasChanged();
+            return;
+        }
+
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    private async Task Reload()
+    {
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    private async Task OnSearchChanged(string value)
+    {
+        _q = value ?? string.Empty;
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            var parts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(_q)) parts.Add($"q={Uri.EscapeDataString(_q)}");
+            if (!string.IsNullOrWhiteSpace(_scopeFilter)) parts.Add($"scopeType={Uri.EscapeDataString(_scopeFilter)}");
+            if (!string.IsNullOrWhiteSpace(_activeFilter)) parts.Add($"active={Uri.EscapeDataString(_activeFilter)}");
+            var query = parts.Count == 0 ? string.Empty : "?" + string.Join("&", parts);
+            _items = await Http.GetFromJsonAsync<List<CommissionRuleRow>>($"api/admin/commissions/rules{query}") ?? new();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _items = new();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SaveRuleAsync()
+    {
+        _error = null;
+        if (!TryParseScopeId(_form.ScopeType, _form.ScopeEntityIdRaw, out var scopeShopId, out var scopeCategoryId, out var scopeProductId, out var scopeError))
+        {
+            Snackbar.Add(scopeError ?? Tr("ID de portee invalide.", "Invalid scope ID."), Severity.Warning);
+            return;
+        }
+
+        var payload = new
+        {
+            name = _form.Name,
+            scopeType = _form.ScopeType,
+            scopeShopId,
+            scopeCategoryId,
+            scopeProductId,
+            currency = _form.Currency,
+            platformFeeMode = _form.PlatformFeeMode,
+            platformFeeAmount = _form.PlatformFeeAmount,
+            platformFeePercent = _form.PlatformFeePercent,
+            minUnitPrice = _form.MinUnitPrice,
+            maxUnitPrice = _form.MaxUnitPrice,
+            startsAtUtc = _form.StartsAtUtc,
+            endsAtUtc = _form.EndsAtUtc,
+            priority = _form.Priority,
+            isActive = _form.IsActive,
+            description = _form.Description
+        };
+
+        _saving = true;
+        try
+        {
+            HttpResponseMessage res;
+            if (_form.EditId.HasValue)
+            {
+                res = await Http.PutAsJsonAsync($"api/admin/commissions/rules/{_form.EditId.Value}", payload);
+            }
+            else
+            {
+                res = await Http.PostAsJsonAsync("api/admin/commissions/rules", payload);
+            }
+
+            if (!res.IsSuccessStatusCode)
+            {
+                throw await BuildApiError(res);
+            }
+
+            Snackbar.Add(Tr("Regle de commission enregistree.", "Commission rule saved."), Severity.Success);
+            ResetForm();
+            await LoadAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void EditRule(CommissionRuleRow row)
+    {
+        _form = new RuleFormModel
+        {
+            EditId = row.Id,
+            Name = row.Name,
+            ScopeType = row.ScopeType,
+            ScopeEntityIdRaw = row.ScopeType switch
+            {
+                "Shop" => row.ScopeShopId?.ToString() ?? string.Empty,
+                "Category" => row.ScopeCategoryId?.ToString() ?? string.Empty,
+                "Product" => row.ScopeProductId?.ToString() ?? string.Empty,
+                _ => string.Empty
+            },
+            Currency = row.Currency ?? string.Empty,
+            PlatformFeeMode = row.PlatformFeeMode,
+            PlatformFeeAmount = row.PlatformFeeAmount,
+            PlatformFeePercent = row.PlatformFeePercent,
+            MinUnitPrice = row.MinUnitPrice,
+            MaxUnitPrice = row.MaxUnitPrice,
+            StartsAtUtc = row.StartsAtUtc,
+            EndsAtUtc = row.EndsAtUtc,
+            Priority = row.Priority,
+            IsActive = row.IsActive,
+            Description = row.Description ?? string.Empty
+        };
+    }
+
+    private void ResetForm()
+    {
+        _form = RuleFormModel.CreateDefault();
+    }
+
+    private async Task DeleteRuleAsync(Guid id)
+    {
+        try
+        {
+            var res = await Http.DeleteAsync($"api/admin/commissions/rules/{id}");
+            if (!res.IsSuccessStatusCode)
+            {
+                throw await BuildApiError(res);
+            }
+
+            Snackbar.Add(Tr("Regle supprimee.", "Rule deleted."), Severity.Success);
+            if (_form.EditId == id)
+            {
+                ResetForm();
+            }
+
+            await LoadAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task PreviewAsync()
+    {
+        if (!Guid.TryParse(_previewProductIdRaw, out var productId))
+        {
+            Snackbar.Add(Tr("ID produit invalide.", "Invalid Product ID."), Severity.Warning);
+            return;
+        }
+
+        if (_previewUnitPrice <= 0m)
+        {
+            Snackbar.Add(Tr("Le prix unitaire doit etre superieur a 0.", "Unit price must be greater than 0."), Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            _previewResult = await Http.GetFromJsonAsync<CommissionPreviewDto>(
+                $"api/admin/commissions/rules/resolve-preview?productId={productId}&unitPrice={_previewUnitPrice}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            _previewResult = null;
+        }
+    }
+
+    private static bool TryParseScopeId(
+        string scopeType,
+        string raw,
+        out Guid? scopeShopId,
+        out Guid? scopeCategoryId,
+        out Guid? scopeProductId,
+        out string? error)
+    {
+        scopeShopId = null;
+        scopeCategoryId = null;
+        scopeProductId = null;
+        error = null;
+
+        if (string.Equals(scopeType, "Global", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (!Guid.TryParse(raw, out var parsed))
+        {
+            error = Tr("L'ID de portee doit etre un GUID valide pour les regles non globales.", "Scope ID must be a valid GUID for non-global rules.");
+            return false;
+        }
+
+        if (string.Equals(scopeType, "Shop", StringComparison.OrdinalIgnoreCase))
+        {
+            scopeShopId = parsed;
+            return true;
+        }
+
+        if (string.Equals(scopeType, "Category", StringComparison.OrdinalIgnoreCase))
+        {
+            scopeCategoryId = parsed;
+            return true;
+        }
+
+        if (string.Equals(scopeType, "Product", StringComparison.OrdinalIgnoreCase))
+        {
+            scopeProductId = parsed;
+            return true;
+        }
+
+        error = Tr("Type de portee invalide.", "Invalid scope type.");
+        return false;
+    }
+
+    private static string RenderScope(CommissionRuleRow row)
+    {
+        return row.ScopeType switch
+        {
+            "Shop" => $"{Tr("Boutique", "Shop")}: {row.ScopeShopName ?? row.ScopeShopId?.ToString() ?? "-"}",
+            "Category" => $"{Tr("Categorie", "Category")}: {row.ScopeCategoryName ?? row.ScopeCategoryId?.ToString() ?? "-"}",
+            "Product" => $"{Tr("Produit", "Product")}: {row.ScopeProductName ?? row.ScopeProductId?.ToString() ?? "-"}",
+            _ => Tr("Global", "Global")
+        };
+    }
+
+    private static string RenderFee(CommissionRuleRow row)
+    {
+        return string.Equals(row.PlatformFeeMode, "Percent", StringComparison.OrdinalIgnoreCase)
+            ? $"{(row.PlatformFeePercent ?? 0m):0.##}%"
+            : $"{row.PlatformFeeAmount:0.##}";
+    }
+
+    private static string RenderWindow(CommissionRuleRow row)
+    {
+        var start = row.StartsAtUtc?.ToString("yyyy-MM-dd") ?? "-";
+        var end = row.EndsAtUtc?.ToString("yyyy-MM-dd") ?? "-";
+        return $"{start} -> {end}";
+    }
+
+    private async Task<Exception> BuildApiError(HttpResponseMessage res)
+    {
+        var body = await res.Content.ReadAsStringAsync();
+        return res.StatusCode switch
+        {
+            HttpStatusCode.Unauthorized => new InvalidOperationException(Tr("Non autorise (401).", "Unauthorized (401).")),
+            HttpStatusCode.Forbidden => new InvalidOperationException(Tr("Acces refuse (403).", "Forbidden (403).")),
+            HttpStatusCode.NotFound => new InvalidOperationException(Tr("Route introuvable (404).", "Route not found (404).")),
+            HttpStatusCode.Conflict => new InvalidOperationException(string.IsNullOrWhiteSpace(body) ? Tr("Conflit (409).", "Conflict (409).") : body),
+            _ => new InvalidOperationException($"{Tr("Erreur API", "API error")} ({(int)res.StatusCode}) : {body}")
+        };
+    }
+
+    private static string Tr(string fr, string en)
+        => string.Equals(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "en", StringComparison.OrdinalIgnoreCase) ? en : fr;
+
+    private sealed class RuleFormModel
+    {
+        public Guid? EditId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string ScopeType { get; set; } = "Global";
+        public string ScopeEntityIdRaw { get; set; } = string.Empty;
+        public string Currency { get; set; } = "USD";
+        public string PlatformFeeMode { get; set; } = "Flat";
+        public decimal PlatformFeeAmount { get; set; } = 0m;
+        public decimal? PlatformFeePercent { get; set; } = 5m;
+        public decimal? MinUnitPrice { get; set; }
+        public decimal? MaxUnitPrice { get; set; }
+        public DateTime? StartsAtUtc { get; set; }
+        public DateTime? EndsAtUtc { get; set; }
+        public int Priority { get; set; } = 100;
+        public bool IsActive { get; set; } = true;
+        public string Description { get; set; } = string.Empty;
+
+        public static RuleFormModel CreateDefault() => new();
+    }
+
+    private sealed record CommissionRuleRow(
+        Guid Id,
+        string Name,
+        string ScopeType,
+        Guid? ScopeShopId,
+        string? ScopeShopName,
+        Guid? ScopeCategoryId,
+        string? ScopeCategoryName,
+        Guid? ScopeProductId,
+        string? ScopeProductName,
+        string? Currency,
+        string PlatformFeeMode,
+        decimal PlatformFeeAmount,
+        decimal? PlatformFeePercent,
+        decimal? MinUnitPrice,
+        decimal? MaxUnitPrice,
+        DateTime? StartsAtUtc,
+        DateTime? EndsAtUtc,
+        int Priority,
+        bool IsActive,
+        string? Description,
+        DateTime CreatedAtUtc,
+        DateTime? UpdatedAtUtc);
+
+    private sealed record CommissionPreviewDto(
+        Guid ProductId,
+        string ProductName,
+        decimal UnitPrice,
+        decimal AppliedFee,
+        string Source,
+        Guid? RuleId,
+        string? RuleName,
+        string? RuleScopeType);
+}

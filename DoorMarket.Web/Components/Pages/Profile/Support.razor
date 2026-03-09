@@ -1,0 +1,95 @@
+@page "/support"
+@using System.Globalization
+@using MudBlazor
+
+<PageTitle>@T("Support DoorMarket", "DoorMarket Support") - DoorMarket</PageTitle>
+
+<div class="dm-page-header">
+    <div class="dm-page-title-wrap">
+        <h1 class="dm-page-h1">@T("Support DoorMarket", "DoorMarket Support")</h1>
+        <div class="dm-page-sub">
+            @T(
+                "Aide officielle pour les commandes, paiements, adresses et compte utilisateur.",
+                "Official help for orders, payments, addresses, and account access.")
+        </div>
+    </div>
+</div>
+
+<MudPaper Class="pa-4 mt-3 dm-content-card dm-page-shell">
+    <MudText Typo="Typo.body1">
+        @T(
+            "Besoin d'aide ? Notre equipe support est disponible pour vous assister rapidement.",
+            "Need help? Our support team is available to assist you quickly.")
+    </MudText>
+
+    <MudDivider Class="my-3" />
+
+    <MudGrid Spacing="2">
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-4" Outlined="true">
+                <MudText Typo="Typo.h6">@T("Contact principal", "Primary Contact")</MudText>
+                <MudText Typo="Typo.body2" Class="mt-2">
+                    <strong>Email:</strong> support@door-market.com
+                </MudText>
+                <MudText Typo="Typo.body2" Class="mt-1">
+                    <strong>@T("Telephone", "Phone"):</strong> +243 900 000 000
+                </MudText>
+                <MudText Typo="Typo.body2" Class="mt-2 dm-muted">
+                    @T("Horaires: Lundi - Samedi, 08:00 - 19:00 (UTC+1).", "Hours: Monday - Saturday, 08:00 - 19:00 (UTC+1).")
+                </MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-4" Outlined="true">
+                <MudText Typo="Typo.h6">@T("Delais cibles", "Target Response Times")</MudText>
+                <MudList T="string" Dense="true" Class="mt-1">
+                    <MudListItem T="string">@T("Demande generale: moins de 24 heures.", "General request: under 24 hours.")</MudListItem>
+                    <MudListItem T="string">@T("Probleme commande/paiement: moins de 4 heures.", "Order/payment issue: under 4 hours.")</MudListItem>
+                    <MudListItem T="string">@T("Incident critique: prise en charge immediate.", "Critical incident: immediate triage.")</MudListItem>
+                </MudList>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <MudText Typo="Typo.h6" Class="mt-4">@T("Comment accelerer le traitement", "How to Speed Up Resolution")</MudText>
+    <MudList T="string" Dense="true" Class="mt-1">
+        <MudListItem T="string">@T("Indiquez l'email ou le numero de telephone du compte.", "Provide account email or phone number.")</MudListItem>
+        <MudListItem T="string">@T("Ajoutez la reference de commande (si disponible).", "Include order reference (if available).")</MudListItem>
+        <MudListItem T="string">@T("Precisez le probleme et l'heure approximative.", "Describe the issue and approximate time.")</MudListItem>
+        <MudListItem T="string">@T("Joignez une capture d'ecran si necessaire.", "Attach a screenshot if relevant.")</MudListItem>
+    </MudList>
+
+    <MudText Typo="Typo.h6" Class="mt-4">@T("Categories d'assistance", "Support Categories")</MudText>
+    <MudGrid Spacing="2" Class="mt-1">
+        <MudItem xs="12" sm="6" md="4">
+            <MudPaper Class="pa-3" Outlined="true">
+                <MudText Typo="Typo.subtitle2">@T("Commande", "Orders")</MudText>
+                <MudText Typo="Typo.body2" Class="dm-muted">@T("Statuts, annulation, retours.", "Status, cancellation, returns.")</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudPaper Class="pa-3" Outlined="true">
+                <MudText Typo="Typo.subtitle2">@T("Paiement", "Payments")</MudText>
+                <MudText Typo="Typo.body2" Class="dm-muted">@T("Echec, reprise de paiement, confirmation.", "Failure, payment recovery, confirmation.")</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="4">
+            <MudPaper Class="pa-3" Outlined="true">
+                <MudText Typo="Typo.subtitle2">@T("Compte", "Account")</MudText>
+                <MudText Typo="Typo.body2" Class="dm-muted">@T("Connexion, adresse, profil, suppression.", "Login, addresses, profile, deletion.")</MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <MudDivider Class="my-4" />
+    <MudText Typo="Typo.caption" Class="dm-muted">
+        @T("Derniere mise a jour : 09 mars 2026", "Last updated: March 9, 2026")
+    </MudText>
+</MudPaper>
+
+@code {
+    private static bool IsEn =>
+        string.Equals(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "en", StringComparison.OrdinalIgnoreCase);
+
+    private static string T(string fr, string en) => IsEn ? en : fr;
+}

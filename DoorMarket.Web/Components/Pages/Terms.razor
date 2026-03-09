@@ -1,0 +1,93 @@
+@page "/terms"
+@using System.Globalization
+@using MudBlazor
+
+<PageTitle>@T("Conditions d'utilisation", "Terms of Service") - DoorMarket</PageTitle>
+
+<div class="dm-page-header">
+    <div class="dm-page-title-wrap">
+        <h1 class="dm-page-h1">@T("Conditions d'utilisation", "Terms of Service")</h1>
+        <div class="dm-page-sub">@T("Regles d'usage de la plateforme DoorMarket.", "Rules governing use of the DoorMarket platform.")</div>
+    </div>
+</div>
+
+<MudPaper Class="pa-4 mt-3 dm-content-card dm-page-shell">
+    <MudText Typo="Typo.body2" Class="dm-muted">
+        @T("Derniere mise a jour : 07 mars 2026", "Last updated: March 7, 2026")
+    </MudText>
+
+    <MudDivider Class="my-3" />
+
+    <MudText Typo="Typo.h6">@T("1. Objet", "1. Scope")</MudText>
+    <MudText Typo="Typo.body2" Class="mt-1">
+        @T("DoorMarket est une marketplace qui permet d'acheter des produits aupres de boutiques partenaires avec options de livraison et paiement integres.", "DoorMarket is a marketplace enabling purchases from partner shops with integrated delivery and payment options.")
+    </MudText>
+
+    <MudText Typo="Typo.h6" Class="mt-4">@T("2. Acceptation", "2. Acceptance")</MudText>
+    <MudText Typo="Typo.body2" Class="mt-1">
+        @T("En utilisant DoorMarket, vous acceptez ces conditions. Si vous n'acceptez pas, n'utilisez pas la plateforme.", "By using DoorMarket, you agree to these terms. If you do not agree, do not use the platform.")
+    </MudText>
+
+    <MudText Typo="Typo.h6" Class="mt-4">@T("3. Compte utilisateur", "3. User Account")</MudText>
+    <MudList T="string" Dense="true" Class="mt-1">
+        <MudListItem T="string">@T("Vous devez fournir des informations exactes et a jour.", "You must provide accurate and up-to-date information.")</MudListItem>
+        <MudListItem T="string">@T("Vous etes responsable de la confidentialite de vos acces.", "You are responsible for confidentiality of your credentials.")</MudListItem>
+        <MudListItem T="string">@T("DoorMarket peut suspendre un compte en cas d'abus, fraude ou risque securite.", "DoorMarket may suspend an account in case of abuse, fraud, or security risk.")</MudListItem>
+    </MudList>
+
+    <MudText Typo="Typo.h6" Class="mt-4">@T("4. Produits, prix et disponibilite", "4. Products, Pricing, Availability")</MudText>
+    <MudText Typo="Typo.body2" Class="mt-1">
+        @T("Les produits sont proposes par les boutiques partenaires. Les prix, promotions et stocks peuvent changer sans preavis. En cas d'erreur manifeste, DoorMarket peut annuler une commande avant expedition avec remboursement selon le mode de paiement.", "Products are offered by partner shops. Pricing, promotions, and stock may change without notice. In case of clear error, DoorMarket may cancel an order before shipment with refund through the original payment flow.")
+    </MudText>
+
+    <MudText Typo="Typo.h6" Class="mt-4">@T("5. Commande et paiement", "5. Orders and Payment")</MudText>
+    <MudList T="string" Dense="true" Class="mt-1">
+        <MudListItem T="string">@T("Une commande est validee apres confirmation du paiement ou selon le mode choisi.", "An order is confirmed after payment confirmation or according to selected method.")</MudListItem>
+        <MudListItem T="string">@T("Vous autorisez DoorMarket et ses prestataires a traiter les transactions liees a vos achats.", "You authorize DoorMarket and its providers to process transactions related to your purchases.")</MudListItem>
+        <MudListItem T="string">@T("En cas d'echec technique, DoorMarket peut proposer une reprise de paiement securisee.", "In case of technical failure, DoorMarket may offer secure payment recovery.")</MudListItem>
+    </MudList>
+
+    <MudText Typo="Typo.h6" Class="mt-4">@T("6. Livraison", "6. Delivery")</MudText>
+    <MudText Typo="Typo.body2" Class="mt-1">
+        @T("Les delais sont estimatifs. Ils dependent de la boutique, de la zone et des contraintes operationnelles. Le client doit fournir une adresse complete et joignable.", "Delivery timelines are estimates. They depend on shop readiness, delivery zone, and operational constraints. The customer must provide complete and reachable address details.")
+    </MudText>
+
+    <MudText Typo="Typo.h6" Class="mt-4">@T("7. Retours et remboursements", "7. Returns and Refunds")</MudText>
+    <MudText Typo="Typo.body2" Class="mt-1">
+        @T("Les retours suivent la politique de retour DoorMarket (motifs, delais, verification). Les remboursements sont executes selon le mode de paiement et les regles de conformite.", "Returns follow DoorMarket return policy (reasons, deadlines, verification). Refunds are executed according to payment method and compliance rules.")
+    </MudText>
+
+    <MudText Typo="Typo.h6" Class="mt-4">@T("8. Usages interdits", "8. Prohibited Use")</MudText>
+    <MudList T="string" Dense="true" Class="mt-1">
+        <MudListItem T="string">@T("Fraude, usurpation d'identite, contournement des controles.", "Fraud, impersonation, or control circumvention.")</MudListItem>
+        <MudListItem T="string">@T("Usage automatique abusif, attaque, injection, scraping non autorise.", "Abusive automation, attack, injection, or unauthorized scraping.")</MudListItem>
+        <MudListItem T="string">@T("Publication de contenus illicites, offensants ou trompeurs.", "Posting unlawful, offensive, or misleading content.")</MudListItem>
+    </MudList>
+
+    <MudText Typo="Typo.h6" Class="mt-4">@T("9. Responsabilite", "9. Liability")</MudText>
+    <MudText Typo="Typo.body2" Class="mt-1">
+        @T("DoorMarket met en oeuvre des moyens raisonnables pour assurer la disponibilite du service, sans garantie d'absence totale d'interruption. Dans la limite autorisee par la loi, la responsabilite de DoorMarket est limitee aux dommages directs prouvables.", "DoorMarket applies reasonable efforts to maintain service availability, without guaranteeing uninterrupted operation. To the extent allowed by law, DoorMarket liability is limited to proven direct damages.")
+    </MudText>
+
+    <MudText Typo="Typo.h6" Class="mt-4">@T("10. Proprietes intellectuelles", "10. Intellectual Property")</MudText>
+    <MudText Typo="Typo.body2" Class="mt-1">
+        @T("Le contenu, les marques et les elements visuels de DoorMarket restent proteges. Toute reutilisation non autorisee est interdite.", "DoorMarket content, branding, and visual assets remain protected. Unauthorized reuse is prohibited.")
+    </MudText>
+
+    <MudText Typo="Typo.h6" Class="mt-4">@T("11. Droit applicable", "11. Governing Law")</MudText>
+    <MudText Typo="Typo.body2" Class="mt-1">
+        @T("Ces conditions sont regies par la loi applicable au pays d'exploitation principal de DoorMarket, sous reserve des protections obligatoires du consommateur.", "These terms are governed by the law applicable to DoorMarket primary country of operation, subject to mandatory consumer protections.")
+    </MudText>
+
+    <MudText Typo="Typo.h6" Class="mt-4">@T("12. Contact", "12. Contact")</MudText>
+    <MudText Typo="Typo.body2" Class="mt-1">
+        @T("Support client: contact@door-market.com", "Customer support: contact@door-market.com")
+    </MudText>
+</MudPaper>
+
+@code {
+    private static bool IsEn =>
+        string.Equals(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "en", StringComparison.OrdinalIgnoreCase);
+
+    private static string T(string fr, string en) => IsEn ? en : fr;
+}

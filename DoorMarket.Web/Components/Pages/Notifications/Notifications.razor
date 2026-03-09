@@ -1,0 +1,259 @@
+@page "/notifications"
+
+@using System.Globalization
+@using System.Net.Http.Json
+@using MudBlazor
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject ISnackbar Snackbar
+
+<PageTitle>@SL["Notifications"]</PageTitle>
+
+<h1 class="dm-page-h1">@SL["Notifications"]</h1>
+<div class="dm-page-sub">@SubtitleText</div>
+
+<AuthGuard>
+    @if (!_bootstrapped)
+    {
+        <MudPaper Class="pa-4 mt-3 dm-content-card">
+            <MudSkeleton Height="28px" Width="220px" Class="mb-2" />
+            <MudSkeleton Height="18px" Width="380px" Class="mb-4" />
+            <MudSkeleton Height="90px" />
+            <MudSkeleton Height="90px" Class="mt-2" />
+        </MudPaper>
+    }
+    else if (_loading)
+    {
+        <MudPaper Class="pa-4 mt-3 dm-content-card">
+            <MudSkeleton Height="90px" />
+            <MudSkeleton Height="90px" Class="mt-2" />
+            <MudSkeleton Height="90px" Class="mt-2" />
+        </MudPaper>
+    }
+    else if (_error is not null)
+    {
+        <MudPaper Class="pa-4 mt-3 dm-content-card">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_error</MudAlert>
+            <div class="d-flex gap-2 mt-3 flex-wrap">
+                <MudButton Variant="Variant.Outlined" OnClick="Reload">@SL["Retry"]</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GoOrders">@SL["MyOrders"]</MudButton>
+            </div>
+        </MudPaper>
+    }
+    else if (_notifications.Count == 0)
+    {
+        <MudPaper Class="pa-4 mt-3 dm-content-card">
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@NoNotificationText</MudAlert>
+            <MudButton Variant="Variant.Outlined" Class="mt-3" OnClick="GoOrders">@SL["MyOrders"]</MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Class="pa-4 mt-3 dm-content-card">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+                <MudText Typo="Typo.h6">@RecentUpdatesText</MudText>
+                <MudButton Variant="Variant.Outlined" Disabled="_loading" OnClick="Reload">@SL["Refresh"]</MudButton>
+            </div>
+
+            @foreach (var row in _notifications)
+            {
+                <MudPaper Outlined="true" Class="pa-3 mt-2">
+                    <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                        <div>
+                            <MudText Typo="Typo.subtitle2">@row.Title</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@row.Message</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@row.CreatedAtLocal</MudText>
+                        </div>
+
+                        <div class="d-flex gap-1 align-items-center flex-wrap">
+                            <MudChip T="string" Variant="Variant.Filled" Color="@row.PaymentChipColor" Label="true">
+                                @($"{SL["Payment"]}: {row.PaymentStatus}")
+                            </MudChip>
+                            <MudChip T="string" Variant="Variant.Outlined" Color="@row.FulfillmentChipColor" Label="true">
+                                @($"{SL["Status"]}: {row.FulfillmentStatus}")
+                            </MudChip>
+                            <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => OpenOrder(row.OrderId))">
+                                @SL["Details"]
+                            </MudButton>
+                        </div>
+                    </div>
+                </MudPaper>
+            }
+        </MudPaper>
+    }
+</AuthGuard>
+
+@code {
+    private bool _bootstrapped;
+    private bool _loading = true;
+    private string? _error;
+    private List<ClientNotificationRow> _notifications = new();
+
+    private bool IsFrench =>
+        string.Equals(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "fr", StringComparison.OrdinalIgnoreCase);
+    private string SubtitleText => IsFrench ? "Suivi des commandes et paiements" : "Order and payment updates";
+    private string NoNotificationText => IsFrench ? "Aucune notification pour le moment." : "No notification yet.";
+    private string RecentUpdatesText => IsFrench ? "Mises a jour recentes" : "Recent updates";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        while (!Auth.IsReady)
+        {
+            await Task.Delay(30);
+        }
+
+        if (!Auth.IsAuthenticated)
+        {
+            _bootstrapped = true;
+            StateHasChanged();
+            return;
+        }
+
+        _bootstrapped = true;
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    private async Task Reload() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            var page = await Http.GetFromJsonAsync<PagedResult<OrderRow>>("api/orders/mine?page=1&pageSize=50");
+            var items = page?.Items ?? new List<OrderRow>();
+            _notifications = items
+                .OrderByDescending(x => x.CreatedAtUtc)
+                .Select(MapNotification)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _notifications = new();
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void OpenOrder(Guid orderId) => Nav.NavigateTo($"/orders/{orderId}");
+    private void GoOrders() => Nav.NavigateTo("/orders");
+
+    private ClientNotificationRow MapNotification(OrderRow order)
+    {
+        var shortId = order.Id.ToString("N")[..8];
+        var baseMessage = $"#{shortId} - {SL["Total"]}: {order.TotalAmount:0.00} {order.Currency}";
+
+        if (string.Equals(order.PaymentStatus, "Failed", StringComparison.OrdinalIgnoreCase))
+        {
+            return new ClientNotificationRow(
+                order.Id,
+                IsFrench ? "Paiement echoue" : "Payment failed",
+                IsFrench
+                    ? $"{baseMessage}. Action requise: relancer le paiement."
+                    : $"{baseMessage}. Action required: retry payment.",
+                order.PaymentStatus,
+                order.FulfillmentStatus,
+                PaymentColor(order.PaymentStatus),
+                FulfillmentColor(order.FulfillmentStatus),
+                order.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm"));
+        }
+
+        if (string.Equals(order.PaymentStatus, "Paid", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(order.FulfillmentStatus, "Delivered", StringComparison.OrdinalIgnoreCase))
+        {
+            return new ClientNotificationRow(
+                order.Id,
+                IsFrench ? "Commande livree" : "Order delivered",
+                IsFrench
+                    ? $"{baseMessage}. Votre commande est livree."
+                    : $"{baseMessage}. Your order has been delivered.",
+                order.PaymentStatus,
+                order.FulfillmentStatus,
+                PaymentColor(order.PaymentStatus),
+                FulfillmentColor(order.FulfillmentStatus),
+                order.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm"));
+        }
+
+        if (string.Equals(order.PaymentStatus, "Paid", StringComparison.OrdinalIgnoreCase))
+        {
+            return new ClientNotificationRow(
+                order.Id,
+                IsFrench ? "Paiement recu" : "Payment received",
+                IsFrench
+                    ? $"{baseMessage}. Votre commande est en preparation."
+                    : $"{baseMessage}. Your order is now in fulfillment.",
+                order.PaymentStatus,
+                order.FulfillmentStatus,
+                PaymentColor(order.PaymentStatus),
+                FulfillmentColor(order.FulfillmentStatus),
+                order.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm"));
+        }
+
+        return new ClientNotificationRow(
+            order.Id,
+            IsFrench ? "Commande creee" : "Order created",
+            IsFrench
+                ? $"{baseMessage}. En attente de confirmation de paiement."
+                : $"{baseMessage}. We are waiting for payment confirmation.",
+            order.PaymentStatus,
+            order.FulfillmentStatus,
+            PaymentColor(order.PaymentStatus),
+            FulfillmentColor(order.FulfillmentStatus),
+            order.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm"));
+    }
+
+    private static Color PaymentColor(string paymentStatus) => paymentStatus switch
+    {
+        "Paid" => Color.Success,
+        "Pending" => Color.Warning,
+        "Failed" => Color.Error,
+        "Unpaid" => Color.Warning,
+        _ => Color.Default
+    };
+
+    private static Color FulfillmentColor(string status) => status switch
+    {
+        "PaidPending" => Color.Info,
+        "Processing" => Color.Warning,
+        "Delivered" => Color.Success,
+        "Cancelled" => Color.Error,
+        _ => Color.Default
+    };
+
+    private sealed record PagedResult<T>(List<T> Items, int Total, int Page, int PageSize);
+
+    private sealed record OrderRow(
+        Guid Id,
+        string Status,
+        string PaymentStatus,
+        string FulfillmentStatus,
+        string PaymentProvider,
+        decimal Subtotal,
+        decimal DeliveryFee,
+        decimal Discount,
+        decimal TotalAmount,
+        string Currency,
+        DateTime CreatedAtUtc);
+
+    private sealed record ClientNotificationRow(
+        Guid OrderId,
+        string Title,
+        string Message,
+        string PaymentStatus,
+        string FulfillmentStatus,
+        Color PaymentChipColor,
+        Color FulfillmentChipColor,
+        string CreatedAtLocal);
+}

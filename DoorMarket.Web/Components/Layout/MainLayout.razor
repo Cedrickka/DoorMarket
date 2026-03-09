@@ -1,0 +1,120 @@
+﻿@inherits LayoutComponentBase
+@inject NavigationManager Nav
+@inject DoorMarket.Web.Auth.AuthState Auth
+@using MudBlazor
+@using System.Globalization
+@using Microsoft.AspNetCore.Components.Web
+@inject IStringLocalizer<SharedResource> L
+
+<MudThemeProvider Theme="_theme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider MaxDisplayedSnackbars="3"
+                     PreventDuplicates="true"
+                     NewestOnTop="true"
+                     ShowCloseIcon="true" />
+
+<a href="#dm-main-content" class="dm-skip-link">@SkipToContentLabel</a>
+
+<div class="dm-shell">
+
+    @if (_sidebarOpen)
+    {
+        <div class="dm-overlay show" @onclick="CloseSidebar"></div>
+    }
+
+    <aside class="dm-sidebar @(_sidebarOpen ? "open" : "") @(_desktopSidebarCollapsed ? "collapsed" : "")">
+        <div class="dm-brand"
+             @onclick="GoHome"
+             @onkeydown="OnBrandKeyDown"
+             role="button"
+             tabindex="0"
+             aria-label="@L["Home"]">
+            <img src="/images/dm_logo_mark.png" class="dm-brand-logo" alt="DoorMarket" />
+            <div class="dm-brand-text">
+                <div class="dm-brand-name">@L["AppName"]</div>
+                <div class="dm-brand-tag">@L["BrandTagline"]</div>
+            </div>
+        </div>
+
+        @if (Auth.IsReady && Auth.IsAuthenticated)
+        {
+            <div class="dm-user-mini">
+                <div class="dm-user-mini-title">@(Auth.Email ?? L["UserFallback"].Value)</div>
+                <div class="dm-user-mini-sub">@L["RoleLabel"] : @(Auth.Role ?? "-")</div>
+            </div>
+        }
+
+        <NavMenu OnNavigate="CloseSidebar" />
+    </aside>
+
+    <div class="dm-main">
+        <TopBar OnToggleSidebar="ToggleSidebar"
+                OnToggleDesktopSidebar="ToggleDesktopSidebar"
+                DesktopSidebarCollapsed="_desktopSidebarCollapsed" />
+        <main id="dm-main-content" class="dm-content" tabindex="-1" role="main">
+            @Body
+        </main>
+    </div>
+</div>
+
+@code {
+    private bool _sidebarOpen;
+    private bool _desktopSidebarCollapsed;
+    private static readonly MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#0B4D8B",
+            Secondary = "#D97706",
+            Tertiary = "#0F766E",
+            Info = "#2563EB",
+            Success = "#15803D",
+            Warning = "#B45309",
+            Error = "#B91C1C",
+            Background = "#F3F6FA",
+            Surface = "#FFFFFF",
+            DrawerBackground = "#082D53",
+            DrawerText = "#EAF1FA",
+            AppbarBackground = "#FFFFFF",
+            TextPrimary = "#10243A",
+            TextSecondary = "#5D6B82"
+        },
+        LayoutProperties = new LayoutProperties
+        {
+            DefaultBorderRadius = "14px"
+        }
+    };
+
+    private void ToggleSidebar() => _sidebarOpen = !_sidebarOpen;
+    private void ToggleDesktopSidebar() => _desktopSidebarCollapsed = !_desktopSidebarCollapsed;
+    private void CloseSidebar() => _sidebarOpen = false;
+
+    private void GoHome()
+    {
+        if (!Auth.IsReady || !Auth.IsAuthenticated)
+        {
+            Nav.NavigateTo("/", forceLoad: false);
+            return;
+        }
+
+        if (Auth.IsAdmin) Nav.NavigateTo("/admin/dashboard", forceLoad: false);
+        else if (Auth.IsShop) Nav.NavigateTo("/shop/dashboard", forceLoad: false);
+        else Nav.NavigateTo("/", forceLoad: false);
+    }
+
+    private string SkipToContentLabel
+        => string.Equals(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "fr", StringComparison.OrdinalIgnoreCase)
+            ? "Aller au contenu principal"
+            : "Skip to main content";
+
+    private void OnBrandKeyDown(KeyboardEventArgs args)
+    {
+        if (string.Equals(args.Key, "Enter", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(args.Key, " ", StringComparison.OrdinalIgnoreCase))
+        {
+            GoHome();
+        }
+    }
+}
+

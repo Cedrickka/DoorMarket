@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="180" viewBox="0 0 600 180">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF7A00" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#002D5E" stop-opacity="0.12"/>
+    </linearGradient>
+    <filter id="s" x="-20%" y="-40%" width="140%" height="180%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#000000" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <rect x="10" y="10" width="580" height="160" rx="28" fill="url(#g)" filter="url(#s)"/>
+  <rect x="14" y="14" width="572" height="152" rx="24" fill="#F8FAFC" opacity="0.65"/>
+  <rect x="14" y="154" width="572" height="12" rx="6" fill="#FF7A00" opacity="0.85"/>
+
+  <rect x="22" y="30.0" width="110" height="110" rx="24" fill="#F8FAFC" opacity="0.9"/>
+  <rect x="22" y="30.0" width="110" height="110" rx="24" fill="#002D5E" opacity="0.06"/>
+
+  
+      <g transform="translate(20,14)">
+        <rect x="16" y="6" width="48" height="80" rx="12" fill="#002D5E" opacity="0.18"/>
+        <rect x="20" y="14" width="40" height="62" rx="8" fill="#002D5E" opacity="0.10"/>
+        <circle cx="40" cy="84" r="4" fill="#FF7A00" opacity="0.95"/>
+        <path d="M72 30c10 10 10 26 0 36" fill="none" stroke="#FF7A00" stroke-width="6" stroke-linecap="round" opacity="0.9"/>
+        <path d="M80 22c16 16 16 44 0 60" fill="none" stroke="#FF7A00" stroke-width="6" stroke-linecap="round" opacity="0.55"/>
+      </g>
+    
+
+  <text x="142" y="78" font-size="40" font-weight="700" font-family="Inter, Arial, sans-serif" fill="#0B1220">Mobile Money</text>
+  <text x="142" y="108" font-size="22" font-family="Inter, Arial, sans-serif" fill="#475569">M-Pesa • Orange • Airtel</text>
+</svg>

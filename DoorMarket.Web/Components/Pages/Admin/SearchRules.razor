@@ -1,0 +1,1122 @@
+@page "/admin/search-rules"
+@using System.Globalization
+@using System.Net.Http.Json
+@using MudBlazor
+@inject HttpClient Http
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject IStringLocalizer<SharedResource> SL
+@inject IJSRuntime JS
+
+<h1 class="dm-page-h1">@T("Regles de recherche", "Search rules")</h1>
+<div class="dm-page-sub">@T("Synonymes et mappings pour corriger les recherches sans resultat.", "Synonyms and mappings to fix no-result searches.")</div>
+
+<AuthGuard>
+    @if (!_ready)
+    {
+        <MudPaper Class="pa-4 mt-3 dm-content-card">
+            <MudSkeleton Height="32px" Width="220px" Class="mb-2" />
+            <MudSkeleton Height="18px" Width="360px" />
+        </MudPaper>
+    }
+    else if (!Auth.IsSuperAdmin)
+    {
+        <MudPaper Class="pa-4 mt-3 dm-content-card">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@T("Acces reserve au super admin.", "Super admin access only.")</MudAlert>
+            <MudButton Variant="Variant.Outlined" Class="mt-3" OnClick="@(() => Nav.NavigateTo("/admin/dashboard"))">@SL["Back"]</MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        <MudGrid Class="mt-3" Spacing="2">
+            <MudItem xs="12" lg="4">
+                <MudPaper Class="pa-4 dm-content-card">
+                    <h3 class="dm-admin-panel-title">@(_editId.HasValue ? T("Modifier une regle", "Edit rule") : T("Nouvelle regle", "New rule"))</h3>
+                    <div class="dm-admin-panel-sub">@T("La requete declencheur doit etre unique.", "Trigger query must be unique.")</div>
+
+                    @if (_saveError is not null)
+                    {
+                        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mt-3">@_saveError</MudAlert>
+                    }
+
+                    <MudTextField T="string" Label="@T("Requete declencheur", "Trigger query")" Variant="Variant.Outlined" Class="mt-3" @bind-Value="_form.TriggerQuery" />
+                    <MudTextField T="string" Label="@T("Requete canonique", "Canonical query")" Variant="Variant.Outlined" Class="mt-2" @bind-Value="_form.CanonicalQuery" />
+                    <MudSelect T="string" Label="@T("Type cible", "Target type")" Variant="Variant.Outlined" Class="mt-2" @bind-Value="_form.TargetType">
+                        <MudSelectItem Value="@("")">@SL["All"]</MudSelectItem>
+                        <MudSelectItem Value="@("Product")">@T("Produit", "Product")</MudSelectItem>
+                        <MudSelectItem Value="@("Shop")">@T("Boutique", "Shop")</MudSelectItem>
+                        <MudSelectItem Value="@("Category")">@T("Categorie", "Category")</MudSelectItem>
+                    </MudSelect>
+                    <MudTextField T="string" Label="@T("Id cible (Guid)", "Target ID (Guid)")" Variant="Variant.Outlined" Class="mt-2" @bind-Value="_form.TargetIdRaw" />
+                    <MudTextField T="string" Label="@T("Note", "Note")" Variant="Variant.Outlined" Class="mt-2" @bind-Value="_form.Note" />
+                    <MudSwitch T="bool" Color="Color.Primary" Class="mt-2" @bind-Checked="_form.IsActive">@T("Actif", "Active")</MudSwitch>
+
+                    <div class="d-flex gap-2 mt-3">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_saving" OnClick="SaveAsync">
+                            @(_saving ? T("Enregistrement...", "Saving...") : T("Enregistrer", "Save"))
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" Disabled="_saving" OnClick="ResetForm">@SL["Clear"]</MudButton>
+                    </div>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" lg="8">
+                <MudPaper Class="pa-4 dm-content-card">
+                    <div class="d-flex justify-space-between align-center flex-wrap gap-2">
+                        <div>
+                            <h3 class="dm-admin-panel-title">@T("Suggestions automatiques", "Automatic suggestions")</h3>
+                            <div class="dm-admin-panel-sub">@T("Basees sur les recherches sans resultat.", "Based on no-result queries.")</div>
+                        </div>
+                        <MudButton Variant="Variant.Outlined" Disabled="_loadingSuggestions || _applyingSuggestion" OnClick="LoadSuggestionsAsync">
+                            @(_loadingSuggestions ? T("Chargement...", "Loading...") : T("Rafraichir suggestions", "Refresh suggestions"))
+                        </MudButton>
+                    </div>
+
+                    <div class="d-flex gap-2 flex-wrap align-items-end mt-2">
+                        <MudDatePicker Label="@T("Du", "From")" Variant="Variant.Outlined" Date="_suggestionsFrom" DateChanged="OnSuggestionsFromChanged" />
+                        <MudDatePicker Label="@T("Au", "To")" Variant="Variant.Outlined" Date="_suggestionsTo" DateChanged="OnSuggestionsToChanged" />
+                        <MudSelect T="string" Label="@T("Source", "Source")" Variant="Variant.Outlined" @bind-Value="_suggestionsSource">
+                            <MudSelectItem Value="@("")">@SL["All"]</MudSelectItem>
+                            <MudSelectItem Value="@("web")">Web</MudSelectItem>
+                            <MudSelectItem Value="@("mobile")">Mobile</MudSelectItem>
+                            <MudSelectItem Value="@("admin")">Admin</MudSelectItem>
+                        </MudSelect>
+                        <MudNumericField T="int" Label="@T("Top", "Top")" Variant="Variant.Outlined" Min="1" Max="100" @bind-Value="_suggestionsTake" />
+                    </div>
+
+                    <div class="d-flex gap-2 flex-wrap align-items-end mt-2">
+                        <MudNumericField T="int" Label="@T("Score min", "Min score")" Variant="Variant.Outlined" Min="0" Max="100" @bind-Value="_bulkMinScore" />
+                        <MudNumericField T="int" Label="@T("Occurrences min", "Min hits")" Variant="Variant.Outlined" Min="1" Max="1000" @bind-Value="_bulkMinNoResultCount" />
+                        <MudSelect T="string" Label="@T("Confiance", "Confidence")" Variant="Variant.Outlined" @bind-Value="_bulkConfidenceFilter">
+                            <MudSelectItem Value="@("MediumOrHigh")">@T("Medium + High", "Medium + High")</MudSelectItem>
+                            <MudSelectItem Value="@("High")">@T("Elevee", "High")</MudSelectItem>
+                            <MudSelectItem Value="@("Any")">@SL["All"]</MudSelectItem>
+                        </MudSelect>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Disabled="_bulkApplying || _loadingSuggestions || _applyingSuggestion"
+                                   OnClick="ApplyFilteredSuggestionsAsync">
+                            @(_bulkApplying ? T("Application...", "Applying...") : T("Appliquer les suggestions filtrees", "Apply filtered suggestions"))
+                        </MudButton>
+                    </div>
+
+                    @if (_suggestionsError is not null)
+                    {
+                        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mt-3">@_suggestionsError</MudAlert>
+                    }
+
+                    @if (_loadingSuggestions)
+                    {
+                        <MudSkeleton Height="44px" Class="mt-3" />
+                    }
+                    else if (_suggestions.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-3">
+                            @T("Aucune suggestion pour ce filtre.", "No suggestions for this filter.")
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <MudTable T="SearchRuleSuggestionDto" Items="_suggestions" Dense="true" Hover="true" Class="mt-3">
+                            <HeaderContent>
+                                <MudTh>@T("Declencheur", "Trigger")</MudTh>
+                                <MudTh>@T("Suggestion", "Suggestion")</MudTh>
+                                <MudTh>@T("Confiance", "Confidence")</MudTh>
+                                <MudTh>@T("Occurrences", "Hits")</MudTh>
+                                <MudTh Align="Align.Right">@SL["Action"]</MudTh>
+                            </HeaderContent>
+                            <RowTemplate Context="s">
+                                <MudTd><b>@s.TriggerQuery</b></MudTd>
+                                <MudTd>@SuggestionTargetLabel(s)</MudTd>
+                                <MudTd>
+                                    <MudChip T="string" Label="true" Variant="Variant.Outlined" Color="@SuggestionColor(s.Confidence)">
+                                        @($"{s.Confidence} ({s.Score})")
+                                    </MudChip>
+                                    <div class="dm-admin-panel-sub mt-1">@s.Reason</div>
+                                </MudTd>
+                                <MudTd>@s.NoResultCount</MudTd>
+                                <MudTd Align="Align.Right">
+                                    <AdminRowActionMenu Disabled="_applyingSuggestion" AriaLabel="@SL["Action"]">
+                                        <MudMenuItem Icon="@Icons.Material.Filled.AutoFixHigh"
+                                                     OnClick="@(() => ApplySuggestionAsync(s))">
+                                            @T("Appliquer", "Apply")
+                                        </MudMenuItem>
+                                    </AdminRowActionMenu>
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+
+                    <MudDivider Class="my-4" />
+
+                    <div class="d-flex gap-2 flex-wrap align-items-end">
+                        <MudTextField T="string" Label="@T("Recherche", "Search")" Variant="Variant.Outlined" @bind-Value="_q" />
+                        <MudSelect T="string" Label="@SL["Status"]" Variant="Variant.Outlined" @bind-Value="_activeFilter">
+                            <MudSelectItem Value="@("")">@SL["All"]</MudSelectItem>
+                            <MudSelectItem Value="@("active")">@T("Actives", "Active")</MudSelectItem>
+                            <MudSelectItem Value="@("inactive")">@T("Inactives", "Inactive")</MudSelectItem>
+                        </MudSelect>
+                        <MudButton Variant="Variant.Outlined" OnClick="LoadAsync">@SL["Refresh"]</MudButton>
+                        <MudButton Variant="Variant.Outlined" OnClick="@(() => Nav.NavigateTo("/admin/search-analytics"))">@T("Retour analytics", "Back to analytics")</MudButton>
+                    </div>
+
+                    @if (_loading)
+                    {
+                        <MudSkeleton Height="44px" Class="mt-3" />
+                        <MudSkeleton Height="44px" Class="mt-2" />
+                    }
+                    else if (_error is not null)
+                    {
+                        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mt-3">@_error</MudAlert>
+                    }
+                    else
+                    {
+                        <MudTable T="SearchRuleDto" Items="_items" Dense="true" Hover="true" Class="mt-3">
+                            <HeaderContent>
+                                <MudTh>@T("Declencheur", "Trigger")</MudTh>
+                                <MudTh>@T("Canonique", "Canonical")</MudTh>
+                                <MudTh>@T("Cible", "Target")</MudTh>
+                                <MudTh>@SL["Status"]</MudTh>
+                                <MudTh>@T("Note", "Note")</MudTh>
+                                <MudTh Align="Align.Right">@SL["Action"]</MudTh>
+                            </HeaderContent>
+                            <RowTemplate Context="r">
+                                <MudTd><b>@r.TriggerQuery</b></MudTd>
+                                <MudTd>@(string.IsNullOrWhiteSpace(r.CanonicalQuery) ? "-" : r.CanonicalQuery)</MudTd>
+                                <MudTd>@TargetLabel(r)</MudTd>
+                                <MudTd>
+                                    <MudChip T="string" Label="true" Variant="Variant.Outlined" Color="@(r.IsActive ? Color.Success : Color.Default)">
+                                        @(r.IsActive ? T("Active", "Active") : T("Inactive", "Inactive"))
+                                    </MudChip>
+                                </MudTd>
+                                <MudTd>@(string.IsNullOrWhiteSpace(r.Note) ? "-" : r.Note)</MudTd>
+                                <MudTd Align="Align.Right">
+                                    <AdminRowActionMenu AriaLabel="@SL["Action"]">
+                                        <MudMenuItem Icon="@Icons.Material.Filled.OpenInNew"
+                                                     OnClick="@(() => Edit(r))">
+                                            @SL["Details"]
+                                        </MudMenuItem>
+                                        <MudMenuItem Icon="@Icons.Material.Filled.Delete"
+                                                     OnClick="@(() => DeleteAsync(r.Id))">
+                                            @T("Supprimer", "Delete")
+                                        </MudMenuItem>
+                                    </AdminRowActionMenu>
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+
+                    <MudDivider Class="my-4" />
+
+                    <div class="d-flex justify-space-between align-center flex-wrap gap-2">
+                        <div>
+                            <h3 class="dm-admin-panel-title">@T("Efficacite des regles", "Rule effectiveness")</h3>
+                            <div class="dm-admin-panel-sub">@T("Usage, no-result rate et CTR par trigger.", "Usage, no-result rate and CTR by trigger.")</div>
+                        </div>
+                        <MudButton Variant="Variant.Outlined" Disabled="_loadingEffectiveness" OnClick="LoadEffectivenessAsync">
+                            @(_loadingEffectiveness ? T("Chargement...", "Loading...") : T("Rafraichir performance", "Refresh performance"))
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" Disabled="_exportingEffectiveness || _loadingEffectiveness" OnClick="ExportEffectivenessCsvAsync">
+                            @(_exportingEffectiveness ? T("Export...", "Export...") : T("Exporter CSV", "Export CSV"))
+                        </MudButton>
+                    </div>
+
+                    <div class="d-flex gap-2 flex-wrap align-items-end mt-2">
+                        <MudDatePicker Label="@T("Du", "From")" Variant="Variant.Outlined" Date="_effectivenessFrom" DateChanged="OnEffectivenessFromChanged" />
+                        <MudDatePicker Label="@T("Au", "To")" Variant="Variant.Outlined" Date="_effectivenessTo" DateChanged="OnEffectivenessToChanged" />
+                        <MudSelect T="string" Label="@T("Source", "Source")" Variant="Variant.Outlined" @bind-Value="_effectivenessSource">
+                            <MudSelectItem Value="@("")">@SL["All"]</MudSelectItem>
+                            <MudSelectItem Value="@("web")">Web</MudSelectItem>
+                            <MudSelectItem Value="@("mobile")">Mobile</MudSelectItem>
+                            <MudSelectItem Value="@("admin")">Admin</MudSelectItem>
+                        </MudSelect>
+                        <MudNumericField T="int" Label="@T("Top", "Top")" Variant="Variant.Outlined" Min="1" Max="300" @bind-Value="_effectivenessTake" />
+                        <MudNumericField T="int" Label="@T("Min queries", "Min queries")" Variant="Variant.Outlined" Min="1" Max="5000" @bind-Value="_effectivenessMinQueries" />
+                        <MudSwitch T="bool" Color="Color.Warning" @bind-Checked="_effectivenessProblemOnly">
+                            @T("Problemes seulement", "Problems only")
+                        </MudSwitch>
+                    </div>
+
+                    <div class="d-flex gap-2 flex-wrap align-items-center mt-2">
+                        <MudSwitch T="bool" Color="Color.Info" @bind-Checked="_qualityDryRun">
+                            @T("Mode simulation (dry-run)", "Simulation mode (dry-run)")
+                        </MudSwitch>
+                    </div>
+
+                    <div class="d-flex gap-2 flex-wrap align-items-end mt-2">
+                        <MudNumericField T="decimal" Label="@T("No-result min %", "Min no-result %")" Variant="Variant.Outlined" Min="0" Max="100" Step="1" @bind-Value="_deactivateMinNoResultRatePct" />
+                        <MudNumericField T="decimal" Label="@T("CTR max %", "Max CTR %")" Variant="Variant.Outlined" Min="0" Max="100" Step="1" @bind-Value="_deactivateMaxCtrPct" />
+                        <MudNumericField T="int" Label="@T("Min queries action", "Min queries action")" Variant="Variant.Outlined" Min="1" Max="5000" @bind-Value="_deactivateMinQueries" />
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Error"
+                                   Disabled="_deactivatingProblemRules || _loadingEffectiveness"
+                                   OnClick="DeactivateProblematicRulesAsync">
+                            @(_deactivatingProblemRules ? T("Desactivation...", "Deactivating...") : T("Desactiver regles problematiques", "Disable problematic rules"))
+                        </MudButton>
+                    </div>
+
+                    <div class="d-flex gap-2 flex-wrap align-items-end mt-2">
+                        <MudNumericField T="decimal" Label="@T("No-result max %", "Max no-result %")" Variant="Variant.Outlined" Min="0" Max="100" Step="1" @bind-Value="_reactivateMaxNoResultRatePct" />
+                        <MudNumericField T="decimal" Label="@T("CTR min %", "Min CTR %")" Variant="Variant.Outlined" Min="0" Max="100" Step="1" @bind-Value="_reactivateMinCtrPct" />
+                        <MudNumericField T="int" Label="@T("Min queries reactivate", "Min queries reactivate")" Variant="Variant.Outlined" Min="1" Max="5000" @bind-Value="_reactivateMinQueries" />
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Success"
+                                   Disabled="_reactivatingRecoveredRules || _loadingEffectiveness"
+                                   OnClick="ReactivateRecoveredRulesAsync">
+                            @(_reactivatingRecoveredRules ? T("Reactivation...", "Reactivating...") : T("Reactiver regles recuperees", "Reactivate recovered rules"))
+                        </MudButton>
+                    </div>
+
+                    @if (_lastDryRunDeactivateTriggers.Count > 0 || _lastDryRunReactivateTriggers.Count > 0)
+                    {
+                        <MudPaper Class="mt-3 pa-3" Outlined="true">
+                            <div class="dm-admin-panel-sub">
+                                @T("Derniere simulation: apercu des triggers impactes (limite a 20 par action).", "Latest simulation: impacted trigger preview (limited to 20 per action).")
+                            </div>
+                            <div class="d-flex gap-4 flex-wrap mt-2">
+                                @if (_lastDryRunDeactivateTriggers.Count > 0)
+                                {
+                                    <div>
+                                        <div class="mb-1"><b>@T("Candidats desactivation", "Deactivation candidates") (@_lastDryRunDeactivateTriggers.Count)</b></div>
+                                        <div class="d-flex gap-1 flex-wrap">
+                                            @foreach (var trigger in _lastDryRunDeactivateTriggers)
+                                            {
+                                                <MudChip T="string" Label="true" Variant="Variant.Outlined" Color="Color.Error">@trigger</MudChip>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                                @if (_lastDryRunReactivateTriggers.Count > 0)
+                                {
+                                    <div>
+                                        <div class="mb-1"><b>@T("Candidats reactivation", "Reactivation candidates") (@_lastDryRunReactivateTriggers.Count)</b></div>
+                                        <div class="d-flex gap-1 flex-wrap">
+                                            @foreach (var trigger in _lastDryRunReactivateTriggers)
+                                            {
+                                                <MudChip T="string" Label="true" Variant="Variant.Outlined" Color="Color.Success">@trigger</MudChip>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </MudPaper>
+                    }
+
+                    @if (_effectivenessError is not null)
+                    {
+                        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="mt-3">@_effectivenessError</MudAlert>
+                    }
+
+                    @if (_loadingEffectiveness)
+                    {
+                        <MudSkeleton Height="44px" Class="mt-3" />
+                    }
+                    else if (_effectiveness.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-3">
+                            @T("Aucune donnee d'efficacite pour ce filtre.", "No effectiveness data for this filter.")
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <MudTable T="SearchRuleEffectivenessDto" Items="_effectiveness" Dense="true" Hover="true" Class="mt-3">
+                            <HeaderContent>
+                                <MudTh>@T("Declencheur", "Trigger")</MudTh>
+                                <MudTh>@T("Performance", "Performance")</MudTh>
+                                <MudTh>@T("Queries", "Queries")</MudTh>
+                                <MudTh>@T("No-result", "No-result")</MudTh>
+                                <MudTh>CTR</MudTh>
+                                <MudTh>@T("Last seen", "Last seen")</MudTh>
+                            </HeaderContent>
+                            <RowTemplate Context="r">
+                                <MudTd><b>@r.TriggerQuery</b></MudTd>
+                                <MudTd>
+                                    <MudChip T="string" Label="true" Variant="Variant.Outlined" Color="@EffectivenessColor(r.Performance)">
+                                        @r.Performance
+                                    </MudChip>
+                                </MudTd>
+                                <MudTd>@r.QueryCount</MudTd>
+                                <MudTd>@($"{r.NoResultRatePct:0.##}% ({r.NoResultCount})")</MudTd>
+                                <MudTd>@($"{r.CtrPct:0.##}% ({r.ClickCount})")</MudTd>
+                                <MudTd>@(r.LastSeenAtUtc.HasValue ? r.LastSeenAtUtc.Value.ToLocalTime().ToString("g", CultureInfo.CurrentCulture) : "-")</MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</AuthGuard>
+
+@code {
+    private bool _ready;
+    private bool _loading = true;
+    private bool _saving;
+    private string? _error;
+    private string? _saveError;
+    private string _q = string.Empty;
+    private string _activeFilter = string.Empty;
+    private Guid? _editId;
+    private bool _loadingSuggestions;
+    private bool _applyingSuggestion;
+    private bool _bulkApplying;
+    private bool _loadingEffectiveness;
+    private bool _deactivatingProblemRules;
+    private bool _exportingEffectiveness;
+    private bool _reactivatingRecoveredRules;
+    private string? _suggestionsError;
+    private string? _effectivenessError;
+    private DateTime? _suggestionsFrom = DateTime.UtcNow.Date.AddDays(-14);
+    private DateTime? _suggestionsTo = DateTime.UtcNow.Date;
+    private string _suggestionsSource = string.Empty;
+    private int _suggestionsTake = 20;
+    private int _bulkMinScore = 82;
+    private int _bulkMinNoResultCount = 2;
+    private string _bulkConfidenceFilter = "MediumOrHigh";
+    private DateTime? _effectivenessFrom = DateTime.UtcNow.Date.AddDays(-30);
+    private DateTime? _effectivenessTo = DateTime.UtcNow.Date;
+    private string _effectivenessSource = string.Empty;
+    private int _effectivenessTake = 100;
+    private int _effectivenessMinQueries = 3;
+    private bool _effectivenessProblemOnly = true;
+    private bool _qualityDryRun = true;
+    private decimal _deactivateMinNoResultRatePct = 40m;
+    private decimal _deactivateMaxCtrPct = 8m;
+    private int _deactivateMinQueries = 5;
+    private decimal _reactivateMaxNoResultRatePct = 15m;
+    private decimal _reactivateMinCtrPct = 12m;
+    private int _reactivateMinQueries = 5;
+    private List<string> _lastDryRunDeactivateTriggers = new();
+    private List<string> _lastDryRunReactivateTriggers = new();
+
+    private List<SearchRuleDto> _items = new();
+    private List<SearchRuleSuggestionDto> _suggestions = new();
+    private List<SearchRuleEffectivenessDto> _effectiveness = new();
+    private SearchRuleForm _form = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        var t0 = DateTime.UtcNow;
+        while (!Auth.IsReady && (DateTime.UtcNow - t0).TotalSeconds < 5)
+        {
+            await Task.Delay(30);
+        }
+
+        _ready = true;
+        if (!Auth.IsAuthenticated || !Auth.IsSuperAdmin)
+        {
+            StateHasChanged();
+            return;
+        }
+
+        await LoadAsync();
+        await LoadSuggestionsAsync();
+        await LoadEffectivenessAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            var query = BuildQuery();
+            _items = await Http.GetFromJsonAsync<List<SearchRuleDto>>($"api/admin/search-rules{query}") ?? new();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _items = new();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        _saveError = null;
+        try
+        {
+            var request = _form.ToRequest();
+            HttpResponseMessage response;
+            if (_editId.HasValue)
+            {
+                response = await Http.PutAsJsonAsync($"api/admin/search-rules/{_editId.Value}", request);
+            }
+            else
+            {
+                response = await Http.PostAsJsonAsync("api/admin/search-rules", request);
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _saveError = await response.Content.ReadAsStringAsync();
+                return;
+            }
+
+            ResetForm();
+            await LoadAsync();
+            await LoadEffectivenessAsync();
+            Snackbar.Add(T("Regle enregistree.", "Rule saved."), Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            _saveError = ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task DeleteAsync(Guid id)
+    {
+        try
+        {
+            var response = await Http.DeleteAsync($"api/admin/search-rules/{id}");
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                Snackbar.Add(string.IsNullOrWhiteSpace(body) ? T("Suppression impossible.", "Delete failed.") : body, Severity.Error);
+                return;
+            }
+
+            if (_editId == id)
+            {
+                ResetForm();
+            }
+
+            await LoadAsync();
+            await LoadEffectivenessAsync();
+            Snackbar.Add(T("Regle supprimee.", "Rule deleted."), Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private void Edit(SearchRuleDto row)
+    {
+        _editId = row.Id;
+        _saveError = null;
+        _form = new SearchRuleForm
+        {
+            TriggerQuery = row.TriggerQuery,
+            CanonicalQuery = row.CanonicalQuery ?? string.Empty,
+            TargetType = row.TargetType ?? string.Empty,
+            TargetIdRaw = row.TargetId?.ToString() ?? string.Empty,
+            IsActive = row.IsActive,
+            Note = row.Note ?? string.Empty
+        };
+    }
+
+    private void ResetForm()
+    {
+        _editId = null;
+        _saveError = null;
+        _form = new SearchRuleForm();
+    }
+
+    private string BuildQuery()
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(_q))
+        {
+            parts.Add($"q={Uri.EscapeDataString(_q.Trim())}");
+        }
+
+        if (string.Equals(_activeFilter, "active", StringComparison.OrdinalIgnoreCase))
+        {
+            parts.Add("active=true");
+        }
+        else if (string.Equals(_activeFilter, "inactive", StringComparison.OrdinalIgnoreCase))
+        {
+            parts.Add("active=false");
+        }
+
+        return parts.Count == 0 ? string.Empty : "?" + string.Join("&", parts);
+    }
+
+    private string TargetLabel(SearchRuleDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.TargetType) || !dto.TargetId.HasValue)
+        {
+            return "-";
+        }
+
+        var targetType = string.Equals(dto.TargetType, "Product", StringComparison.OrdinalIgnoreCase)
+            ? T("Produit", "Product")
+            : string.Equals(dto.TargetType, "Shop", StringComparison.OrdinalIgnoreCase)
+                ? T("Boutique", "Shop")
+                : string.Equals(dto.TargetType, "Category", StringComparison.OrdinalIgnoreCase)
+                    ? T("Categorie", "Category")
+                    : dto.TargetType;
+
+        return $"{targetType}: {dto.TargetId.Value}";
+    }
+
+    private async Task LoadSuggestionsAsync()
+    {
+        _loadingSuggestions = true;
+        _suggestionsError = null;
+        try
+        {
+            var query = BuildSuggestionsQuery();
+            _suggestions = await Http.GetFromJsonAsync<List<SearchRuleSuggestionDto>>($"api/admin/search-rules/suggestions{query}") ?? new();
+        }
+        catch (Exception ex)
+        {
+            _suggestionsError = ex.Message;
+            _suggestions = new();
+        }
+        finally
+        {
+            _loadingSuggestions = false;
+        }
+    }
+
+    private string BuildSuggestionsQuery()
+    {
+        var parts = new List<string>();
+        if (_suggestionsFrom.HasValue)
+        {
+            parts.Add($"from={Uri.EscapeDataString(_suggestionsFrom.Value.ToString("yyyy-MM-dd"))}");
+        }
+
+        if (_suggestionsTo.HasValue)
+        {
+            parts.Add($"to={Uri.EscapeDataString(_suggestionsTo.Value.ToString("yyyy-MM-dd"))}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(_suggestionsSource))
+        {
+            parts.Add($"source={Uri.EscapeDataString(_suggestionsSource.Trim())}");
+        }
+
+        var boundedTake = Math.Clamp(_suggestionsTake, 1, 100);
+        parts.Add($"take={boundedTake}");
+
+        return "?" + string.Join("&", parts);
+    }
+
+    private async Task ApplySuggestionAsync(SearchRuleSuggestionDto suggestion)
+    {
+        _applyingSuggestion = true;
+        try
+        {
+            var request = new UpsertSearchRuleRequest(
+                suggestion.TriggerQuery,
+                suggestion.SuggestedCanonicalQuery,
+                suggestion.TargetType,
+                suggestion.TargetId,
+                true,
+                $"Auto-suggestion ({suggestion.Confidence}, score={suggestion.Score})");
+
+            var response = await Http.PostAsJsonAsync("api/admin/search-rules", request);
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                Snackbar.Add(string.IsNullOrWhiteSpace(body) ? T("Application impossible.", "Apply failed.") : body, Severity.Error);
+                return;
+            }
+
+            Snackbar.Add(T("Suggestion appliquee.", "Suggestion applied."), Severity.Success);
+            await LoadAsync();
+            await LoadSuggestionsAsync();
+            await LoadEffectivenessAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _applyingSuggestion = false;
+        }
+    }
+
+    private async Task ApplyFilteredSuggestionsAsync()
+    {
+        _bulkApplying = true;
+        try
+        {
+            var request = new ApplySuggestionsRequestDto(
+                _suggestionsFrom?.Date,
+                _suggestionsTo?.Date,
+                string.IsNullOrWhiteSpace(_suggestionsSource) ? null : _suggestionsSource.Trim(),
+                Math.Clamp(_suggestionsTake, 1, 100),
+                Math.Clamp(_bulkMinScore, 0, 100),
+                Math.Clamp(_bulkMinNoResultCount, 1, 1000),
+                string.IsNullOrWhiteSpace(_bulkConfidenceFilter) ? "MediumOrHigh" : _bulkConfidenceFilter.Trim(),
+                true,
+                null);
+
+            var response = await Http.PostAsJsonAsync("api/admin/search-rules/suggestions/apply", request);
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                Snackbar.Add(string.IsNullOrWhiteSpace(body) ? T("Application en lot impossible.", "Bulk apply failed.") : body, Severity.Error);
+                return;
+            }
+
+            var payload = await response.Content.ReadFromJsonAsync<ApplySuggestionsResponseDto>();
+            if (payload is null)
+            {
+                Snackbar.Add(T("Application terminee.", "Apply completed."), Severity.Success);
+            }
+            else
+            {
+                var message = T(
+                    $"Application lot: creees={payload.Created}, eligibles={payload.EligibleSuggestions}, existantes={payload.SkippedExisting}, invalides={payload.SkippedInvalid}, cible absente={payload.SkippedMissingTarget}",
+                    $"Bulk apply: created={payload.Created}, eligible={payload.EligibleSuggestions}, existing={payload.SkippedExisting}, invalid={payload.SkippedInvalid}, missing target={payload.SkippedMissingTarget}");
+                Snackbar.Add(message, Severity.Success);
+            }
+
+            await LoadAsync();
+            await LoadSuggestionsAsync();
+            await LoadEffectivenessAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _bulkApplying = false;
+        }
+    }
+
+    private Task OnSuggestionsFromChanged(DateTime? value)
+    {
+        _suggestionsFrom = value?.Date;
+        return Task.CompletedTask;
+    }
+
+    private Task OnSuggestionsToChanged(DateTime? value)
+    {
+        _suggestionsTo = value?.Date;
+        return Task.CompletedTask;
+    }
+
+    private string SuggestionTargetLabel(SearchRuleSuggestionDto dto)
+    {
+        var targetType = string.Equals(dto.TargetType, "Product", StringComparison.OrdinalIgnoreCase)
+            ? T("Produit", "Product")
+            : string.Equals(dto.TargetType, "Shop", StringComparison.OrdinalIgnoreCase)
+                ? T("Boutique", "Shop")
+                : string.Equals(dto.TargetType, "Category", StringComparison.OrdinalIgnoreCase)
+                    ? T("Categorie", "Category")
+                    : dto.TargetType;
+        return $"{targetType}: {dto.TargetLabel} ({dto.TargetId})";
+    }
+
+    private Color SuggestionColor(string confidence)
+    {
+        if (string.Equals(confidence, "High", StringComparison.OrdinalIgnoreCase))
+        {
+            return Color.Success;
+        }
+
+        if (string.Equals(confidence, "Medium", StringComparison.OrdinalIgnoreCase))
+        {
+            return Color.Warning;
+        }
+
+        return Color.Default;
+    }
+
+    private async Task LoadEffectivenessAsync()
+    {
+        _loadingEffectiveness = true;
+        _effectivenessError = null;
+        try
+        {
+            var query = BuildEffectivenessQuery();
+            _effectiveness = await Http.GetFromJsonAsync<List<SearchRuleEffectivenessDto>>($"api/admin/search-rules/effectiveness{query}") ?? new();
+        }
+        catch (Exception ex)
+        {
+            _effectivenessError = ex.Message;
+            _effectiveness = new();
+        }
+        finally
+        {
+            _loadingEffectiveness = false;
+        }
+    }
+
+    private async Task DeactivateProblematicRulesAsync()
+    {
+        _deactivatingProblemRules = true;
+        try
+        {
+            var request = new DeactivateProblematicRulesRequestDto(
+                _effectivenessFrom?.Date,
+                _effectivenessTo?.Date,
+                string.IsNullOrWhiteSpace(_effectivenessSource) ? null : _effectivenessSource.Trim(),
+                string.IsNullOrWhiteSpace(_q) ? null : _q.Trim(),
+                true,
+                Math.Clamp(_effectivenessTake, 1, 300),
+                Math.Clamp(_deactivateMinQueries, 1, 5000),
+                Math.Clamp(_deactivateMinNoResultRatePct, 0m, 100m),
+                Math.Clamp(_deactivateMaxCtrPct, 0m, 100m),
+                null,
+                _qualityDryRun);
+
+            var response = await Http.PostAsJsonAsync("api/admin/search-rules/effectiveness/deactivate-problematic", request);
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                Snackbar.Add(string.IsNullOrWhiteSpace(body) ? T("Desactivation impossible.", "Deactivation failed.") : body, Severity.Error);
+                return;
+            }
+
+            var payload = await response.Content.ReadFromJsonAsync<DeactivateProblematicRulesResponseDto>();
+            if (payload is null)
+            {
+                Snackbar.Add(T("Desactivation terminee.", "Deactivation completed."), Severity.Success);
+            }
+            else
+            {
+                _lastDryRunDeactivateTriggers = payload.DryRun
+                    ? payload.TriggerQueries.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).Take(20).ToList()
+                    : new();
+                var message = T(
+                    $"Action qualite ({(payload.DryRun ? "simulation" : "reel")}): desactivees={payload.DeactivatedRules}, simulables={payload.WouldDeactivateRules}, problemees={payload.MatchedProblematicRules}, evaluees={payload.EvaluatedRules}",
+                    $"Quality action ({(payload.DryRun ? "dry-run" : "live")}): deactivated={payload.DeactivatedRules}, wouldDeactivate={payload.WouldDeactivateRules}, matched={payload.MatchedProblematicRules}, evaluated={payload.EvaluatedRules}");
+                Snackbar.Add(message, Severity.Success);
+            }
+
+            await LoadAsync();
+            await LoadEffectivenessAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _deactivatingProblemRules = false;
+        }
+    }
+
+    private async Task ReactivateRecoveredRulesAsync()
+    {
+        _reactivatingRecoveredRules = true;
+        try
+        {
+            var request = new ReactivateRecoveredRulesRequestDto(
+                _effectivenessFrom?.Date,
+                _effectivenessTo?.Date,
+                string.IsNullOrWhiteSpace(_effectivenessSource) ? null : _effectivenessSource.Trim(),
+                string.IsNullOrWhiteSpace(_q) ? null : _q.Trim(),
+                false,
+                Math.Clamp(_effectivenessTake, 1, 300),
+                Math.Clamp(_reactivateMinQueries, 1, 5000),
+                Math.Clamp(_reactivateMaxNoResultRatePct, 0m, 100m),
+                Math.Clamp(_reactivateMinCtrPct, 0m, 100m),
+                null,
+                _qualityDryRun);
+
+            var response = await Http.PostAsJsonAsync("api/admin/search-rules/effectiveness/reactivate-recovered", request);
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                Snackbar.Add(string.IsNullOrWhiteSpace(body) ? T("Reactivation impossible.", "Reactivation failed.") : body, Severity.Error);
+                return;
+            }
+
+            var payload = await response.Content.ReadFromJsonAsync<ReactivateRecoveredRulesResponseDto>();
+            if (payload is null)
+            {
+                Snackbar.Add(T("Reactivation terminee.", "Reactivation completed."), Severity.Success);
+            }
+            else
+            {
+                _lastDryRunReactivateTriggers = payload.DryRun
+                    ? payload.TriggerQueries.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).Take(20).ToList()
+                    : new();
+                var message = T(
+                    $"Action recovery ({(payload.DryRun ? "simulation" : "reel")}): reactivees={payload.ReactivatedRules}, simulables={payload.WouldReactivateRules}, recuperees={payload.MatchedRecoveredRules}, evaluees={payload.EvaluatedRules}",
+                    $"Recovery action ({(payload.DryRun ? "dry-run" : "live")}): reactivated={payload.ReactivatedRules}, wouldReactivate={payload.WouldReactivateRules}, matched={payload.MatchedRecoveredRules}, evaluated={payload.EvaluatedRules}");
+                Snackbar.Add(message, Severity.Success);
+            }
+
+            await LoadAsync();
+            await LoadEffectivenessAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _reactivatingRecoveredRules = false;
+        }
+    }
+
+    private async Task ExportEffectivenessCsvAsync()
+    {
+        _exportingEffectiveness = true;
+        try
+        {
+            var query = BuildEffectivenessQuery();
+            var url = $"api/admin/search-rules/effectiveness/export.csv{query}&_={DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
+            var response = await Http.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                Snackbar.Add(string.IsNullOrWhiteSpace(body) ? T("Export impossible.", "Export failed.") : body, Severity.Error);
+                return;
+            }
+
+            var csv = await response.Content.ReadAsStringAsync();
+            var fileName = $"search-rules-effectiveness-{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv";
+            await JS.InvokeVoidAsync("doorMarket.downloadText", fileName, "text/csv; charset=utf-8", csv);
+            Snackbar.Add(T("Export CSV genere.", "CSV export generated."), Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _exportingEffectiveness = false;
+        }
+    }
+
+    private string BuildEffectivenessQuery()
+    {
+        var parts = new List<string>();
+        if (_effectivenessFrom.HasValue)
+        {
+            parts.Add($"from={Uri.EscapeDataString(_effectivenessFrom.Value.ToString("yyyy-MM-dd"))}");
+        }
+
+        if (_effectivenessTo.HasValue)
+        {
+            parts.Add($"to={Uri.EscapeDataString(_effectivenessTo.Value.ToString("yyyy-MM-dd"))}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(_effectivenessSource))
+        {
+            parts.Add($"source={Uri.EscapeDataString(_effectivenessSource.Trim())}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(_q))
+        {
+            parts.Add($"q={Uri.EscapeDataString(_q.Trim())}");
+        }
+
+        if (string.Equals(_activeFilter, "active", StringComparison.OrdinalIgnoreCase))
+        {
+            parts.Add("active=true");
+        }
+        else if (string.Equals(_activeFilter, "inactive", StringComparison.OrdinalIgnoreCase))
+        {
+            parts.Add("active=false");
+        }
+
+        parts.Add($"take={Math.Clamp(_effectivenessTake, 1, 300)}");
+        parts.Add($"problemOnly={_effectivenessProblemOnly.ToString().ToLowerInvariant()}");
+        parts.Add($"minQueries={Math.Clamp(_effectivenessMinQueries, 1, 5000)}");
+        return "?" + string.Join("&", parts);
+    }
+
+    private Task OnEffectivenessFromChanged(DateTime? value)
+    {
+        _effectivenessFrom = value?.Date;
+        return Task.CompletedTask;
+    }
+
+    private Task OnEffectivenessToChanged(DateTime? value)
+    {
+        _effectivenessTo = value?.Date;
+        return Task.CompletedTask;
+    }
+
+    private Color EffectivenessColor(string performance)
+    {
+        if (string.Equals(performance, "Good", StringComparison.OrdinalIgnoreCase))
+        {
+            return Color.Success;
+        }
+
+        if (string.Equals(performance, "Watch", StringComparison.OrdinalIgnoreCase))
+        {
+            return Color.Warning;
+        }
+
+        if (string.Equals(performance, "NeedsAttention", StringComparison.OrdinalIgnoreCase))
+        {
+            return Color.Error;
+        }
+
+        if (string.Equals(performance, "Critical", StringComparison.OrdinalIgnoreCase))
+        {
+            return Color.Error;
+        }
+
+        return Color.Default;
+    }
+
+    private string T(string fr, string en)
+        => IsEn ? en : fr;
+
+    private bool IsEn
+        => string.Equals(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "en", StringComparison.OrdinalIgnoreCase);
+
+    private sealed class SearchRuleForm
+    {
+        public string TriggerQuery { get; set; } = string.Empty;
+        public string CanonicalQuery { get; set; } = string.Empty;
+        public string TargetType { get; set; } = string.Empty;
+        public string TargetIdRaw { get; set; } = string.Empty;
+        public bool IsActive { get; set; } = true;
+        public string Note { get; set; } = string.Empty;
+
+        public UpsertSearchRuleRequest ToRequest()
+        {
+            Guid? targetId = null;
+            if (Guid.TryParse(TargetIdRaw?.Trim(), out var parsed) && parsed != Guid.Empty)
+            {
+                targetId = parsed;
+            }
+
+            return new UpsertSearchRuleRequest(
+                TriggerQuery.Trim(),
+                string.IsNullOrWhiteSpace(CanonicalQuery) ? null : CanonicalQuery.Trim(),
+                string.IsNullOrWhiteSpace(TargetType) ? null : TargetType.Trim(),
+                targetId,
+                IsActive,
+                string.IsNullOrWhiteSpace(Note) ? null : Note.Trim());
+        }
+    }
+
+    private sealed record SearchRuleDto(
+        Guid Id,
+        string TriggerQuery,
+        string? CanonicalQuery,
+        string? TargetType,
+        Guid? TargetId,
+        bool IsActive,
+        string? Note,
+        DateTime CreatedAtUtc,
+        DateTime? UpdatedAtUtc);
+
+    private sealed record UpsertSearchRuleRequest(
+        string TriggerQuery,
+        string? CanonicalQuery,
+        string? TargetType,
+        Guid? TargetId,
+        bool IsActive,
+        string? Note);
+
+    private sealed record SearchRuleSuggestionDto(
+        string TriggerQuery,
+        string? SuggestedCanonicalQuery,
+        string TargetType,
+        Guid TargetId,
+        string TargetLabel,
+        int Score,
+        string Confidence,
+        string Reason,
+        int NoResultCount,
+        DateTime? LastSeenAtUtc);
+
+    private sealed record ApplySuggestionsRequestDto(
+        DateTime? From,
+        DateTime? To,
+        string? Source,
+        int Take,
+        int MinScore,
+        int MinNoResultCount,
+        string ConfidenceFilter,
+        bool IsActive,
+        string? NotePrefix);
+
+    private sealed record ApplySuggestionsResponseDto(
+        int TotalSuggestions,
+        int EligibleSuggestions,
+        int Created,
+        int SkippedExisting,
+        int SkippedInvalid,
+        int SkippedMissingTarget);
+
+    private sealed record SearchRuleEffectivenessDto(
+        Guid Id,
+        string TriggerQuery,
+        string? CanonicalQuery,
+        string? TargetType,
+        Guid? TargetId,
+        bool IsActive,
+        int QueryCount,
+        int NoResultCount,
+        int ClickCount,
+        decimal NoResultRatePct,
+        decimal CtrPct,
+        DateTime? LastSeenAtUtc,
+        string Performance);
+
+    private sealed record DeactivateProblematicRulesRequestDto(
+        DateTime? From,
+        DateTime? To,
+        string? Source,
+        string? Q,
+        bool? Active,
+        int Take,
+        int MinQueries,
+        decimal MinNoResultRatePct,
+        decimal MaxCtrPct,
+        string? NoteSuffix,
+        bool DryRun);
+
+    private sealed record DeactivateProblematicRulesResponseDto(
+        int EvaluatedRules,
+        int MatchedProblematicRules,
+        int DeactivatedRules,
+        int WouldDeactivateRules,
+        int SkippedAlreadyInactive,
+        int ThresholdMinQueries,
+        decimal ThresholdMinNoResultRatePct,
+        decimal ThresholdMaxCtrPct,
+        bool DryRun,
+        IReadOnlyList<string> TriggerQueries);
+
+    private sealed record ReactivateRecoveredRulesRequestDto(
+        DateTime? From,
+        DateTime? To,
+        string? Source,
+        string? Q,
+        bool? Active,
+        int Take,
+        int MinQueries,
+        decimal MaxNoResultRatePct,
+        decimal MinCtrPct,
+        string? NoteSuffix,
+        bool DryRun);
+
+    private sealed record ReactivateRecoveredRulesResponseDto(
+        int EvaluatedRules,
+        int MatchedRecoveredRules,
+        int ReactivatedRules,
+        int WouldReactivateRules,
+        int SkippedAlreadyActive,
+        int ThresholdMinQueries,
+        decimal ThresholdMaxNoResultRatePct,
+        decimal ThresholdMinCtrPct,
+        bool DryRun,
+        IReadOnlyList<string> TriggerQueries);
+}
+

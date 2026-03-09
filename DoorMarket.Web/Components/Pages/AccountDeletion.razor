@@ -1,0 +1,78 @@
+@page "/account-deletion"
+@page "/suppression-compte"
+@using System.Globalization
+@using MudBlazor
+
+<PageTitle>@T("Suppression de compte", "Account Deletion") - DoorMarket</PageTitle>
+
+<div class="dm-page-header">
+    <div class="dm-page-title-wrap">
+        <h1 class="dm-page-h1">@T("Suppression de compte DoorMarket", "DoorMarket Account Deletion")</h1>
+        <div class="dm-page-sub">
+            @T("Comment demander la suppression de votre compte et de vos donnees associees.", "How to request deletion of your account and associated data.")
+        </div>
+    </div>
+</div>
+
+<MudPaper Class="pa-4 mt-3 dm-content-card dm-page-shell">
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-4">
+        <strong>DoorMarket</strong> @T("par DoorMarket.", "by DoorMarket.")
+    </MudAlert>
+
+    <MudText Typo="Typo.h6">@T("1. Comment demander la suppression", "1. How to request deletion")</MudText>
+    <MudText Typo="Typo.body2" Class="mt-1">
+        @T("Envoyez un email a", "Send an email to")
+        <strong class="ms-1 me-1">support@door-market.com</strong>
+        @T("avec l'objet", "with subject")
+        <strong class="ms-1 me-1">@T("Demande de suppression de compte", "Account Deletion Request")</strong>.
+    </MudText>
+    <MudText Typo="Typo.body2" Class="mt-2">
+        @T("Incluez dans votre demande :", "Include in your request:")
+    </MudText>
+    <MudList T="string" Dense="true">
+        <MudListItem T="string">@T("Votre email de connexion", "Your login email")</MudListItem>
+        <MudListItem T="string">@T("Votre numero de telephone (si utilise)", "Your phone number (if used)")</MudListItem>
+        <MudListItem T="string">@T("Une confirmation explicite de suppression", "An explicit deletion confirmation")</MudListItem>
+    </MudList>
+
+    <MudText Typo="Typo.h6" Class="mt-4">@T("2. Donnees supprimees", "2. Data deleted")</MudText>
+    <MudList T="string" Dense="true" Class="mt-1">
+        <MudListItem T="string">@T("Donnees de profil (email, telephone, image de profil)", "Profile data (email, phone, profile image)")</MudListItem>
+        <MudListItem T="string">@T("Adresses enregistrees", "Saved addresses")</MudListItem>
+        <MudListItem T="string">@T("Liste de souhaits/favoris et preferences non essentielles", "Wishlist/favorites and non-essential preferences")</MudListItem>
+        <MudListItem T="string">@T("Enregistrements d'appareils push associes au compte", "Push device registrations linked to the account")</MudListItem>
+    </MudList>
+
+    <MudText Typo="Typo.h6" Class="mt-4">@T("3. Donnees conservees temporairement", "3. Data retained for a limited period")</MudText>
+    <MudText Typo="Typo.body2" Class="mt-1">
+        @T("Certaines donnees peuvent etre conservees pour respecter les obligations legales et de securite :", "Some data may be retained to comply with legal and security obligations:")
+    </MudText>
+    <MudList T="string" Dense="true">
+        <MudListItem T="string">@T("Historique commandes/paiements/reconciliation (comptabilite, fiscalite, litiges)", "Order/payment/reconciliation records (accounting, tax, disputes)")</MudListItem>
+        <MudListItem T="string">@T("Journaux de securite et d'audit (prevention fraude)", "Security and audit logs (fraud prevention)")</MudListItem>
+    </MudList>
+
+    <MudText Typo="Typo.h6" Class="mt-4">@T("4. Delais de traitement", "4. Processing timeline")</MudText>
+    <MudList T="string" Dense="true" Class="mt-1">
+        <MudListItem T="string">@T("Traitement de la demande: sous 30 jours", "Request processing: within 30 days")</MudListItem>
+        <MudListItem T="string">@T("Suppression/anonymisation des donnees non requises: des validation de la demande", "Deletion/anonymization of non-required data: after request validation")</MudListItem>
+        <MudListItem T="string">@T("Conservation legale: uniquement pendant la duree imposee par la loi", "Legal retention: only for the period required by law")</MudListItem>
+    </MudList>
+
+    <MudText Typo="Typo.h6" Class="mt-4">@T("5. Suppression partielle (sans supprimer le compte)", "5. Partial deletion (without deleting account)")</MudText>
+    <MudText Typo="Typo.body2" Class="mt-1">
+        @T("Vous pouvez demander la suppression de certaines donnees (par exemple adresses ou appareils push) sans fermer votre compte, via le support.", "You can request deletion of specific data (for example addresses or push devices) without closing your account, through support.")
+    </MudText>
+
+    <MudDivider Class="my-4" />
+    <MudText Typo="Typo.caption" Class="dm-muted">
+        @T("Derniere mise a jour : 07 mars 2026", "Last updated: March 7, 2026")
+    </MudText>
+</MudPaper>
+
+@code {
+    private static bool IsEn =>
+        string.Equals(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "en", StringComparison.OrdinalIgnoreCase);
+
+    private static string T(string fr, string en) => IsEn ? en : fr;
+}

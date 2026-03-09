@@ -1,0 +1,653 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <data name="AppName" xml:space="preserve"><value>DoorMarket</value></data>
+  <data name="BrandTagline" xml:space="preserve"><value>From the market to your door</value></data>
+  <data name="UserFallback" xml:space="preserve"><value>User</value></data>
+  <data name="RoleLabel" xml:space="preserve"><value>Role</value></data>
+  <data name="RoleChangedReLogin" xml:space="preserve"><value>Your role has changed, please sign in again.</value></data>
+  <data name="Loading" xml:space="preserve"><value>Loading...</value></data>
+  <data name="Menu" xml:space="preserve"><value>Menu</value></data>
+  <data name="SearchPlaceholder" xml:space="preserve"><value>Search...</value></data>
+  <data name="Notifications" xml:space="preserve"><value>Notifications</value></data>
+  <data name="Language" xml:space="preserve"><value>Language</value></data>
+  <data name="French" xml:space="preserve"><value>French</value></data>
+  <data name="English" xml:space="preserve"><value>English</value></data>
+
+  <data name="SignIn" xml:space="preserve"><value>Sign in</value></data>
+  <data name="Register" xml:space="preserve"><value>Register</value></data>
+  <data name="Profile" xml:space="preserve"><value>Profile</value></data>
+  <data name="Logout" xml:space="preserve"><value>Sign out</value></data>
+  <data name="LoggedOut" xml:space="preserve"><value>Signed out.</value></data>
+
+  <data name="Client" xml:space="preserve"><value>Client</value></data>
+  <data name="Home" xml:space="preserve"><value>Home</value></data>
+  <data name="Shops" xml:space="preserve"><value>Shops</value></data>
+  <data name="Cart" xml:space="preserve"><value>Cart</value></data>
+  <data name="Checkout" xml:space="preserve"><value>Checkout</value></data>
+  <data name="MyOrders" xml:space="preserve"><value>My orders</value></data>
+  <data name="Addresses" xml:space="preserve"><value>Addresses</value></data>
+  <data name="Payments" xml:space="preserve"><value>Payments</value></data>
+  <data name="Support" xml:space="preserve"><value>Support</value></data>
+
+  <data name="Administration" xml:space="preserve"><value>Administration</value></data>
+  <data name="ShopApplications" xml:space="preserve"><value>Shop applications</value></data>
+  <data name="Users" xml:space="preserve"><value>Users</value></data>
+  <data name="Categories" xml:space="preserve"><value>Categories</value></data>
+  <data name="DeliveryZones" xml:space="preserve"><value>Delivery zones</value></data>
+
+  <data name="Shop" xml:space="preserve"><value>Shop</value></data>
+  <data name="Onboarding" xml:space="preserve"><value>Onboarding</value></data>
+  <data name="Dashboard" xml:space="preserve"><value>Dashboard</value></data>
+  <data name="Orders" xml:space="preserve"><value>Orders</value></data>
+  <data name="Products" xml:space="preserve"><value>Products</value></data>
+
+  <data name="Confirmation" xml:space="preserve"><value>Confirmation</value></data>
+  <data name="Confirm" xml:space="preserve"><value>Confirm</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="ConfirmLogoutPrompt" xml:space="preserve"><value>Do you really want to sign out?</value></data>
+  <data name="LogoutAction" xml:space="preserve"><value>Sign out</value></data>
+
+  <data name="AdministrationSubtitle" xml:space="preserve"><value>Administration</value></data>
+  <data name="ShopDashboardSubtitle" xml:space="preserve"><value>Shop dashboard</value></data>
+  <data name="WelcomeSubtitle" xml:space="preserve"><value>Welcome</value></data>
+  <data name="UserMenu" xml:space="preserve"><value>User menu</value></data>
+
+  <data name="HomePageTitle" xml:space="preserve"><value>Home</value></data>
+  <data name="HomeGreeting" xml:space="preserve"><value>Hello {0}, your groceries delivered fast.</value></data>
+  <data name="SearchProductPlaceholder" xml:space="preserve"><value>Search for a product...</value></data>
+  <data name="ViewAllShops" xml:space="preserve"><value>View all shops</value></data>
+  <data name="CategoriesTitle" xml:space="preserve"><value>Categories</value></data>
+  <data name="Clear" xml:space="preserve"><value>Clear</value></data>
+  <data name="PopularShops" xml:space="preserve"><value>Popular shops</value></data>
+  <data name="ViewAll" xml:space="preserve"><value>View all</value></data>
+  <data name="NoShopAvailable" xml:space="preserve"><value>No shop available.</value></data>
+  <data name="ViewProducts" xml:space="preserve"><value>View products</value></data>
+  <data name="SpecialOffers" xml:space="preserve"><value>Special offers</value></data>
+  <data name="NoPromotionActive" xml:space="preserve"><value>No active promotion right now.</value></data>
+  <data name="View" xml:space="preserve"><value>View</value></data>
+  <data name="TopProducts" xml:space="preserve"><value>Top products</value></data>
+  <data name="Explore" xml:space="preserve"><value>Explore</value></data>
+  <data name="NoProductAvailable" xml:space="preserve"><value>No product available.</value></data>
+  <data name="Details" xml:space="preserve"><value>Details</value></data>
+  <data name="Add" xml:space="preserve"><value>Add</value></data>
+  <data name="AnonymousClient" xml:space="preserve"><value>client</value></data>
+  <data name="LoginToAddCart" xml:space="preserve"><value>Sign in to add items to cart.</value></data>
+  <data name="ProductAddedCart" xml:space="preserve"><value>Product added to cart.</value></data>
+
+  <data name="LoginPageTitle" xml:space="preserve"><value>Sign in</value></data>
+  <data name="LoginSubtitle" xml:space="preserve"><value>Client, shop or admin access.</value></data>
+  <data name="EmailOrPhone" xml:space="preserve"><value>Email / Phone</value></data>
+  <data name="Password" xml:space="preserve"><value>Password</value></data>
+  <data name="RememberMe" xml:space="preserve"><value>Remember me</value></data>
+  <data name="SigningIn" xml:space="preserve"><value>Signing in...</value></data>
+  <data name="CreateAccount" xml:space="preserve"><value>Create account</value></data>
+  <data name="FillCredentials" xml:space="preserve"><value>Please enter your credentials.</value></data>
+  <data name="InvalidCredentials" xml:space="preserve"><value>Invalid credentials.</value></data>
+  <data name="InvalidToken" xml:space="preserve"><value>Invalid token.</value></data>
+  <data name="LoginSuccess" xml:space="preserve"><value>Signed in successfully.</value></data>
+
+  <data name="RegisterPageTitle" xml:space="preserve"><value>Register</value></data>
+  <data name="RegisterTitle" xml:space="preserve"><value>Create an account</value></data>
+  <data name="RegisterSubtitle" xml:space="preserve"><value>DoorMarket client access.</value></data>
+  <data name="Email" xml:space="preserve"><value>Email</value></data>
+  <data name="PhoneOptional" xml:space="preserve"><value>Phone (optional)</value></data>
+  <data name="ConfirmPassword" xml:space="preserve"><value>Confirm password</value></data>
+  <data name="KeepSession" xml:space="preserve"><value>Keep me signed in</value></data>
+  <data name="Creating" xml:space="preserve"><value>Creating...</value></data>
+  <data name="CreateAccountAction" xml:space="preserve"><value>Create account</value></data>
+  <data name="AlreadyRegisteredLogin" xml:space="preserve"><value>Already registered? Sign in</value></data>
+  <data name="RequiredFieldsWarning" xml:space="preserve"><value>Please fill all required fields.</value></data>
+  <data name="PasswordMismatch" xml:space="preserve"><value>Passwords do not match.</value></data>
+  <data name="PasswordMinLength" xml:space="preserve"><value>Password must contain at least 6 characters.</value></data>
+  <data name="RegisterFailed" xml:space="preserve"><value>Account creation failed.</value></data>
+  <data name="AccountCreatedCheckEmail" xml:space="preserve"><value>Account created. Check your email before signing in.</value></data>
+
+  <data name="Adding" xml:space="preserve"><value>Adding...</value></data>
+  <data name="Promo" xml:space="preserve"><value>Promo</value></data>
+  <data name="ProductDetailsPageTitle" xml:space="preserve"><value>Product details</value></data>
+  <data name="ProductDetailsTitle" xml:space="preserve"><value>Product details</value></data>
+  <data name="ProductDetailsSubtitle" xml:space="preserve"><value>Information, pricing and availability.</value></data>
+  <data name="BackToShops" xml:space="preserve"><value>Back to shops</value></data>
+  <data name="ProductNotFound" xml:space="preserve"><value>Product not found.</value></data>
+  <data name="NoDescription" xml:space="preserve"><value>No description.</value></data>
+  <data name="StockLabel" xml:space="preserve"><value>Stock</value></data>
+  <data name="ViewShop" xml:space="preserve"><value>View shop</value></data>
+  <data name="AddToCart" xml:space="preserve"><value>Add to cart</value></data>
+  <data name="ShopsSubtitle" xml:space="preserve"><value>Find a shop and explore all its products.</value></data>
+  <data name="Search" xml:space="preserve"><value>Search</value></data>
+  <data name="Country" xml:space="preserve"><value>Country</value></data>
+  <data name="Recommended" xml:space="preserve"><value>Recommended</value></data>
+  <data name="Refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="Since" xml:space="preserve"><value>Since</value></data>
+  <data name="Page" xml:space="preserve"><value>Page</value></data>
+  <data name="ShopNotFound" xml:space="preserve"><value>Shop not found.</value></data>
+  <data name="ProductSearch" xml:space="preserve"><value>Product search</value></data>
+  <data name="All" xml:space="preserve"><value>All</value></data>
+  <data name="CartSubtitle" xml:space="preserve"><value>Check quantities, then continue to checkout.</value></data>
+  <data name="Retry" xml:space="preserve"><value>Retry</value></data>
+  <data name="CartEmpty" xml:space="preserve"><value>Your cart is empty.</value></data>
+  <data name="ContinueShopping" xml:space="preserve"><value>Continue shopping</value></data>
+  <data name="Items" xml:space="preserve"><value>Items</value></data>
+  <data name="ClearCart" xml:space="preserve"><value>Clear cart</value></data>
+  <data name="UnitPriceLabel" xml:space="preserve"><value>Unit price</value></data>
+  <data name="LineTotal" xml:space="preserve"><value>Line total</value></data>
+  <data name="Delete" xml:space="preserve"><value>Delete</value></data>
+  <data name="Summary" xml:space="preserve"><value>Summary</value></data>
+  <data name="Subtotal" xml:space="preserve"><value>Subtotal</value></data>
+  <data name="Delivery" xml:space="preserve"><value>Delivery</value></data>
+  <data name="Discount" xml:space="preserve"><value>Discount</value></data>
+  <data name="Total" xml:space="preserve"><value>Total</value></data>
+  <data name="ProceedCheckout" xml:space="preserve"><value>Proceed to checkout</value></data>
+  <data name="QuantityUpdated" xml:space="preserve"><value>Quantity updated.</value></data>
+  <data name="RemoveItemPrompt" xml:space="preserve"><value>Remove this item from your cart?</value></data>
+  <data name="ItemDeleted" xml:space="preserve"><value>Item removed.</value></data>
+  <data name="ClearCartPrompt" xml:space="preserve"><value>Confirm removing all items?</value></data>
+  <data name="CartCleared" xml:space="preserve"><value>Cart cleared.</value></data>
+  <data name="BackToCart" xml:space="preserve"><value>Back to cart</value></data>
+  <data name="CheckoutSubtitle" xml:space="preserve"><value>Delivery address, summary and payment.</value></data>
+  <data name="DeliveryAddress" xml:space="preserve"><value>Delivery address</value></data>
+  <data name="ProfileAddress" xml:space="preserve"><value>Saved address</value></data>
+  <data name="SelectOrEditAddressHint" xml:space="preserve"><value>Select a saved address or edit fields manually.</value></data>
+  <data name="DeliveryZone" xml:space="preserve"><value>Delivery zone</value></data>
+  <data name="DeliveryZoneRequiredHint" xml:space="preserve"><value>Delivery zone is required to calculate admin delivery fee.</value></data>
+  <data name="FullName" xml:space="preserve"><value>Full name</value></data>
+  <data name="Phone" xml:space="preserve"><value>Phone</value></data>
+  <data name="Address" xml:space="preserve"><value>Address</value></data>
+  <data name="City" xml:space="preserve"><value>City</value></data>
+  <data name="NotesOptional" xml:space="preserve"><value>Notes (optional)</value></data>
+  <data name="PromoCodeTitle" xml:space="preserve"><value>Promo code (V1)</value></data>
+  <data name="PromoSimpleHint" xml:space="preserve"><value>V1: simple promo (optional).</value></data>
+  <data name="QtyShort" xml:space="preserve"><value>Qty</value></data>
+  <data name="Payment" xml:space="preserve"><value>Payment</value></data>
+  <data name="CardPayment" xml:space="preserve"><value>Card payment</value></data>
+  <data name="ExternalPayment" xml:space="preserve"><value>External payment</value></data>
+  <data name="Prepaid" xml:space="preserve"><value>Prepaid</value></data>
+  <data name="InternalVoucher" xml:space="preserve"><value>Internal voucher</value></data>
+  <data name="PrepaidCode" xml:space="preserve"><value>Prepaid code</value></data>
+  <data name="VoucherCodeValid" xml:space="preserve"><value>Voucher code is valid.</value></data>
+  <data name="VoucherCodeInvalid" xml:space="preserve"><value>Invalid code (format DM-...).</value></data>
+  <data name="Processing" xml:space="preserve"><value>Processing...</value></data>
+  <data name="AddressZoneUpdateFailed" xml:space="preserve"><value>Unable to update address zone.</value></data>
+  <data name="PayWithPayPal" xml:space="preserve"><value>Create order and pay with PayPal</value></data>
+  <data name="PayWithVoucher" xml:space="preserve"><value>Pay with prepaid code</value></data>
+  <data name="PayWithStripe" xml:space="preserve"><value>Pay with Stripe</value></data>
+  <data name="PaymentHintPayPal" xml:space="preserve"><value>You will be redirected to PayPal after order creation.</value></data>
+  <data name="PaymentHintVoucher" xml:space="preserve"><value>Your internal voucher is validated immediately.</value></data>
+  <data name="PaymentHintStripe" xml:space="preserve"><value>You will be redirected to Stripe to complete payment.</value></data>
+  <data name="PrepaidCodeInvalid" xml:space="preserve"><value>Invalid prepaid code.</value></data>
+  <data name="Continue" xml:space="preserve"><value>Continue</value></data>
+  <data name="ConfirmPayTotalPrompt" xml:space="preserve"><value>Create order and pay &lt;b&gt;{0} {1}&lt;/b&gt; (items + delivery)?</value></data>
+  <data name="StockInsufficientFriendly" xml:space="preserve"><value>Insufficient stock for at least one product. Please update your cart.</value></data>
+  <data name="ApiError" xml:space="preserve"><value>API error</value></data>
+  <data name="ApiTimeout" xml:space="preserve"><value>Request timed out. Check your connection or API status.</value></data>
+  <data name="OrderInvalid" xml:space="preserve"><value>Invalid order.</value></data>
+  <data name="StripeUrlInvalid" xml:space="preserve"><value>Invalid Stripe URL.</value></data>
+  <data name="PayPalUrlInvalid" xml:space="preserve"><value>Invalid PayPal URL.</value></data>
+  <data name="PrepaidPaymentFailed" xml:space="preserve"><value>Prepaid payment failed</value></data>
+
+  <data name="A verifier" xml:space="preserve"><value>To verify</value></data>
+  <data name="Acces refuse (403). Admin requis." xml:space="preserve"><value>Access denied (403). Admin required.</value></data>
+  <data name="Action" xml:space="preserve"><value>Action</value></data>
+  <data name="Actions" xml:space="preserve"><value>Actions</value></data>
+  <data name="Active" xml:space="preserve"><value>Active</value></data>
+  <data name="Annuler" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Back" xml:space="preserve"><value>Back</value></data>
+  <data name="BackToLogin" xml:space="preserve"><value>Back to sign in</value></data>
+  <data name="Boutique mise a jour." xml:space="preserve"><value>Shop updated.</value></data>
+  <data name="Boutique supprimee." xml:space="preserve"><value>Shop deleted.</value></data>
+  <data name="Boutique validee." xml:space="preserve"><value>Shop validated.</value></data>
+  <data name="Categorie creee." xml:space="preserve"><value>Category created.</value></data>
+  <data name="Categorie modifiee." xml:space="preserve"><value>Category updated.</value></data>
+  <data name="Categorie supprimee." xml:space="preserve"><value>Category deleted.</value></data>
+  <data name="Code renvoye." xml:space="preserve"><value>Code resent.</value></data>
+  <data name="Confirmer" xml:space="preserve"><value>Confirm</value></data>
+  <data name="Confirmer la validation de" xml:space="preserve"><value>Confirm validation of</value></data>
+  <data name="Conflit (409)." xml:space="preserve"><value>Conflict (409).</value></data>
+  <data name="Copie impossible." xml:space="preserve"><value>Copy failed.</value></data>
+  <data name="CreatedAt" xml:space="preserve"><value>Created</value></data>
+  <data name="Creer un utilisateur" xml:space="preserve"><value>Create a user</value></data>
+  <data name="Creer zone" xml:space="preserve"><value>Create zone</value></data>
+  <data name="Date" xml:space="preserve"><value>Date</value></data>
+  <data name="Decision appliquee." xml:space="preserve"><value>Decision applied.</value></data>
+  <data name="Email copie." xml:space="preserve"><value>Email copied.</value></data>
+  <data name="Email verifie. Vous pouvez vous connecter." xml:space="preserve"><value>Email verified. You can sign in.</value></data>
+  <data name="Erreur API" xml:space="preserve"><value>API error</value></data>
+  <data name="Export CSV genere." xml:space="preserve"><value>CSV export generated.</value></data>
+  <data name="ForgotPasswordHint" xml:space="preserve"><value>V1: this feature will be available soon.</value></data>
+  <data name="ForgotPasswordInfo" xml:space="preserve"><value>For now, contact DoorMarket admin to reset your access.</value></data>
+  <data name="ForgotPasswordTitle" xml:space="preserve"><value>Forgot password</value></data>
+  <data name="GoToLogin" xml:space="preserve"><value>Go to sign in</value></data>
+  <data name="History" xml:space="preserve"><value>History</value></data>
+  <data name="IdLabel" xml:space="preserve"><value>ID</value></data>
+  <data name="Inactive" xml:space="preserve"><value>Inactive</value></data>
+  <data name="LaunchPayPalForOrder" xml:space="preserve"><value>Launch PayPal for order</value></data>
+  <data name="LaunchStripeForOrder" xml:space="preserve"><value>Launch Stripe payment for order</value></data>
+  <data name="Mettre a jour" xml:space="preserve"><value>Update</value></data>
+  <data name="Modifier boutique" xml:space="preserve"><value>Edit shop</value></data>
+  <data name="Modifier utilisateur" xml:space="preserve"><value>Edit user</value></data>
+  <data name="MyOrdersSubtitle" xml:space="preserve"><value>History, status and payment.</value></data>
+  <data name="Non" xml:space="preserve"><value>No</value></data>
+  <data name="Non autorise (401)." xml:space="preserve"><value>Unauthorized (401).</value></data>
+  <data name="NoOrderYet" xml:space="preserve"><value>No order yet.</value></data>
+  <data name="Order" xml:space="preserve"><value>Order</value></data>
+  <data name="OrderDetailSubtitle" xml:space="preserve"><value>Details and payment.</value></data>
+  <data name="OrderNotFound" xml:space="preserve"><value>Order not found.</value></data>
+  <data name="Oui" xml:space="preserve"><value>Yes</value></data>
+  <data name="PaymentCanceledMessage" xml:space="preserve"><value>Payment cancelled. You can retry anytime.</value></data>
+  <data name="PaymentCanceledSubtitle" xml:space="preserve"><value>No charge has been made.</value></data>
+  <data name="PaymentCanceledTitle" xml:space="preserve"><value>Payment cancelled</value></data>
+  <data name="PaymentCancelTip" xml:space="preserve"><value>Tip: check your connection or try another payment method.</value></data>
+  <data name="PaymentConfirmationInProgress" xml:space="preserve"><value>Confirmation in progress...</value></data>
+  <data name="PaymentConfirmedProcessingOrder" xml:space="preserve"><value>Payment confirmed. Order is being processed.</value></data>
+  <data name="PaymentPendingHint" xml:space="preserve"><value>Payment is still being confirmed. Click Refresh in a few seconds if needed.</value></data>
+  <data name="PaymentPendingServerConfirmation" xml:space="preserve"><value>Payment received on Stripe side, but server confirmation is still pending. Retry in a few seconds.</value></data>
+  <data name="pour cette candidature ?" xml:space="preserve"><value>for this application?</value></data>
+  <data name="Product" xml:space="preserve"><value>Product</value></data>
+  <data name="RedirectingToStripe" xml:space="preserve"><value>Redirecting to Stripe...</value></data>
+  <data name="ResendCode" xml:space="preserve"><value>Resend code</value></data>
+  <data name="ResumePayment" xml:space="preserve"><value>Resume payment</value></data>
+  <data name="Rien a copier." xml:space="preserve"><value>Nothing to copy.</value></data>
+  <data name="Route introuvable (404)." xml:space="preserve"><value>Route not found (404).</value></data>
+  <data name="SearchById" xml:space="preserve"><value>Search (id)</value></data>
+  <data name="Status" xml:space="preserve"><value>Status</value></data>
+  <data name="Supprimer" xml:space="preserve"><value>Delete</value></data>
+  <data name="Supprimer boutique" xml:space="preserve"><value>Delete shop</value></data>
+  <data name="Supprimer la categorie" xml:space="preserve"><value>Delete category</value></data>
+  <data name="Supprimer utilisateur" xml:space="preserve"><value>Delete user</value></data>
+  <data name="Supprimer zone" xml:space="preserve"><value>Delete zone</value></data>
+  <data name="Utilisateur cree ({0})." xml:space="preserve"><value>User created ({0}).</value></data>
+  <data name="Utilisateur mis a jour." xml:space="preserve"><value>User updated.</value></data>
+  <data name="Utilisateur supprime." xml:space="preserve"><value>User deleted.</value></data>
+  <data name="Valider" xml:space="preserve"><value>Validate</value></data>
+  <data name="Valider boutique" xml:space="preserve"><value>Validate shop</value></data>
+  <data name="VerificationCode" xml:space="preserve"><value>Verification code</value></data>
+  <data name="Verifiee" xml:space="preserve"><value>Verified</value></data>
+  <data name="Verify" xml:space="preserve"><value>Verify</value></data>
+  <data name="VerifyEmailPageTitle" xml:space="preserve"><value>Email verification</value></data>
+  <data name="VerifyEmailSubtitle" xml:space="preserve"><value>Enter the code sent by email.</value></data>
+  <data name="VerifyEmailTitle" xml:space="preserve"><value>Verify your email</value></data>
+  <data name="OtpLoginMessage" xml:space="preserve"><value>A code was sent to your email to validate the login.</value></data>
+  <data name="OtpProfilePhoneMessage" xml:space="preserve"><value>A code was sent to your email to confirm the phone number.</value></data>
+  <data name="OtpProfilePasswordMessage" xml:space="preserve"><value>A code was sent to your email to confirm the password.</value></data>
+  <data name="OtpCodeLabel" xml:space="preserve"><value>OTP code</value></data>
+  <data name="OtpVerifyAction" xml:space="preserve"><value>Verify</value></data>
+  <data name="OtpRequired" xml:space="preserve"><value>Verification code required.</value></data>
+  <data name="OtpResent" xml:space="preserve"><value>Code resent.</value></data>
+  <data name="OtpExpiresIn" xml:space="preserve"><value>Expires in {0}</value></data>
+  <data name="OtpExpiredMessage" xml:space="preserve"><value>Code expired. Please request a new code.</value></data>
+  <data name="OtpLoginDisabled" xml:space="preserve"><value>Login OTP verification is disabled.</value></data>
+  <data name="OtpSending" xml:space="preserve"><value>Sending code...</value></data>
+  <data name="PasswordUpdateTitle" xml:space="preserve"><value>Password</value></data>
+  <data name="NewPasswordLabel" xml:space="preserve"><value>New password</value></data>
+  <data name="ConfirmPasswordLabel" xml:space="preserve"><value>Confirm password</value></data>
+  <data name="ChangePasswordAction" xml:space="preserve"><value>Change password</value></data>
+  <data name="PasswordUpdated" xml:space="preserve"><value>Password updated.</value></data>
+  <data name="PasswordRequired" xml:space="preserve"><value>Password required.</value></data>
+  <data name="Zone enregistree." xml:space="preserve"><value>Zone saved.</value></data>
+  <data name="Zone supprimee." xml:space="preserve"><value>Zone deleted.</value></data>
+  <data name="ConfirmingPayment" xml:space="preserve"><value>We are confirming your payment...</value></data>
+  <data name="LoginToContinue" xml:space="preserve"><value>You need to sign in.</value></data>
+  <data name="Help" xml:space="preserve"><value>Help</value></data>
+  <data name="BackToOrder" xml:space="preserve"><value>Back to order</value></data>
+  <data name="BackToOrdersHint" xml:space="preserve"><value>You can return to your orders.</value></data>
+  <data name="Catalog" xml:space="preserve"><value>Catalog</value></data>
+  <data name="Category" xml:space="preserve"><value>Category</value></data>
+  <data name="ClientMenu" xml:space="preserve"><value>Client menu</value></data>
+  <data name="ConfirmToggleProductStatus" xml:space="preserve"><value>Confirm product status change?</value></data>
+  <data name="Contact" xml:space="preserve"><value>Contact</value></data>
+  <data name="Disable" xml:space="preserve"><value>Disable</value></data>
+  <data name="Edit" xml:space="preserve"><value>Edit</value></data>
+  <data name="EmailLabel" xml:space="preserve"><value>Email</value></data>
+  <data name="Enable" xml:space="preserve"><value>Enable</value></data>
+  <data name="GoToCheckout" xml:space="preserve"><value>Go to checkout</value></data>
+  <data name="HelpCenter" xml:space="preserve"><value>Help center</value></data>
+  <data name="HelpCenterHint" xml:space="preserve"><value>Check FAQs for cart, checkout and tracking.</value></data>
+  <data name="InvalidOrderIdParam" xml:space="preserve"><value>Invalid orderId parameter.</value></data>
+  <data name="MyAddresses" xml:space="preserve"><value>My addresses</value></data>
+  <data name="New" xml:space="preserve"><value>New</value></data>
+  <data name="None" xml:space="preserve"><value>None</value></data>
+  <data name="NoProductsClickNew" xml:space="preserve"><value>No products. Click New.</value></data>
+  <data name="NoPromotionLabel" xml:space="preserve"><value>No promotion</value></data>
+  <data name="OrderLoadFailed" xml:space="preserve"><value>Unable to load order. Check orderId.</value></data>
+  <data name="PaymentCancelSupportHint" xml:space="preserve"><value>If the issue persists, verify your payment method or retry later.</value></data>
+  <data name="PaymentChoiceAtCheckout" xml:space="preserve"><value>Payment method is chosen at checkout.</value></data>
+  <data name="PaymentConfirmedMaybe" xml:space="preserve"><value>Payment confirmed?</value></data>
+  <data name="PaymentConfirmingRefreshHint" xml:space="preserve"><value>Payment confirmation in progress... refresh in a few seconds.</value></data>
+  <data name="PaymentsSubtitle" xml:space="preserve"><value>Payment tracking, refunds and history.</value></data>
+  <data name="PaymentSuccessSubtitle" xml:space="preserve"><value>Thank you! We are confirming your payment and updating your order.</value></data>
+  <data name="PaymentSuccessTitle" xml:space="preserve"><value>Payment successful</value></data>
+  <data name="PaymentWebhookNote" xml:space="preserve"><value>Note: confirmation can take a few seconds (webhook). This page retries automatically.</value></data>
+  <data name="PayPalExternalHint" xml:space="preserve"><value>External PayPal payment with automatic return.</value></data>
+  <data name="PhoneLabel" xml:space="preserve"><value>Phone</value></data>
+  <data name="PrepaidCard" xml:space="preserve"><value>Prepaid</value></data>
+  <data name="PrepaidCardHint" xml:space="preserve"><value>Immediate internal voucher validation.</value></data>
+  <data name="Price" xml:space="preserve"><value>Price</value></data>
+  <data name="ProductStatusUpdated" xml:space="preserve"><value>Product status updated.</value></data>
+  <data name="ProfileSubtitle" xml:space="preserve"><value>Your personal information and account options.</value></data>
+  <data name="ProfileUpdated" xml:space="preserve"><value>Profile updated.</value></data>
+  <data name="UpdateProfile" xml:space="preserve"><value>Update profile</value></data>
+  <data name="NoChanges" xml:space="preserve"><value>No changes to save.</value></data>
+  <data name="OtpPendingMessage" xml:space="preserve"><value>An OTP code is pending. Please confirm it.</value></data>
+  <data name="UpdateOneChangeAtTime" xml:space="preserve"><value>Please update either phone or password, then confirm.</value></data>
+  <data name="Promotion" xml:space="preserve"><value>Promotion</value></data>
+  <data name="PromotionActive" xml:space="preserve"><value>Active promo</value></data>
+  <data name="PromotionExpired" xml:space="preserve"><value>Expired promo</value></data>
+  <data name="PromotionPlanned" xml:space="preserve"><value>Planned promo</value></data>
+  <data name="Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Saving" xml:space="preserve"><value>Saving...</value></data>
+  <data name="SearchByNameCategory" xml:space="preserve"><value>Search (name / category)</value></data>
+  <data name="ShopProductsSubtitle" xml:space="preserve"><value>Manage your catalog, stock and promotions.</value></data>
+  <data name="Stock" xml:space="preserve"><value>Stock</value></data>
+  <data name="StripeCardHint" xml:space="preserve"><value>Card payment via Stripe.</value></data>
+  <data name="SupportSubtitle" xml:space="preserve"><value>Need help? Our team can assist you.</value></data>
+  <data name="UpdateFailed" xml:space="preserve"><value>Update failed.</value></data>
+  <data name="ViewOrder" xml:space="preserve"><value>View order</value></data>
+  <data name="BackToDashboard" xml:space="preserve"><value>Back to dashboard</value></data>
+  <data name="Cancelled" xml:space="preserve"><value>Cancelled</value></data>
+  <data name="CustomerDelivery" xml:space="preserve"><value>Customer &amp; Delivery</value></data>
+  <data name="Delivered" xml:space="preserve"><value>Delivered</value></data>
+  <data name="Fulfillment" xml:space="preserve"><value>Fulfillment</value></data>
+  <data name="FulfillmentTransitionsHint" xml:space="preserve"><value>Status transitions are irreversible.</value></data>
+  <data name="MarkDelivered" xml:space="preserve"><value>Mark delivered</value></data>
+  <data name="Notes" xml:space="preserve"><value>Notes</value></data>
+  <data name="OrderDetailTitle" xml:space="preserve"><value>Order details</value></data>
+  <data name="OrdersList" xml:space="preserve"><value>Orders list</value></data>
+  <data name="PaidPending" xml:space="preserve"><value>Payment / Status</value></data>
+  <data name="ShopItems" xml:space="preserve"><value>Shop items</value></data>
+  <data name="ShopOrderDetailSubtitle" xml:space="preserve"><value>Customer order details and fulfillment.</value></data>
+  <data name="ShopOrdersSubtitle" xml:space="preserve"><value>Track orders received by your shop.</value></data>
+  <data name="StartProcessing" xml:space="preserve"><value>Start processing</value></data>
+  <data name="ConfirmChangeStatus" xml:space="preserve"><value>Confirm status change?</value></data>
+  <data name="OrderRefreshed" xml:space="preserve"><value>Order refreshed.</value></data>
+  <data name="StatusUpdated" xml:space="preserve"><value>Status updated.</value></data>
+  <data name="ActiveProducts" xml:space="preserve"><value>Active products</value></data>
+  <data name="ActiveProductsStockZero" xml:space="preserve"><value>Active products (stock 0)</value></data>
+  <data name="ActiveVisible" xml:space="preserve"><value>Active and visible</value></data>
+  <data name="AddDocumentToSubmit" xml:space="preserve"><value>Add document to submit</value></data>
+  <data name="AddProduct" xml:space="preserve"><value>Add product</value></data>
+  <data name="Alert" xml:space="preserve"><value>Alert</value></data>
+  <data name="Application" xml:space="preserve"><value>Application</value></data>
+  <data name="ApplicationLockedStatus" xml:space="preserve"><value>Status locked after submission.</value></data>
+  <data name="ApplicationSaved" xml:space="preserve"><value>Application saved.</value></data>
+  <data name="ApplicationSubmitted" xml:space="preserve"><value>Application submitted.</value></data>
+  <data name="ChooseFile" xml:space="preserve"><value>Choose file</value></data>
+  <data name="ChooseFileFirst" xml:space="preserve"><value>Please choose a file first.</value></data>
+  <data name="CityCountry" xml:space="preserve"><value>City / Country</value></data>
+  <data name="CountryTag" xml:space="preserve"><value>Country</value></data>
+  <data name="CountryTagHint" xml:space="preserve"><value>Ex: DRC, Congo, Canada</value></data>
+  <data name="CurrencyHint" xml:space="preserve"><value>Currency (USD, CDF, EUR)</value></data>
+  <data name="CurrencyRequired" xml:space="preserve"><value>Currency is required.</value></data>
+  <data name="DashboardLoadFailed" xml:space="preserve"><value>Failed to load dashboard.</value></data>
+  <data name="DefaultImageNote" xml:space="preserve"><value>Default image if none is provided.</value></data>
+  <data name="Description" xml:space="preserve"><value>Description</value></data>
+  <data name="Documents" xml:space="preserve"><value>Documents</value></data>
+  <data name="DocumentsHint" xml:space="preserve"><value>Attach the required documents.</value></data>
+  <data name="DocumentType" xml:space="preserve"><value>Document type</value></data>
+  <data name="DocumentUploaded" xml:space="preserve"><value>Document uploaded.</value></data>
+  <data name="DoorMarketTips" xml:space="preserve"><value>DoorMarket tips</value></data>
+  <data name="EditProductSubtitle" xml:space="preserve"><value>Update details and promotion.</value></data>
+  <data name="EditProductTitle" xml:space="preserve"><value>Edit product</value></data>
+  <data name="EnablePromotion" xml:space="preserve"><value>Enable promotion</value></data>
+  <data name="File" xml:space="preserve"><value>File</value></data>
+  <data name="FileTooLarge" xml:space="preserve"><value>File is too large.</value></data>
+  <data name="FileTypeNotAllowed" xml:space="preserve"><value>File type not allowed.</value></data>
+  <data name="FillRequiredFieldsHint" xml:space="preserve"><value>Please fill the required fields.</value></data>
+  <data name="FixRequiredFields" xml:space="preserve"><value>Fix the required fields.</value></data>
+  <data name="ImageUploadedSuccess" xml:space="preserve"><value>Image uploaded.</value></data>
+  <data name="ImageUrlInvalid" xml:space="preserve"><value>Invalid image URL.</value></data>
+  <data name="InvalidFields" xml:space="preserve"><value>Invalid fields.</value></data>
+  <data name="LoadingCategories" xml:space="preserve"><value>Loading categories...</value></data>
+  <data name="MainImageUrlOptional" xml:space="preserve"><value>Main image URL (optional)</value></data>
+  <data name="ManageProducts" xml:space="preserve"><value>Manage products</value></data>
+  <data name="NameMinLength" xml:space="preserve"><value>Name is too short.</value></data>
+  <data name="NameRequired" xml:space="preserve"><value>Name is required.</value></data>
+  <data name="NewProduct" xml:space="preserve"><value>New product</value></data>
+  <data name="NewProductSubtitle" xml:space="preserve"><value>Add a new product to your catalog.</value></data>
+  <data name="NewProductTitle" xml:space="preserve"><value>New product</value></data>
+  <data name="NoApplication" xml:space="preserve"><value>No application.</value></data>
+  <data name="NoData" xml:space="preserve"><value>No data.</value></data>
+  <data name="NoDocuments" xml:space="preserve"><value>No documents.</value></data>
+  <data name="Ok" xml:space="preserve"><value>OK</value></data>
+  <data name="Open" xml:space="preserve"><value>Open</value></data>
+  <data name="OrderLinesWithProducts" xml:space="preserve"><value>Order lines / products</value></data>
+  <data name="OrdersToday" xml:space="preserve"><value>Orders today</value></data>
+  <data name="OutOfStock" xml:space="preserve"><value>Out of stock</value></data>
+  <data name="Paid" xml:space="preserve"><value>Paid</value></data>
+  <data name="PricePositive" xml:space="preserve"><value>Price must be positive.</value></data>
+  <data name="PriceRequired" xml:space="preserve"><value>Price is required.</value></data>
+  <data name="ProductCreatedSuccess" xml:space="preserve"><value>Product created.</value></data>
+  <data name="ProductImage" xml:space="preserve"><value>Product image</value></data>
+  <data name="ProductImageHint" xml:space="preserve"><value>Add an image representing the product.</value></data>
+  <data name="ShopImage" xml:space="preserve"><value>Shop image</value></data>
+  <data name="ShopImageHint" xml:space="preserve"><value>Add an image for your shop.</value></data>
+  <data name="ProductInfo" xml:space="preserve"><value>Product info</value></data>
+  <data name="ProductNameRequired" xml:space="preserve"><value>Product name is required.</value></data>
+  <data name="ProductPreviewAlt" xml:space="preserve"><value>Product preview</value></data>
+  <data name="ProductUpdatedSuccess" xml:space="preserve"><value>Product updated.</value></data>
+  <data name="PromoEndOptional" xml:space="preserve"><value>Promo end (optional)</value></data>
+  <data name="PromoEstimatedPrice" xml:space="preserve"><value>Estimated price after promo</value></data>
+  <data name="PromoHint" xml:space="preserve"><value>Ex: -10% or fixed promo price.</value></data>
+  <data name="PromoPercent" xml:space="preserve"><value>Promo percent</value></data>
+  <data name="PromoPercentRange" xml:space="preserve"><value>Percent must be between 1 and 100.</value></data>
+  <data name="PromoPriceLessThanNormal" xml:space="preserve"><value>Promo price must be lower than normal price.</value></data>
+  <data name="PromoPriceOrPercentRequired" xml:space="preserve"><value>Enter a promo price or a percent.</value></data>
+  <data name="PromoPricePositive" xml:space="preserve"><value>Promo price must be positive.</value></data>
+  <data name="PromoPriceRequired" xml:space="preserve"><value>Promo price is required.</value></data>
+  <data name="PromoStartBeforeEnd" xml:space="preserve"><value>Start date must be before end date.</value></data>
+  <data name="PromoStartOptional" xml:space="preserve"><value>Promo start (optional)</value></data>
+  <data name="ProTipTopProducts" xml:space="preserve"><value>Tip: highlight your top products.</value></data>
+  <data name="QuickActions" xml:space="preserve"><value>Quick actions</value></data>
+  <data name="QuickActionsHint" xml:space="preserve"><value>Direct access to frequent tasks.</value></data>
+  <data name="QuickSummary" xml:space="preserve"><value>Quick summary</value></data>
+  <data name="RevenuePaid" xml:space="preserve"><value>Revenue paid</value></data>
+  <data name="SaveApplicationFirst" xml:space="preserve"><value>Save the application first.</value></data>
+  <data name="SelectCategory" xml:space="preserve"><value>Select a category.</value></data>
+  <data name="SelectedFile" xml:space="preserve"><value>Selected file</value></data>
+  <data name="SelectedFileSnackbar" xml:space="preserve"><value>File selected.</value></data>
+  <data name="ShopApplicationsSubtitle" xml:space="preserve"><value>Pending shop applications.</value></data>
+  <data name="ShopDashboardPageSubtitle" xml:space="preserve"><value>Overview of your shop.</value></data>
+  <data name="ShopHealth" xml:space="preserve"><value>Shop health</value></data>
+  <data name="ShopName" xml:space="preserve"><value>Shop name</value></data>
+  <data name="ShopPilotSubtitle" xml:space="preserve"><value>Follow the steps to activate your shop.</value></data>
+  <data name="ShopPilotTitle" xml:space="preserve"><value>Shop pilot</value></data>
+  <data name="ShopSpace" xml:space="preserve"><value>Shop space</value></data>
+  <data name="ShopSpaceSubtitle" xml:space="preserve"><value>Manage your shop and catalog.</value></data>
+  <data name="Size" xml:space="preserve"><value>Size</value></data>
+  <data name="StockIssues" xml:space="preserve"><value>Stock issues</value></data>
+  <data name="StockNonNegative" xml:space="preserve"><value>Stock cannot be negative.</value></data>
+  <data name="StockRequired" xml:space="preserve"><value>Stock is required.</value></data>
+  <data name="StockUpdateTip" xml:space="preserve"><value>Keep your stock updated regularly.</value></data>
+  <data name="Submit" xml:space="preserve"><value>Submit</value></data>
+  <data name="SubmitApplicationPrompt" xml:space="preserve"><value>Submit the application now?</value></data>
+  <data name="TipCategories" xml:space="preserve"><value>Category tip</value></data>
+  <data name="TipLabel" xml:space="preserve"><value>Tip</value></data>
+  <data name="TipPriceCurrency" xml:space="preserve"><value>Price must match the chosen currency.</value></data>
+  <data name="TipProductName" xml:space="preserve"><value>Choose a clear product name.</value></data>
+  <data name="TipStockUpToDate" xml:space="preserve"><value>Keep stock up to date.</value></data>
+  <data name="ToFix" xml:space="preserve"><value>To fix</value></data>
+  <data name="TotalPaidToday" xml:space="preserve"><value>Total paid today</value></data>
+  <data name="Tracking" xml:space="preserve"><value>Tracking</value></data>
+  <data name="Type" xml:space="preserve"><value>Type</value></data>
+  <data name="Upload" xml:space="preserve"><value>Upload</value></data>
+  <data name="Uploading" xml:space="preserve"><value>Uploading...</value></data>
+  <data name="UploadBlockedApplication" xml:space="preserve"><value>Submission required before upload.</value></data>
+  <data name="UploadImageFailed" xml:space="preserve"><value>Image upload failed.</value></data>
+  <data name="ViewOrders" xml:space="preserve"><value>View orders</value></data>
+  <data name="VisibleInShop" xml:space="preserve"><value>Visible in shop</value></data>
+  <data name="ActiveZone" xml:space="preserve"><value>Active zone</value></data>
+  <data name="AdminOnlyAccess" xml:space="preserve"><value>Access denied: Admin only.</value></data>
+  <data name="AdminShopsSubtitle" xml:space="preserve"><value>Shop validation and seller catalog tracking.</value></data>
+  <data name="Approve" xml:space="preserve"><value>Approve</value></data>
+  <data name="CancelEdit" xml:space="preserve"><value>Cancel edit</value></data>
+  <data name="CategoriesList" xml:space="preserve"><value>Category list</value></data>
+  <data name="CategoriesSubtitle" xml:space="preserve"><value>Organize your catalog to improve sales.</value></data>
+  <data name="CategoryCreated" xml:space="preserve"><value>Category created.</value></data>
+  <data name="CategoryDeleted" xml:space="preserve"><value>Category deleted.</value></data>
+  <data name="CategoryName" xml:space="preserve"><value>Name</value></data>
+  <data name="CategoryUpdated" xml:space="preserve"><value>Category updated.</value></data>
+  <data name="Code" xml:space="preserve"><value>Code</value></data>
+  <data name="ConfiguredZones" xml:space="preserve"><value>Configured zones</value></data>
+  <data name="ConfirmApplicationAction" xml:space="preserve"><value>Confirm &lt;b&gt;{0}&lt;/b&gt; for this application?</value></data>
+  <data name="ConfirmValidateShop" xml:space="preserve"><value>Confirm validation of &lt;b&gt;{0}&lt;/b&gt;?</value></data>
+  <data name="CopyEmail" xml:space="preserve"><value>Copy email</value></data>
+  <data name="CountryFilterPlaceholder" xml:space="preserve"><value>Country (ex: CD)</value></data>
+  <data name="Create" xml:space="preserve"><value>Create</value></data>
+  <data name="CreateCategory" xml:space="preserve"><value>Create a category</value></data>
+  <data name="CreateUser" xml:space="preserve"><value>Create user</value></data>
+  <data name="CreateZone" xml:space="preserve"><value>Create zone</value></data>
+  <data name="DecisionApplied" xml:space="preserve"><value>Decision applied.</value></data>
+  <data name="DeliveryZonesSubtitle" xml:space="preserve"><value>Rates by zone (US launch): Zone A/B/C/D.</value></data>
+  <data name="DeliveryZonesTitle" xml:space="preserve"><value>Delivery zones</value></data>
+  <data name="EditShopTitle" xml:space="preserve"><value>Edit shop</value></data>
+  <data name="EmailPhonePlaceholder" xml:space="preserve"><value>email / phone</value></data>
+  <data name="ExportCsv" xml:space="preserve"><value>Export CSV</value></data>
+  <data name="Fee" xml:space="preserve"><value>Fee</value></data>
+  <data name="FeeUsd" xml:space="preserve"><value>Fee USD</value></data>
+  <data name="Location" xml:space="preserve"><value>Location</value></data>
+  <data name="Name" xml:space="preserve"><value>Name</value></data>
+  <data name="NewZone" xml:space="preserve"><value>New zone</value></data>
+  <data name="NoCategories" xml:space="preserve"><value>No categories.</value></data>
+  <data name="NoShops" xml:space="preserve"><value>No shops.</value></data>
+  <data name="NoteOptional" xml:space="preserve"><value>Note (optional)</value></data>
+  <data name="NotFound" xml:space="preserve"><value>Not found.</value></data>
+  <data name="NoUsers" xml:space="preserve"><value>No users.</value></data>
+  <data name="NoZones" xml:space="preserve"><value>No zones.</value></data>
+  <data name="PageLabel" xml:space="preserve"><value>Page</value></data>
+  <data name="Reject" xml:space="preserve"><value>Reject</value></data>
+  <data name="Role" xml:space="preserve"><value>Role</value></data>
+  <data name="SearchShopPlaceholder" xml:space="preserve"><value>Name / city / country</value></data>
+  <data name="ShopApplicationSubtitle" xml:space="preserve"><value>Details, documents and decision.</value></data>
+  <data name="ShopApplicationTitle" xml:space="preserve"><value>Shop application</value></data>
+  <data name="ShopDeleted" xml:space="preserve"><value>Shop deleted.</value></data>
+  <data name="ShopsList" xml:space="preserve"><value>Shop list</value></data>
+  <data name="ShopUpdated" xml:space="preserve"><value>Shop updated.</value></data>
+  <data name="ShopValidated" xml:space="preserve"><value>Shop validated.</value></data>
+  <data name="Slug" xml:space="preserve"><value>Slug</value></data>
+  <data name="StateOptional" xml:space="preserve"><value>State (optional)</value></data>
+  <data name="TotalLabel" xml:space="preserve"><value>Total:</value></data>
+  <data name="Update" xml:space="preserve"><value>Update</value></data>
+  <data name="User" xml:space="preserve"><value>User</value></data>
+  <data name="UsersList" xml:space="preserve"><value>User list</value></data>
+  <data name="UsersSubtitle" xml:space="preserve"><value>Admin management: creation, editing, password and deletion.</value></data>
+  <data name="Validate" xml:space="preserve"><value>Validate</value></data>
+  <data name="ValidateShopTitle" xml:space="preserve"><value>Validate shop</value></data>
+  <data name="VerifiedOnly" xml:space="preserve"><value>Verified only</value></data>
+  <data name="Zone" xml:space="preserve"><value>Zone</value></data>
+  <data name="ZoneDeleted" xml:space="preserve"><value>Zone deleted.</value></data>
+  <data name="ZoneSaved" xml:space="preserve"><value>Zone saved.</value></data>
+  <data name="AddressDeleted" xml:space="preserve"><value>Address deleted.</value></data>
+  <data name="AddressesList" xml:space="preserve"><value>Address list</value></data>
+  <data name="AddressesSubtitle" xml:space="preserve"><value>Manage your delivery addresses.</value></data>
+  <data name="AddressLabel" xml:space="preserve"><value>Label</value></data>
+  <data name="AddressSaved" xml:space="preserve"><value>Address saved.</value></data>
+  <data name="CategoryNameEn" xml:space="preserve"><value>Name (EN)</value></data>
+  <data name="Default" xml:space="preserve"><value>Default</value></data>
+  <data name="DefaultAddress" xml:space="preserve"><value>Default address</value></data>
+  <data name="District" xml:space="preserve"><value>District</value></data>
+  <data name="EditAddress" xml:space="preserve"><value>Edit address</value></data>
+  <data name="Landmark" xml:space="preserve"><value>Landmark</value></data>
+  <data name="NewAddress" xml:space="preserve"><value>New address</value></data>
+  <data name="NoAddresses" xml:space="preserve"><value>No addresses.</value></data>
+  <data name="NoZone" xml:space="preserve"><value>No zone</value></data>
+  <data name="SpecialOffersSubtitle" xml:space="preserve"><value>All active promotions.</value></data>
+  <data name="Street" xml:space="preserve"><value>Street</value></data>
+  <data name="ImageTooLarge" xml:space="preserve"><value>Image too large (max 10 MB).</value></data>
+  <data name="RoleChangedTitle" xml:space="preserve"><value>Role changed</value></data>
+  <data name="RoleChangedReconnect" xml:space="preserve"><value>Sign in again</value></data>
+  <data name="RoleChangedLater" xml:space="preserve"><value>Later</value></data>
+  <data name="AdminDashboard" xml:space="preserve"><value>Admin dashboard</value></data>
+  <data name="AnalyticsSubtitle" xml:space="preserve"><value>KPIs and top sales</value></data>
+  <data name="AdminOrders" xml:space="preserve"><value>Admin orders</value></data>
+  <data name="AdminOrdersSubtitle" xml:space="preserve"><value>Track paid orders and statuses</value></data>
+  <data name="AdminReconciliation" xml:space="preserve"><value>Reconciliation</value></data>
+  <data name="AdminReconciliationSubtitle" xml:space="preserve"><value>Shop payouts and accounting</value></data>
+  <data name="AdminProductFees" xml:space="preserve"><value>Product fees</value></data>
+  <data name="AdminProductFeesSubtitle" xml:space="preserve"><value>Set fixed platform fee per product</value></data>
+  <data name="PlatformFee" xml:space="preserve"><value>Fee</value></data>
+  <data name="PlatformFeeTotal" xml:space="preserve"><value>Total fee</value></data>
+  <data name="PlatformRevenueTotal" xml:space="preserve"><value>Platform revenue</value></data>
+  <data name="GrossSalesItems" xml:space="preserve"><value>Item sales</value></data>
+  <data name="NetToShopsTotal" xml:space="preserve"><value>Net to shops</value></data>
+  <data name="DeliveryRevenue" xml:space="preserve"><value>Delivery revenue</value></data>
+  <data name="CashInExpected" xml:space="preserve"><value>Expected cash-in</value></data>
+  <data name="AvgBasket" xml:space="preserve"><value>Average basket</value></data>
+  <data name="PaidOrders" xml:space="preserve"><value>Paid orders</value></data>
+  <data name="TotalPaidOut" xml:space="preserve"><value>Total paid out</value></data>
+  <data name="ExpectedBank" xml:space="preserve"><value>Expected bank</value></data>
+  <data name="Gap" xml:space="preserve"><value>Gap</value></data>
+  <data name="ProductFeesList" xml:space="preserve"><value>Product fee list</value></data>
+  <data name="NoOrders" xml:space="preserve"><value>No orders</value></data>
+  <data name="OrderDelivered" xml:space="preserve"><value>Order marked delivered</value></data>
+  <data name="OrderNumber" xml:space="preserve"><value>Number</value></data>
+  <data name="PaidAt" xml:space="preserve"><value>Paid at</value></data>
+  <data name="GrandTotal" xml:space="preserve"><value>Total</value></data>
+  <data name="Details" xml:space="preserve"><value>Details</value></data>
+  <data name="All" xml:space="preserve"><value>All</value></data>
+  <data name="Search" xml:space="preserve"><value>Search</value></data>
+  <data name="Payout" xml:space="preserve"><value>Payout</value></data>
+  <data name="BankBalance" xml:space="preserve"><value>Bank balance</value></data>
+  <data name="AsOfDate" xml:space="preserve"><value>Date</value></data>
+  <data name="Balance" xml:space="preserve"><value>Balance</value></data>
+  <data name="Note" xml:space="preserve"><value>Note</value></data>
+  <data name="Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Saved" xml:space="preserve"><value>Saved</value></data>
+  <data name="NoData" xml:space="preserve"><value>No data</value></data>
+  <data name="InvalidValue" xml:space="preserve"><value>Invalid value</value></data>
+  <data name="Revenue" xml:space="preserve"><value>Revenue</value></data>
+  <data name="Qty" xml:space="preserve"><value>Qty</value></data>
+  <data name="Product" xml:space="preserve"><value>Product</value></data>
+  <data name="Shop" xml:space="preserve"><value>Shop</value></data>
+  <data name="Orders" xml:space="preserve"><value>Orders</value></data>
+  <data name="Paid" xml:space="preserve"><value>Paid</value></data>
+  <data name="Cancelled" xml:space="preserve"><value>Cancelled</value></data>
+  <data name="Delivered" xml:space="preserve"><value>Delivered</value></data>
+  <data name="Status" xml:space="preserve"><value>Status</value></data>
+  <data name="Customer" xml:space="preserve"><value>Customer</value></data>
+  <data name="TopProducts" xml:space="preserve"><value>Top products</value></data>
+  <data name="TopShops" xml:space="preserve"><value>Top shops</value></data>
+  <data name="TopCategories" xml:space="preserve"><value>Top categories</value></data>
+  <data name="Price" xml:space="preserve"><value>Price</value></data>
+  <data name="Reconciliation" xml:space="preserve"><value>Reconciliation</value></data>
+  <data name="AdminReconciliationNote" xml:space="preserve"><value>Accounting reconciliation</value></data>
+  <data name="AdminOrdersNote" xml:space="preserve"><value>Order tracking</value></data>
+  <data name="AdminProductFeesNote" xml:space="preserve"><value>Fixed fee per product</value></data>
+  <data name="TotalPaid" xml:space="preserve"><value>Total paid</value></data>
+  <data name="CashIn" xml:space="preserve"><value>Cash in</value></data>
+  <data name="AdminMarketing" xml:space="preserve"><value>Marketing</value></data>
+  <data name="AdminMarketingSubtitle" xml:space="preserve"><value>Banners and promotions</value></data>
+  <data name="MarketingCreateTitle" xml:space="preserve"><value>New banner</value></data>
+  <data name="MarketingList" xml:space="preserve"><value>Banners</value></data>
+  <data name="NoMarketingBanners" xml:space="preserve"><value>No banners</value></data>
+  <data name="Title" xml:space="preserve"><value>Title</value></data>
+  <data name="Subtitle" xml:space="preserve"><value>Subtitle</value></data>
+  <data name="ImageUrl" xml:space="preserve"><value>Image URL</value></data>
+  <data name="TargetUrl" xml:space="preserve"><value>Target URL</value></data>
+  <data name="Language" xml:space="preserve"><value>Language</value></data>
+  <data name="City" xml:space="preserve"><value>City</value></data>
+  <data name="Zone" xml:space="preserve"><value>Zone</value></data>
+  <data name="CategoryId" xml:space="preserve"><value>Category ID</value></data>
+  <data name="ShopId" xml:space="preserve"><value>Shop ID</value></data>
+  <data name="StartDate" xml:space="preserve"><value>Start date</value></data>
+  <data name="EndDate" xml:space="preserve"><value>End date</value></data>
+  <data name="SortOrder" xml:space="preserve"><value>Sort order</value></data>
+  <data name="Active" xml:space="preserve"><value>Active</value></data>
+  <data name="Inactive" xml:space="preserve"><value>Inactive</value></data>
+  <data name="Period" xml:space="preserve"><value>Period</value></data>
+  <data name="Targeting" xml:space="preserve"><value>Targeting</value></data>
+  <data name="Stats" xml:space="preserve"><value>Stats</value></data>
+  <data name="Clear" xml:space="preserve"><value>Clear</value></data>
+  <data name="Deleted" xml:space="preserve"><value>Deleted</value></data>
+</root>

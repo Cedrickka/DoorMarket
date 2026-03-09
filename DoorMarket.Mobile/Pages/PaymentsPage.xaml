@@ -1,0 +1,85 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<local:LocalizedContentPage xmlns:local="clr-namespace:DoorMarket.Mobile.Localization"     x:Class="DoorMarket.Mobile.Pages.PaymentsPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:components="clr-namespace:DoorMarket.Mobile.Components"
+    xmlns:markup="clr-namespace:DoorMarket.Mobile.Markup"
+    xmlns:models="clr-namespace:DoorMarket.Mobile.Models"
+    NavigationPage.HasNavigationBar="False">
+
+    <Grid RowDefinitions="Auto,*">
+        <Grid
+            BackgroundColor="{StaticResource DoorBlue}"
+            ColumnDefinitions="Auto,*"
+            ColumnSpacing="16"
+            Padding="{OnPlatform iOS='24,56,24,20', Default='24,50,24,20'}">
+            <ImageButton Clicked="OnBackClicked">
+                <ImageButton.Source>
+                    <FontImageSource FontFamily="fa-solid-900" Glyph="{x:Static models:IconGlyphs.Back}" Color="White" Size="16" />
+                </ImageButton.Source>
+            </ImageButton>
+            <VerticalStackLayout Grid.Column="1" Spacing="8" VerticalOptions="Center">
+                <Label FontFamily="Inter-Bold" FontSize="22" Text="{markup:Translate PaymentsTitle}" TextColor="White" />
+                <Label FontFamily="Inter-Regular" FontSize="13" Text="{markup:Translate PaymentsSubtitle}" TextColor="#DCE9F8" />
+            </VerticalStackLayout>
+        </Grid>
+
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="24,16,24,24" Spacing="16">
+                <components:DmCard Margin="0">
+                    <VerticalStackLayout Spacing="12">
+                        <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate DefaultPaymentMethodTitle}" />
+
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                            <Frame
+                                BackgroundColor="{Binding PayPalCardBackground}"
+                                BorderColor="{Binding PayPalCardBorder}"
+                                CornerRadius="12"
+                                HasShadow="False"
+                                Padding="12,10">
+                                <Frame.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnPayPalTapped" />
+                                </Frame.GestureRecognizers>
+                                <VerticalStackLayout Spacing="4">
+                                    <Label FontFamily="Inter-SemiBold" FontSize="14" Text="{markup:Translate PayPalLabel}" TextColor="{Binding PayPalCardText}" />
+                                    <Label FontFamily="Inter-Regular" FontSize="12" Text="{markup:Translate PayPalHintShort}" TextColor="{Binding PayPalCardText}" />
+                                </VerticalStackLayout>
+                            </Frame>
+
+                            <Frame
+                                Grid.Column="1"
+                                BackgroundColor="{Binding PrepaidCardBackground}"
+                                BorderColor="{Binding PrepaidCardBorder}"
+                                CornerRadius="12"
+                                HasShadow="False"
+                                Padding="12,10">
+                                <Frame.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnPrepaidTapped" />
+                                </Frame.GestureRecognizers>
+                                <VerticalStackLayout Spacing="4">
+                                    <Label FontFamily="Inter-SemiBold" FontSize="14" Text="{markup:Translate PrepaidCardLabel}" TextColor="{Binding PrepaidCardText}" />
+                                    <Label FontFamily="Inter-Regular" FontSize="12" Text="{markup:Translate PrepaidHintShort}" TextColor="{Binding PrepaidCardText}" />
+                                </VerticalStackLayout>
+                            </Frame>
+                        </Grid>
+
+                        <components:DmInput
+                            Label="{markup:Translate PrepaidCardNumberLabel}"
+                            Placeholder="4111 1111 1111 1111"
+                            Text="{Binding PrepaidCode, Mode=TwoWay}" />
+
+                        <components:DmPrimaryButton Clicked="OnSaveClicked" Text="{markup:Translate Save}" />
+                    </VerticalStackLayout>
+                </components:DmCard>
+
+                <components:DmCard Margin="0">
+                    <VerticalStackLayout Spacing="10">
+                        <Label Style="{StaticResource SectionTitleLabelStyle}" Text="{markup:Translate SecurityTitle}" />
+                        <Label Style="{StaticResource MutedLabelStyle}" Text="{markup:Translate SecurityHint}" />
+                    </VerticalStackLayout>
+                </components:DmCard>
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</local:LocalizedContentPage>
+

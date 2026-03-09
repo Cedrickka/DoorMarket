@@ -1,0 +1,140 @@
+﻿@page "/admin"
+
+@using System.Net.Http.Json
+@using MudBlazor
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject NavigationManager Nav
+
+<h1 class="dm-page-h1">@SL["Administration"]</h1>
+<div class="dm-page-sub">@SL["ShopApplicationsSubtitle"]</div>
+
+<AuthGuard>
+    <MudPaper Class="pa-4 mt-3">
+        <div class="d-flex gap-2 flex-wrap align-items-center">
+            <MudSelect T="string" Label="@SL["Status"]" Variant="Variant.Outlined" Dense="true" @bind-Value="_status">
+                <MudSelectItem Value="@("")">@SL["All"]</MudSelectItem>
+                <MudSelectItem Value="@("Draft")">@Tr("Brouillon", "Draft")</MudSelectItem>
+                <MudSelectItem Value="@("Submitted")">@Tr("Soumise", "Submitted")</MudSelectItem>
+                <MudSelectItem Value="@("Approved")">@Tr("Approuvee", "Approved")</MudSelectItem>
+                <MudSelectItem Value="@("Rejected")">@Tr("Rejetee", "Rejected")</MudSelectItem>
+            </MudSelect>
+
+            <MudButton Variant="Variant.Outlined" OnClick="Reload">@SL["Refresh"]</MudButton>
+        </div>
+
+        <MudDivider Class="my-3" />
+
+        @if (_loading)
+        {
+            <MudSkeleton Height="44px" />
+            <MudSkeleton Height="44px" Class="mt-2" />
+            <MudSkeleton Height="44px" Class="mt-2" />}
+        else if (_error is not null)
+        {<MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_error</MudAlert>}
+        else
+        {<MudTable Items="_items" Dense="true" Hover="true" Bordered="true" Striped="true">
+                <HeaderContent>
+                    <MudTh>@SL["Date"]</MudTh>
+                    <MudTh>@SL["Shop"]</MudTh>
+                    <MudTh>@SL["CityCountry"]</MudTh>
+                    <MudTh>@SL["Status"]</MudTh>
+                    <MudTh Align="right">@SL["Documents"]</MudTh>
+                    <MudTh Align="right">@SL["Action"]</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</MudTd>
+                    <MudTd><b>@context.Name</b></MudTd>
+                    <MudTd>@context.City / @context.CountryTag</MudTd>
+                    <MudTd>
+                        <MudChip T="string" Label="true" Variant="Variant.Outlined" Color="@ChipColor(context.Status)">
+                            @StatusLabel(context.Status)
+                        </MudChip>
+                    </MudTd>
+                    <MudTd Align="Align.Right">@context.Documents.Count</MudTd>
+                    <MudTd Align="Align.Right">
+                        <AdminRowActionMenu AriaLabel="@SL["Action"]">
+                            <MudMenuItem Icon="@Icons.Material.Filled.OpenInNew"
+                                         OnClick="@(() => OpenDetails(context.Id))">
+                                @SL["Details"]
+                            </MudMenuItem>
+                        </AdminRowActionMenu>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudPaper>
+</AuthGuard>
+
+@code {
+    private bool _loading;
+    private string? _error;
+    private string _status = "Submitted";
+
+    private List<ShopApplicationDto> _items = new();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task Reload() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            var url = $"api/admin/shop-applications?status={Uri.EscapeDataString(_status ?? "")}&page=1&pageSize=50";
+            var res = await Http.GetFromJsonAsync<PagedResult<ShopApplicationDto>>(url);
+            _items = res?.Items ?? new();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally { _loading = false; }
+    }
+
+    private void OpenDetails(Guid id) => Nav.NavigateTo($"/admin/shop-applications/{id}");
+
+    private static bool IsEn => string.Equals(System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "en", StringComparison.OrdinalIgnoreCase);
+    private static string Tr(string fr, string en) => IsEn ? en : fr;
+
+    private static string StatusLabel(string? status) => status switch
+    {
+        "Draft" => Tr("Brouillon", "Draft"),
+        "Submitted" => Tr("Soumise", "Submitted"),
+        "Approved" => Tr("Approuvee", "Approved"),
+        "Rejected" => Tr("Rejetee", "Rejected"),
+        _ => status ?? "-"
+    };
+
+    private static Color ChipColor(string status) => status switch
+    {
+        "Submitted" => Color.Warning,
+        "Approved" => Color.Success,
+        "Rejected" => Color.Error,
+        _ => Color.Default
+    };
+
+    private sealed record PagedResult<T>(List<T>Items, int Total, int Page, int PageSize);
+
+    private sealed record ShopApplicationDto(
+        Guid Id,
+        string Status,
+        string Name,
+        string? ImageUrl,
+        string CountryTag,
+        string City,
+        string? ReviewNote,
+        DateTime CreatedAtUtc,
+        List<ShopApplicationDocumentDto> Documents);
+
+    private sealed record ShopApplicationDocumentDto(Guid Id, string DocType, string FileName, string PublicUrl, long SizeBytes, DateTime CreatedAtUtc);
+}
+
+
+
+
+

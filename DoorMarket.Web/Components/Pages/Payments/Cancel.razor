@@ -1,0 +1,43 @@
+﻿
+@using MudBlazor
+@inject NavigationManager Nav
+@inject IDialogService Dialog
+
+<MudPaper Class="pa-4 mt-3">
+    <MudText Typo="Typo.h5" Class="mb-1">@SL["PaymentCanceledTitle"]</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary">@SL["PaymentCanceledSubtitle"]</MudText>
+
+    <MudDivider Class="my-3" />
+
+    @if (!string.IsNullOrWhiteSpace(OrderId) && Guid.TryParse(OrderId, out var oid))
+    {
+        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-3">@SL["Order"] : <b>#@ShortId(oid)</b>
+        </MudAlert>
+
+        <div class="d-flex gap-2 flex-wrap">
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="() => GoOrder(oid)">
+                @SL["BackToOrder"]
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" OnClick="GoOrders">@SL["MyOrders"]</MudButton>
+        </div>}
+    else
+    {<MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mb-3">@SL["BackToOrdersHint"]</MudAlert>
+
+        <div class="d-flex gap-2 flex-wrap">
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="GoOrders">@SL["MyOrders"]</MudButton>
+        </div>
+    }
+
+    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-3">@SL["PaymentCancelSupportHint"]</MudText>
+</MudPaper>
+
+@code {
+    [SupplyParameterFromQuery] public string? OrderId { get; set; }
+
+    private void GoOrder(Guid id) => Nav.NavigateTo($"/shop/orders/{id}");
+    private void GoOrders() => Nav.NavigateTo("/shop/orders");
+    private static string ShortId(Guid id) => id.ToString("N")[..8];
+}
+
+
+

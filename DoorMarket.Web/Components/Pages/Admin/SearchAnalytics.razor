@@ -1,0 +1,355 @@
+@page "/admin/search-analytics"
+@using System.Globalization
+@using System.Net.Http.Json
+@using MudBlazor
+@inject HttpClient Http
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject NavigationManager Nav
+@inject IStringLocalizer<SharedResource> SL
+
+<h1 class="dm-page-h1">@T("Analytique recherche", "Search analytics")</h1>
+<div class="dm-page-sub">@T("Performance des requetes, clics et intentions clients.", "Search intent, click-through and discovery performance.")</div>
+
+<AuthGuard>
+    @if (!_ready)
+    {
+        <MudPaper Class="pa-4 mt-3 dm-content-card">
+            <MudSkeleton Height="32px" Width="260px" Class="mb-2" />
+            <MudSkeleton Height="18px" Width="380px" />
+        </MudPaper>
+    }
+    else if (!Auth.IsSuperAdmin)
+    {
+        <MudPaper Class="pa-4 mt-3 dm-content-card">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@T("Acces reserve au super admin.", "Super admin access only.")</MudAlert>
+            <MudButton Variant="Variant.Outlined" Class="mt-3" OnClick="@(() => Nav.NavigateTo("/admin/dashboard"))">@SL["Back"]</MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Class="pa-4 mt-3 dm-content-card dm-view-enter">
+            <div class="d-flex flex-wrap gap-2 align-items-end">
+                <MudDatePicker Label="@SL["DateFrom"]" @bind-Date="_from" Variant="Variant.Outlined" />
+                <MudDatePicker Label="@SL["DateTo"]" @bind-Date="_to" Variant="Variant.Outlined" />
+                <MudSelect T="string" Label="@T("Source", "Source")" Variant="Variant.Outlined" @bind-Value="_source">
+                    <MudSelectItem Value="@("")">@SL["All"]</MudSelectItem>
+                    <MudSelectItem Value="@("Web")">Web</MudSelectItem>
+                    <MudSelectItem Value="@("Mobile")">Mobile</MudSelectItem>
+                    <MudSelectItem Value="@("Admin")">Admin</MudSelectItem>
+                </MudSelect>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Reload">@SL["Apply"]</MudButton>
+                <MudButton Variant="Variant.Outlined" OnClick="@(() => Nav.NavigateTo("/admin/search-rules"))">@T("Gerer regles", "Manage rules")</MudButton>
+            </div>
+
+            <MudDivider Class="my-3" />
+
+            @if (_loading)
+            {
+                <MudSkeleton Height="100px" />
+            }
+            else if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_error</MudAlert>
+            }
+            else if (_kpis is not null)
+            {
+                <MudGrid Class="mt-2">
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                            <MudText Class="dm-kpi-label">@T("Recherches", "Searches")</MudText>
+                            <MudText Class="dm-kpi-value">@_kpis.Searches</MudText>
+                            <MudText Class="dm-kpi-meta">@T("volume total des requetes", "total number of search queries")</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                            <MudText Class="dm-kpi-label">@T("Clics resultats", "Result clicks")</MudText>
+                            <MudText Class="dm-kpi-value">@_kpis.Clicks</MudText>
+                            <MudText Class="dm-kpi-meta">@T("clics depuis les ecrans de recherche", "clicks from search surfaces")</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card dm-kpi-tone-success">
+                            <MudText Class="dm-kpi-label">CTR</MudText>
+                            <MudText Class="dm-kpi-value">@FmtPct(_kpis.ClickThroughRate)</MudText>
+                            <MudText Class="dm-kpi-meta">@T("taux de clic apres recherche", "click-through rate after search")</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card dm-kpi-tone-danger">
+                            <MudText Class="dm-kpi-label">@T("Sans resultat", "No-result searches")</MudText>
+                            <MudText Class="dm-kpi-value">@_kpis.NoResultSearches</MudText>
+                            <MudText Class="dm-kpi-meta">@FmtPct(_kpis.NoResultRate)</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                            <MudText Class="dm-kpi-label">@T("Requetes uniques", "Unique queries")</MudText>
+                            <MudText Class="dm-kpi-value">@_kpis.UniqueQueries</MudText>
+                            <MudText Class="dm-kpi-meta">@T("diversite des intentions", "search intent diversity")</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                            <MudText Class="dm-kpi-label">@T("Utilisateurs uniques", "Unique users")</MudText>
+                            <MudText Class="dm-kpi-value">@_kpis.UniqueUsers</MudText>
+                            <MudText Class="dm-kpi-meta">@T("clients connectes actifs", "active authenticated users")</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card">
+                            <MudText Class="dm-kpi-label">@T("Sessions uniques", "Unique sessions")</MudText>
+                            <MudText Class="dm-kpi-value">@_kpis.UniqueSessions</MudText>
+                            <MudText Class="dm-kpi-meta">@T("inclut visiteurs anonymes", "includes anonymous visitors")</MudText>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudPaper Class="pa-3 dm-kpi-card dm-admin-kpi-card dm-kpi-tone-warning">
+                            <MudText Class="dm-kpi-label">@T("Latence moyenne", "Average latency")</MudText>
+                            <MudText Class="dm-kpi-value">@FmtMs(_kpis.AvgLatencyMs)</MudText>
+                            <MudText Class="dm-kpi-meta">@T("temps de reponse recherche", "search response time")</MudText>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+
+                @if (_priorityQueries.Count > 0)
+                {
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mt-4">
+                        <div class="dm-search-analytics-alert-title">@T("Priorites d'optimisation", "Optimization priorities")</div>
+                        <ul class="dm-search-analytics-alert-list">
+                            @foreach (var p in _priorityQueries)
+                            {
+                                <li><b>@p.Query</b> : @p.NoResultSearches/@p.Searches @T("sans resultat", "no-result") (@FmtPct(p.NoResultRate))</li>
+                            }
+                        </ul>
+                    </MudAlert>
+                }
+
+                <MudGrid Class="mt-4">
+                    <MudItem xs="12" lg="8">
+                        <MudPaper Class="pa-3 dm-admin-panel">
+                            <h3 class="dm-admin-panel-title">@T("Top requetes", "Top queries")</h3>
+                            <div class="dm-admin-panel-sub">@T("requetes les plus frequentes avec performance de clic", "most frequent queries with click performance")</div>
+                            <MudTable T="TopQueryRow" Items="_topQueries" Dense="true" Hover="true">
+                                <HeaderContent>
+                                    <MudTh>@T("Requete", "Query")</MudTh>
+                                    <MudTh>@T("Recherches", "Searches")</MudTh>
+                                    <MudTh>@T("Clics", "Clicks")</MudTh>
+                                    <MudTh>CTR</MudTh>
+                                    <MudTh>@T("Sans resultat", "No-result")</MudTh>
+                                    <MudTh>@T("Latence", "Latency")</MudTh>
+                                    <MudTh>@T("Derniere", "Last")</MudTh>
+                                    <MudTh></MudTh>
+                                </HeaderContent>
+                                <RowTemplate Context="q">
+                                    <MudTd><b>@q.Query</b></MudTd>
+                                    <MudTd>@q.Searches</MudTd>
+                                    <MudTd>@q.Clicks</MudTd>
+                                    <MudTd>@FmtPct(q.ClickThroughRate)</MudTd>
+                                    <MudTd>@q.NoResultSearches</MudTd>
+                                    <MudTd>@FmtMs(q.AvgLatencyMs)</MudTd>
+                                    <MudTd>@FmtDate(q.LastSearchedAtUtc)</MudTd>
+                                    <MudTd>
+                                        <AdminRowActionMenu AriaLabel="@SL["Action"]">
+                                            <MudMenuItem Icon="@Icons.Material.Filled.OpenInNew"
+                                                         OnClick="@(() => OpenSearch(q.Query))">
+                                                @T("Tester", "Test")
+                                            </MudMenuItem>
+                                        </AdminRowActionMenu>
+                                    </MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" lg="4">
+                        <MudPaper Class="pa-3 dm-admin-panel">
+                            <h3 class="dm-admin-panel-title">@T("Requetes sans resultat", "No-result queries")</h3>
+                            <div class="dm-admin-panel-sub">@T("opportunites catalogue et synonymes", "catalog and synonym opportunities")</div>
+                            <MudTable T="NoResultQueryRow" Items="_noResultQueries" Dense="true" Hover="true">
+                                <HeaderContent>
+                                    <MudTh>@T("Requete", "Query")</MudTh>
+                                    <MudTh>@T("Occ.", "Count")</MudTh>
+                                    <MudTh>@T("Derniere", "Last")</MudTh>
+                                    <MudTh></MudTh>
+                                </HeaderContent>
+                                <RowTemplate Context="q">
+                                    <MudTd><b>@q.Query</b></MudTd>
+                                    <MudTd>@q.Count</MudTd>
+                                    <MudTd>@FmtDate(q.LastSearchedAtUtc)</MudTd>
+                                    <MudTd>
+                                        <AdminRowActionMenu AriaLabel="@SL["Action"]">
+                                            <MudMenuItem Icon="@Icons.Material.Filled.OpenInNew"
+                                                         OnClick="@(() => OpenSearch(q.Query))">
+                                                @T("Analyser", "Analyze")
+                                            </MudMenuItem>
+                                        </AdminRowActionMenu>
+                                    </MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            }
+        </MudPaper>
+    }
+</AuthGuard>
+
+@code {
+    private bool _ready;
+    private bool _loading = true;
+    private string? _error;
+    private DateTime? _from = DateTime.UtcNow.AddDays(-30);
+    private DateTime? _to = DateTime.UtcNow;
+    private string _source = string.Empty;
+
+    private SearchKpis? _kpis;
+    private List<TopQueryRow> _topQueries = new();
+    private List<NoResultQueryRow> _noResultQueries = new();
+    private List<TopQueryRow> _priorityQueries = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        var t0 = DateTime.UtcNow;
+        while (!Auth.IsReady && (DateTime.UtcNow - t0).TotalSeconds < 5)
+        {
+            await Task.Delay(30);
+        }
+
+        _ready = true;
+        if (!Auth.IsAuthenticated || !Auth.IsSuperAdmin)
+        {
+            StateHasChanged();
+            return;
+        }
+
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    private async Task Reload()
+    {
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            var query = BuildQuery();
+            _kpis = await GetJsonAsync<SearchKpis>($"api/admin/search-analytics/kpis{query}");
+            _topQueries = await GetJsonAsync<List<TopQueryRow>>($"api/admin/search-analytics/top-queries{query}&take=20") ?? new();
+            _noResultQueries = await GetJsonAsync<List<NoResultQueryRow>>($"api/admin/search-analytics/no-result-queries{query}&take=20") ?? new();
+
+            _priorityQueries = _topQueries
+                .Where(x => x.Searches >= 5 && x.NoResultRate >= 40m)
+                .OrderByDescending(x => x.NoResultRate)
+                .ThenByDescending(x => x.NoResultSearches)
+                .Take(5)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private string BuildQuery()
+    {
+        var list = new List<string>();
+        if (_from.HasValue)
+        {
+            list.Add($"from={Uri.EscapeDataString(_from.Value.ToString("yyyy-MM-dd"))}");
+        }
+
+        if (_to.HasValue)
+        {
+            list.Add($"to={Uri.EscapeDataString(_to.Value.ToString("yyyy-MM-dd"))}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(_source))
+        {
+            list.Add($"source={Uri.EscapeDataString(_source)}");
+        }
+
+        return list.Count == 0 ? string.Empty : "?" + string.Join("&", list);
+    }
+
+    private async Task<T?> GetJsonAsync<T>(string url)
+    {
+        using var response = await Http.GetAsync(url);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            var details = string.IsNullOrWhiteSpace(body) ? this.T("Aucun detail.", "No details.") : body;
+            throw new InvalidOperationException($"API {(int)response.StatusCode} {response.ReasonPhrase}: {details}");
+        }
+
+        if (response.Content.Headers.ContentLength == 0)
+        {
+            return default;
+        }
+
+        return await response.Content.ReadFromJsonAsync<T>();
+    }
+
+    private void OpenSearch(string query)
+        => Nav.NavigateTo($"/search?q={Uri.EscapeDataString(query)}");
+
+    private string T(string fr, string en)
+        => IsEn ? en : fr;
+
+    private bool IsEn
+        => string.Equals(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "en", StringComparison.OrdinalIgnoreCase);
+
+    private static string FmtPct(decimal value)
+        => $"{value:0.##}%";
+
+    private static string FmtMs(double value)
+        => $"{value:0.#} ms";
+
+    private static string FmtDate(DateTime? value)
+        => value.HasValue ? value.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm") : "-";
+
+    private sealed record SearchKpis(
+        int Searches,
+        int Clicks,
+        decimal ClickThroughRate,
+        int NoResultSearches,
+        decimal NoResultRate,
+        int UniqueQueries,
+        int UniqueUsers,
+        int UniqueSessions,
+        double AvgResultsCount,
+        double AvgLatencyMs);
+
+    private sealed record TopQueryRow(
+        string Query,
+        int Searches,
+        int Clicks,
+        decimal ClickThroughRate,
+        int NoResultSearches,
+        double AvgResultsCount,
+        double AvgLatencyMs,
+        DateTime? LastSearchedAtUtc)
+    {
+        public decimal NoResultRate => Searches <= 0 ? 0m : decimal.Round((decimal)NoResultSearches * 100m / Searches, 2, MidpointRounding.AwayFromZero);
+    }
+
+    private sealed record NoResultQueryRow(
+        string Query,
+        int Count,
+        DateTime? LastSearchedAtUtc);
+}

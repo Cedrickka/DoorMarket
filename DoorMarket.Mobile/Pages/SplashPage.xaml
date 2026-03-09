@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<local:LocalizedContentPage xmlns:local="clr-namespace:DoorMarket.Mobile.Localization"     x:Class="DoorMarket.Mobile.Pages.SplashPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:markup="clr-namespace:DoorMarket.Mobile.Markup"
+    NavigationPage.HasNavigationBar="False">
+
+    <Grid BackgroundColor="{StaticResource White}">
+        <VerticalStackLayout
+            HorizontalOptions="Center"
+            Padding="24"
+            Spacing="24"
+            VerticalOptions="Center">
+            <Image Source="doormarket_logo_mobile.png" WidthRequest="280" />
+            <Label
+                FontFamily="Inter-Medium"
+                FontSize="14"
+                HorizontalTextAlignment="Center"
+                Text="{markup:Translate SplashTagline}"
+                TextColor="{StaticResource DoorBlue}" />
+            <ActivityIndicator IsRunning="True" />
+        </VerticalStackLayout>
+    </Grid>
+</local:LocalizedContentPage>
+
+
+

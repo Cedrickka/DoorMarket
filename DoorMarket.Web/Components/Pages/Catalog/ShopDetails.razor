@@ -1,0 +1,637 @@
+@page "/shops/{Id:guid}"
+@using System.Net
+@using System.Net.Http.Json
+@using AppCategoryDto = DoorMarket.Application.DTOs.Categories.CategoryDto
+@using AppProductDto = DoorMarket.Application.DTOs.Products.ProductDto
+@using AppProductPage = DoorMarket.Application.Common.PagedResult<DoorMarket.Application.DTOs.Products.ProductDto>
+@using AppReviewPage = DoorMarket.Application.Common.PagedResult<DoorMarket.Application.DTOs.Shops.ShopReviewDto>
+@using AppReviewSummaryDto = DoorMarket.Application.DTOs.Shops.ShopReviewSummaryDto
+@using AppShopDto = DoorMarket.Application.DTOs.Shops.ShopDto
+@using System.Globalization
+@using MudBlazor
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject DoorMarket.Web.Services.CartApiClient CartApi
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject DoorMarket.Web.Services.GuestCartService GuestCart
+
+<PageTitle>@SL["Shop"]</PageTitle>
+
+@if (_loadingShop)
+{
+    <MudPaper Class="pa-4 mt-3">
+        <MudSkeleton Height="26px" Width="240px" Class="mb-2" />
+        <MudSkeleton Height="16px" Width="180px" />
+    </MudPaper>
+}
+else if (_shop is null)
+{
+    <MudPaper Class="pa-4 mt-3">
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+            @(_shopError ?? SL["ShopNotFound"])
+        </MudAlert>
+        <MudButton Variant="Variant.Outlined" Class="mt-3" OnClick="@(() => Nav.NavigateTo("/shops"))">
+            @SL["BackToShops"]
+        </MudButton>
+    </MudPaper>
+}
+else
+{
+    <h1 class="dm-page-h1">@_shop.Name</h1>
+    <div class="dm-page-sub">@_shop.City, @_shop.CountryTag</div>
+    <img src="@MediaCatalog.Shop(_shop.ImageUrl, _shop.Name, _shop.Id)" alt="@_shop.Name" class="dm-product-hero mt-3" />
+
+    <MudPaper Class="pa-4 mt-3 dm-content-card">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="6" md="5">
+                <MudTextField T="string"
+                              Label="@SL["ProductSearch"]"
+                              Variant="Variant.Outlined"
+                              Immediate="true"
+                              Value="_q"
+                              ValueChanged="OnSearchChanged" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudSelect T="Guid?" Label="@SL["Categories"]" Variant="Variant.Outlined"
+                           Value="_selectedCategoryId" ValueChanged="OnCategoryChanged">
+                    <MudSelectItem T="Guid?" Value="@((Guid?)null)">@SL["All"]</MudSelectItem>
+                    @foreach (var category in _categories)
+                    {
+                        <MudSelectItem T="Guid?" Value="@((Guid?)category.Id)">@CategoryLabel(category)</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3" Class="d-flex align-center justify-end">
+                <MudButton Variant="Variant.Outlined" OnClick="ReloadProducts" Disabled="_loadingProducts">@SL["Refresh"]</MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @if (_loadingProducts)
+    {
+        <MudGrid Class="mt-3" Spacing="2">
+            @for (var i = 0; i < 6; i++)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudPaper Class="pa-4 dm-content-card">
+                        <MudSkeleton Height="24px" Width="70%" />
+                        <MudSkeleton Height="16px" Width="40%" Class="mt-1" />
+                        <MudSkeleton Height="36px" Class="mt-3" />
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+    else if (_productError is not null)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_productError</MudAlert>
+        </MudPaper>
+    }
+    else if (_products.Items.Count == 0)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@SL["NoProductAvailable"]</MudAlert>
+        </MudPaper>
+    }
+    else
+    {
+        <MudGrid Class="mt-3" Spacing="2">
+            @foreach (var product in _products.Items)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <article class="dm-product-card">
+                        <img src="@MediaCatalog.Product(product.MainImageUrl, product.Name, product.CategoryName, product.Id)"
+                             alt="@product.Name"
+                             class="dm-product-thumb" />
+                        <div class="dm-product-body">
+                            <h3 class="dm-product-name">@product.Name</h3>
+                            <div class="dm-product-meta">@ProductCategoryLabel(product)</div>
+                            <div class="dm-product-price">@product.EffectivePrice.ToString("0.00") @product.Currency</div>
+                            @if (product.HasActivePromotion)
+                            {
+                                <div class="dm-product-meta" style="text-decoration:line-through">@product.Price.ToString("0.00") @product.Currency</div>
+                            }
+                            <div class="dm-product-meta">@SL["StockLabel"]: @product.StockQty</div>
+                            <div class="dm-card-actions">
+                                <MudButton Variant="Variant.Outlined"
+                                           Class="dm-action-btn dm-action-btn-outline"
+                                           OnClick="@(() => OpenProduct(product.Id))">
+                                    @SL["Details"]
+                                </MudButton>
+                                <MudButton Color="Color.Primary"
+                                           Variant="Variant.Filled"
+                                           Class="dm-action-btn dm-action-btn-primary"
+                                           Disabled="@(product.StockQty <= 0 || _addingProductId == product.Id)"
+                                           OnClick="@(() => AddToCart(product))">
+                                    @if (_addingProductId == product.Id)
+                                    {
+                                        <MudProgressCircular Indeterminate="true" Style="width:16px;height:16px" Class="me-1" />
+                                        <span>@SL["Adding"]</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@SL["Add"]</span>
+                                    }
+                                </MudButton>
+                            </div>
+                        </div>
+                    </article>
+                </MudItem>
+            }
+        </MudGrid>
+
+        <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+            <div class="dm-muted">@SL["Page"] @_productPage / @ProductTotalPages()</div>
+            <DmPager CurrentPage="_productPage" TotalPages="ProductTotalPages()" OnPageChanged="OnProductsPageChanged" />
+        </div>
+    }
+
+    <MudPaper Class="pa-4 mt-3 dm-content-card">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+            <MudText Typo="Typo.h6">@T("Avis clients", "Customer reviews")</MudText>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <MudSelect T="string"
+                           Variant="Variant.Outlined"
+                           Dense="true"
+                           Value="_reviewSort"
+                           ValueChanged="OnReviewSortChanged"
+                           Style="min-width:210px">
+                    <MudSelectItem T="string" Value="@("recent")">@T("Recents", "Recent")</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("verified_purchase")">@T("Achats verifies", "Verified purchases")</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("rating_desc")">@T("Note decroissante", "Rating high to low")</MudSelectItem>
+                    <MudSelectItem T="string" Value="@("rating_asc")">@T("Note croissante", "Rating low to high")</MudSelectItem>
+                </MudSelect>
+                <MudButton Variant="Variant.Outlined" Disabled="_loadingReviews" OnClick="LoadReviewsAsync">@SL["Refresh"]</MudButton>
+            </div>
+        </div>
+
+        @if (_loadingReviews)
+        {
+            <MudSkeleton Height="30px" Width="220px" />
+            <MudSkeleton Height="75px" Class="mt-2" />
+        }
+        else if (_reviewError is not null)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_reviewError</MudAlert>
+        }
+        else
+        {
+            <MudPaper Outlined="true" Class="pa-3 mb-3">
+                <MudText Typo="Typo.subtitle1">
+                    @if (_reviewSummary.ReviewCount == 0)
+                    {
+                        @T("Aucun avis pour le moment", "No reviews yet")
+                    }
+                    else
+                    {
+                        <span>@Stars((int)Math.Round(_reviewSummary.AverageRating ?? 0m))</span>
+                        <span class="ms-2">@(_reviewSummary.AverageRating?.ToString("0.00") ?? "0.00") / 5</span>
+                        <span class="ms-2 dm-muted">(@_reviewSummary.ReviewCount)</span>
+                    }
+                </MudText>
+                @if (_reviewSummary.ReviewCount > 0)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        5*: @_reviewSummary.Count5 | 4*: @_reviewSummary.Count4 | 3*: @_reviewSummary.Count3 | 2*: @_reviewSummary.Count2 | 1*: @_reviewSummary.Count1
+                    </MudText>
+                }
+            </MudPaper>
+
+            @if (CanWriteReview)
+            {
+                <MudPaper Outlined="true" Class="pa-3 mb-3">
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">@T("Laisser un avis", "Leave a review")</MudText>
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12" sm="4">
+                            <MudSelect T="int" Label="@T("Note", "Rating")" Variant="Variant.Outlined" @bind-Value="_newRating">
+                                @for (var i = 5; i >= 1; i--)
+                                {
+                                    <MudSelectItem T="int" Value="@i">@($"{i} - {Stars(i)}")</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" sm="8">
+                            <MudTextField T="string"
+                                          Label="@T("Commentaire (optionnel)", "Comment (optional)")"
+                                          Variant="Variant.Outlined"
+                                          Lines="3"
+                                          MaxLength="1000"
+                                          Immediate="true"
+                                          @bind-Value="_newComment" />
+                            <MudTextField T="string"
+                                          Label="@T("URL photos (optionnel, separees par virgule)", "Photo URLs (optional, comma-separated)")"
+                                          Variant="Variant.Outlined"
+                                          Immediate="true"
+                                          Class="mt-2"
+                                          @bind-Value="_newPhotoUrls" />
+                            <MudTextField T="string"
+                                          Label="@T("URL videos (optionnel, separees par virgule)", "Video URLs (optional, comma-separated)")"
+                                          Variant="Variant.Outlined"
+                                          Immediate="true"
+                                          Class="mt-2"
+                                          @bind-Value="_newVideoUrls" />
+                        </MudItem>
+                    </MudGrid>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Disabled="_submittingReview"
+                               OnClick="SubmitReview">
+                        @(_submittingReview ? T("Envoi...", "Submitting...") : T("Publier l'avis", "Submit review"))
+                    </MudButton>
+                </MudPaper>
+            }
+
+            @if (_reviews.Items.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@T("Aucun avis pour cette boutique.", "No reviews for this shop.")</MudAlert>
+            }
+            else
+            {
+                @foreach (var review in _reviews.Items)
+                {
+                    <MudPaper Outlined="true" Class="pa-3 mb-2">
+                        <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                            <div>
+                                <MudText Typo="Typo.subtitle2">@DisplayReviewer(review.UserEmail)</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@review.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</MudText>
+                                @if (review.IsVerifiedPurchase)
+                                {
+                                    <MudChip T="string" Variant="Variant.Outlined" Color="Color.Success" Label="true" Class="mt-1">
+                                        @T("Achat verifie", "Verified purchase")
+                                    </MudChip>
+                                }
+                            </div>
+                            <MudChip T="string" Variant="Variant.Outlined" Color="Color.Warning" Label="true">
+                                @($"{review.Rating}/5 {Stars(review.Rating)}")
+                            </MudChip>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(review.Comment))
+                        {
+                            <MudText Typo="Typo.body2" Class="mt-2">@review.Comment</MudText>
+                        }
+                        @if (review.PhotoUrls.Count > 0)
+                        {
+                            <div class="d-flex gap-2 flex-wrap mt-2">
+                                @foreach (var photo in review.PhotoUrls)
+                                {
+                                    <img src="@ResolveMediaUrl(photo)"
+                                         alt="review-photo"
+                                         style="width:64px;height:64px;object-fit:cover;border-radius:10px;border:1px solid rgba(0,0,0,.12);" />
+                                }
+                            </div>
+                        }
+                        @if (review.VideoUrls.Count > 0)
+                        {
+                            <div class="d-flex gap-2 flex-wrap mt-2">
+                                @foreach (var video in review.VideoUrls)
+                                {
+                                    <MudChip T="string" Variant="Variant.Outlined" Label="true">
+                                        <a href="@ResolveMediaUrl(video)" target="_blank" rel="noreferrer">
+                                            @T("Video", "Video")
+                                        </a>
+                                    </MudChip>
+                                }
+                            </div>
+                        }
+                        <div class="mt-2">
+                            <MudButton Variant="Variant.Outlined"
+                                       Size="Size.Small"
+                                       Disabled="@(_votingHelpfulReviewId == review.Id)"
+                                       Color="@(review.IsHelpfulByCurrentUser ? Color.Primary : Color.Default)"
+                                       OnClick="@(() => VoteHelpful(review))">
+                                @if (_votingHelpfulReviewId == review.Id)
+                                {
+                                    <MudProgressCircular Indeterminate="true" Style="width:14px;height:14px" Class="me-1" />
+                                }
+                                @T("Utile", "Helpful") (@review.HelpfulCount)
+                            </MudButton>
+                        </div>
+                    </MudPaper>
+                }
+            }
+        }
+    </MudPaper>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private bool _loadingShop = true;
+    private bool _loadingProducts = true;
+    private bool _loadingReviews = true;
+    private string? _shopError;
+    private string? _productError;
+    private string? _reviewError;
+
+    private AppShopDto? _shop;
+    private List<AppCategoryDto> _categories = new();
+    private AppProductPage _products = new();
+    private AppReviewPage _reviews = new();
+    private AppReviewSummaryDto _reviewSummary = new(Guid.Empty, null, 0, 0, 0, 0, 0, 0);
+
+    private static bool IsEnglish()
+        => string.Equals(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "en", StringComparison.OrdinalIgnoreCase);
+
+    private static string CategoryLabel(AppCategoryDto category)
+        => IsEnglish() && !string.IsNullOrWhiteSpace(category.NameEn) ? category.NameEn! : category.Name;
+
+    private static string ProductCategoryLabel(AppProductDto product)
+        => IsEnglish() && !string.IsNullOrWhiteSpace(product.CategoryNameEn) ? product.CategoryNameEn! : product.CategoryName;
+
+    private string _q = string.Empty;
+    private Guid? _selectedCategoryId;
+    private int _productPage = 1;
+    private const int ProductPageSize = 12;
+    private Guid? _addingProductId;
+    private int _newRating = 5;
+    private string _newComment = string.Empty;
+    private string _newPhotoUrls = string.Empty;
+    private string _newVideoUrls = string.Empty;
+    private bool _submittingReview;
+    private string _reviewSort = "recent";
+    private Guid? _votingHelpfulReviewId;
+    private const int ReviewsPageSize = 10;
+
+    private bool CanWriteReview => Auth.IsAuthenticated && (Auth.IsClient || (!Auth.IsAdmin && !Auth.IsShop));
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadShopAsync();
+        await LoadProductsAsync();
+        await LoadReviewsAsync();
+    }
+
+    private async Task LoadShopAsync()
+    {
+        _loadingShop = true;
+        _shopError = null;
+
+        try
+        {
+            _shop = await Http.GetFromJsonAsync<AppShopDto>($"api/shops/{Id}");
+            _categories = await Http.GetFromJsonAsync<List<AppCategoryDto>>("api/categories") ?? new List<AppCategoryDto>();
+        }
+        catch (Exception ex)
+        {
+            _shopError = ex.Message;
+            _shop = null;
+            _categories = new List<AppCategoryDto>();
+        }
+        finally
+        {
+            _loadingShop = false;
+        }
+    }
+
+    private async Task LoadProductsAsync()
+    {
+        _loadingProducts = true;
+        _productError = null;
+
+        try
+        {
+            var query = new List<string>
+            {
+                $"shopId={Id}",
+                $"page={_productPage}",
+                $"pageSize={ProductPageSize}",
+                "sort=relevance"
+            };
+
+            if (_selectedCategoryId.HasValue)
+            {
+                query.Add($"categoryId={_selectedCategoryId.Value}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(_q))
+            {
+                query.Add($"q={Uri.EscapeDataString(_q.Trim())}");
+            }
+
+            var url = $"api/search/products?{string.Join("&", query)}";
+            _products = await Http.GetFromJsonAsync<AppProductPage>(url) ?? new AppProductPage();
+        }
+        catch (Exception ex)
+        {
+            _productError = ex.Message;
+            _products = new AppProductPage();
+        }
+        finally
+        {
+            _loadingProducts = false;
+        }
+    }
+
+    private int ProductTotalPages() => Math.Max(1, (int)Math.Ceiling(_products.Total / (double)ProductPageSize));
+
+    private async Task OnProductsPageChanged(int page)
+    {
+        _productPage = Math.Clamp(page, 1, ProductTotalPages());
+        await LoadProductsAsync();
+    }
+
+    private async Task OnSearchChanged(string value)
+    {
+        _q = value ?? string.Empty;
+        _productPage = 1;
+        await LoadProductsAsync();
+    }
+
+    private async Task OnCategoryChanged(Guid? value)
+    {
+        _selectedCategoryId = value;
+        _productPage = 1;
+        await LoadProductsAsync();
+    }
+
+    private async Task ReloadProducts()
+    {
+        _productPage = 1;
+        await LoadProductsAsync();
+    }
+
+    private async Task LoadReviewsAsync()
+    {
+        _loadingReviews = true;
+        _reviewError = null;
+
+        try
+        {
+            _reviewSummary = await Http.GetFromJsonAsync<AppReviewSummaryDto>($"api/shops/{Id}/reviews/summary")
+                ?? new AppReviewSummaryDto(Id, null, 0, 0, 0, 0, 0, 0);
+
+            _reviews = await Http.GetFromJsonAsync<AppReviewPage>($"api/shops/{Id}/reviews?page=1&pageSize={ReviewsPageSize}&sort={Uri.EscapeDataString(_reviewSort)}")
+                ?? new AppReviewPage();
+        }
+        catch (Exception ex)
+        {
+            _reviewError = ex.Message;
+            _reviews = new AppReviewPage();
+            _reviewSummary = new AppReviewSummaryDto(Id, null, 0, 0, 0, 0, 0, 0);
+        }
+        finally
+        {
+            _loadingReviews = false;
+        }
+    }
+
+    private void OpenProduct(Guid productId) => Nav.NavigateTo($"/products/{productId}");
+
+    private async Task AddToCart(AppProductDto product)
+    {
+        _addingProductId = product.Id;
+
+        try
+        {
+            if (Auth.IsAuthenticated)
+            {
+                await CartApi.AddItemAsync(product.Id, 1);
+            }
+            else
+            {
+                var price = product.HasActivePromotion ? product.EffectivePrice : product.Price;
+                await GuestCart.AddItemAsync(
+                    new GuestCartProduct(product.Id, product.Name, price, product.Currency, product.MainImageUrl),
+                    1);
+            }
+            Snackbar.Add(SL["ProductAddedCart"], Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _addingProductId = null;
+        }
+    }
+
+    private async Task SubmitReview()
+    {
+        if (!CanWriteReview)
+        {
+            Snackbar.Add(T("Connexion requise pour laisser un avis", "Login required to leave a review"), Severity.Warning);
+            return;
+        }
+
+        _submittingReview = true;
+        try
+        {
+            var request = new DoorMarket.Application.DTOs.Shops.CreateShopReviewRequest(
+                _newRating,
+                string.IsNullOrWhiteSpace(_newComment) ? null : _newComment.Trim(),
+                null,
+                ParseUrlCsv(_newPhotoUrls),
+                ParseUrlCsv(_newVideoUrls));
+
+            var response = await Http.PostAsJsonAsync($"api/shops/{Id}/reviews", request);
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                throw new InvalidOperationException(string.IsNullOrWhiteSpace(body)
+                    ? $"API {(int)response.StatusCode}"
+                    : body);
+            }
+
+            _newComment = string.Empty;
+            _newPhotoUrls = string.Empty;
+            _newVideoUrls = string.Empty;
+            _newRating = 5;
+            Snackbar.Add(T("Avis enregistre", "Review submitted"), Severity.Success);
+            await LoadReviewsAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _submittingReview = false;
+        }
+    }
+
+    private static string Stars(int rating)
+    {
+        var safe = Math.Clamp(rating, 0, 5);
+        return new string('*', safe) + new string('-', 5 - safe);
+    }
+
+    private static string DisplayReviewer(string? email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return "Client";
+        }
+
+        var at = email.IndexOf('@');
+        return at <= 0 ? email : email[..at];
+    }
+
+    private async Task OnReviewSortChanged(string value)
+    {
+        _reviewSort = string.IsNullOrWhiteSpace(value) ? "recent" : value;
+        await LoadReviewsAsync();
+    }
+
+    private async Task VoteHelpful(DoorMarket.Application.DTOs.Shops.ShopReviewDto review)
+    {
+        _votingHelpfulReviewId = review.Id;
+        try
+        {
+            var response = await Http.PostAsJsonAsync(
+                $"api/shops/{Id}/reviews/{review.Id}/helpful",
+                new DoorMarket.Application.DTOs.Shops.VoteShopReviewHelpfulRequest(!review.IsHelpfulByCurrentUser));
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                throw new InvalidOperationException(string.IsNullOrWhiteSpace(body)
+                    ? $"API {(int)response.StatusCode}"
+                    : body);
+            }
+
+            await LoadReviewsAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _votingHelpfulReviewId = null;
+        }
+    }
+
+    private static IReadOnlyList<string>? ParseUrlCsv(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        var items = raw
+            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        return items.Count == 0 ? null : items;
+    }
+
+    private static string ResolveMediaUrl(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return string.Empty;
+        }
+
+        if (Uri.TryCreate(raw, UriKind.Absolute, out var absolute))
+        {
+            return absolute.ToString();
+        }
+
+        return raw.StartsWith("/", StringComparison.Ordinal) ? raw : "/" + raw;
+    }
+
+    private static string T(string fr, string en) => IsEnglish() ? en : fr;
+}

@@ -1,0 +1,151 @@
+﻿
+@using System.Net.Http.Json
+@using MudBlazor
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<MudPaper Class="pa-4 mt-3">
+    <MudText Typo="Typo.h5" Class="mb-1">@SL["PaymentSuccessTitle"]</MudText>
+    <MudText Typo="Typo.body2" Color="Color.Secondary">@SL["PaymentSuccessSubtitle"]</MudText>
+
+    <MudDivider Class="my-3" />
+
+    @if (_loading)
+    {
+        <MudSkeleton Height="22px" Width="280px" Class="mb-2" />
+        <MudSkeleton Height="18px" Width="420px" Class="mb-4" />
+        <MudSkeleton Height="120px" />}
+    else if (_error is not null)
+    {<MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+            @_error
+        </MudAlert>
+
+        <div class="d-flex gap-2 mt-3 flex-wrap">
+            <MudButton Variant="Variant.Outlined" OnClick="Retry">@SL["Retry"]</MudButton>
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="GoHome">@SL["Home"]</MudButton>
+        </div>}
+    else if (_order is null)
+    {<MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">@SL["OrderLoadFailed"]</MudAlert>
+
+        <div class="d-flex gap-2 mt-3 flex-wrap">
+            <MudButton Variant="Variant.Outlined" OnClick="GoHome">@SL["Home"]</MudButton>
+        </div>}
+    else
+    {<MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Class="mb-3">@SL["Order"] <b>#@ShortId(_order.Id)</b> - @SL["Payment"] : <b>@_order.PaymentStatus</b> - @SL["Status"] : <b>@_order.Status</b>
+        </MudAlert>
+
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="6">
+                <MudPaper Class="pa-3" Outlined="true">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@SL["Total"]</MudText>
+                    <MudText Typo="Typo.h6">@_order.TotalAmount.ToString("0.00") @_order.Currency</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudPaper Class="pa-3" Outlined="true">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@SL["CreatedAt"]</MudText>
+                    <MudText Typo="Typo.h6">@_order.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <div class="d-flex gap-2 mt-3 flex-wrap">
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="GoToOrder">@SL["ViewOrder"]</MudButton>
+
+            <MudButton Variant="Variant.Outlined" OnClick="GoOrders">@SL["MyOrders"]</MudButton>
+        </div>
+
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-3">@SL["PaymentWebhookNote"]</MudText>
+    }
+</MudPaper>
+
+@code {
+    [SupplyParameterFromQuery] public string? OrderId { get; set; }
+
+    private bool _loading = true;
+    private string? _error;
+
+    private OrderView? _order;
+
+    // retry webhook: 0.5s, 1s, 2s, 3s, 4s (max ~10s)
+    private static readonly int[] RetryDelaysMs = [500, 1000, 2000, 3000, 4000];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAndConfirmAsync();
+    }
+
+    private async Task LoadAndConfirmAsync()
+    {
+        _loading = true;
+        _error = null;
+        _order = null;
+
+        if (!Guid.TryParse(OrderId, out var orderId))
+        {
+            _error = SL["InvalidOrderIdParam"];
+            _loading = false;
+            return;
+        }
+
+        try
+        {
+            // On retente plusieurs fois pour laisser le temps au webhook de passer.
+            foreach (var delay in RetryDelaysMs.Prepend(0))
+            {
+                if (delay > 0) await Task.Delay(delay);
+
+                var dto = await Http.GetFromJsonAsync<OrderView>($"api/orders/{orderId}");
+                _order = dto;
+
+                if (_order is not null && string.Equals(_order.PaymentStatus, "Paid", StringComparison.OrdinalIgnoreCase))
+                {
+                    Snackbar.Add(SL["PaymentConfirmedMaybe"], Severity.Success);
+                    break;
+                }
+            }
+
+            if (_order is not null && !string.Equals(_order.PaymentStatus, "Paid", StringComparison.OrdinalIgnoreCase))
+            {
+                Snackbar.Add(SL["PaymentConfirmingRefreshHint"], Severity.Info);
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task Retry() => await LoadAndConfirmAsync();
+
+    private void GoToOrder()
+    {
+        if (_order is null) return;
+        Nav.NavigateTo($"/shop/orders/{_order.Id}");
+    }
+
+    private void GoOrders() => Nav.NavigateTo("/shop/orders");
+
+    private void GoHome() => Nav.NavigateTo("/");
+
+    private static string ShortId(Guid id) => id.ToString("N")[..8];
+
+    // Vue minimale (évite d'importer tout ton DTO si tu veux rester léger)
+    private sealed record OrderView(
+        Guid Id,
+        string Status,
+        string PaymentStatus,
+        decimal TotalAmount,
+        string Currency,
+        DateTime CreatedAtUtc
+    );
+}
+
+
+
+

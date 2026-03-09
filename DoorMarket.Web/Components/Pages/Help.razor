@@ -1,0 +1,390 @@
+@page "/help"
+@page "/aide"
+@using System.Net.Http.Json
+@using System.Text.Json
+@using MudBlazor
+@inject IStringLocalizer<HelpResource> HL
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>@HL["HelpTitle"]</PageTitle>
+
+<MudPaper Class="dm-help-hero pa-6">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+        <MudStack Spacing="1">
+            <MudText Typo="Typo.h3" Class="dm-help-title">@HL["HelpTitle"]</MudText>
+            <MudText Typo="Typo.subtitle1" Class="dm-help-sub">@HL["HelpSubtitle"]</MudText>
+        </MudStack>
+
+        <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled" Class="dm-help-chip">
+            <MudIcon Icon="@Icons.Material.Filled.SupportAgent" Class="mr-2" />
+            @HL["HelpTagline"]
+        </MudChip>
+    </MudStack>
+
+    <MudDivider Class="my-4" />
+
+    <MudText Typo="Typo.subtitle2" Class="dm-muted mb-2">@HL["TocTitle"]</MudText>
+    <MudStack Row="true" Spacing="2" Class="dm-help-toc" Wrap="Wrap.Wrap">
+        <MudChip T="string" Variant="Variant.Outlined" OnClick="@(() => ScrollTo("intro"))">@HL["TocIntro"]</MudChip>
+        <MudChip T="string" Variant="Variant.Outlined" OnClick="@(() => ScrollTo("how"))">@HL["TocHow"]</MudChip>
+        <MudChip T="string" Variant="Variant.Outlined" OnClick="@(() => ScrollTo("delivery"))">@HL["TocDelivery"]</MudChip>
+        <MudChip T="string" Variant="Variant.Outlined" OnClick="@(() => ScrollTo("payments"))">@HL["TocPayments"]</MudChip>
+        <MudChip T="string" Variant="Variant.Outlined" OnClick="@(() => ScrollTo("status"))">@HL["TocStatus"]</MudChip>
+        <MudChip T="string" Variant="Variant.Outlined" OnClick="@(() => ScrollTo("faq"))">@HL["TocFaq"]</MudChip>
+        <MudChip T="string" Variant="Variant.Outlined" OnClick="@(() => ScrollTo("support"))">@HL["TocSupport"]</MudChip>
+    </MudStack>
+</MudPaper>
+
+<MudGrid Class="mt-4" Spacing="3">
+
+    <MudItem xs="12" id="intro">
+        <MudPaper Class="pa-4 dm-content-card">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Medium" />
+                <MudText Typo="Typo.h6">@HL["HelpIntroTitle"]</MudText>
+            </MudStack>
+            <MudText Typo="Typo.body2" Class="mt-2">@HL["HelpIntroBody"]</MudText>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="6" id="how">
+        <MudPaper Class="pa-4 dm-content-card">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.PlaylistAddCheck" />
+                <MudText Typo="Typo.h6">@HL["HelpHowTitle"]</MudText>
+            </MudStack>
+
+            <MudList T="string" Dense="true">
+                <MudListItem T="string">@HL["HelpHowStep1"]</MudListItem>
+                <MudListItem T="string">@HL["HelpHowStep2"]</MudListItem>
+                <MudListItem T="string">@HL["HelpHowStep3"]</MudListItem>
+                <MudListItem T="string">@HL["HelpHowStep4"]</MudListItem>
+                <MudListItem T="string">@HL["HelpHowStep5"]</MudListItem>
+                <MudListItem T="string">@HL["HelpHowStep6"]</MudListItem>
+            </MudList>
+
+
+            <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Class="mt-3">
+                @HL["HelpHowTip"]
+            </MudAlert>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4 dm-content-card">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.Storefront" />
+                <MudText Typo="Typo.h6">@HL["HelpProductsTitle"]</MudText>
+            </MudStack>
+            <MudText Typo="Typo.body2" Class="mt-2">@HL["HelpProductsBody"]</MudText>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4 dm-content-card">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.ShoppingCart" />
+                <MudText Typo="Typo.h6">@HL["HelpCartTitle"]</MudText>
+            </MudStack>
+            <MudText Typo="Typo.body2" Class="mt-2">@HL["HelpCartBody1"]</MudText>
+            <MudText Typo="Typo.body2" Class="mt-2">@HL["HelpCartBody2"]</MudText>
+
+            <MudList T="string" Dense="true">
+                <MudListItem T="string">@HL["HelpCartReason1"]</MudListItem>
+                <MudListItem T="string">@HL["HelpCartReason2"]</MudListItem>
+                <MudListItem T="string">@HL["HelpCartReason3"]</MudListItem>
+            </MudList>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="6" id="delivery">
+        <MudPaper Class="pa-4 dm-content-card">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.LocalShipping" />
+                <MudText Typo="Typo.h6">@HL["HelpDeliveryTitle"]</MudText>
+            </MudStack>
+            <MudText Typo="Typo.body2" Class="mt-2">@HL["HelpDeliveryBody1"]</MudText>
+            <MudText Typo="Typo.body2" Class="mt-2">@HL["HelpDeliveryBody2"]</MudText>
+            <MudText Typo="Typo.body2" Class="mt-2">@HL["HelpDeliveryBody3"]</MudText>
+
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-3">
+                @HL["HelpDeliveryNote"]
+            </MudAlert>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" id="payments">
+        <MudPaper Class="pa-4 dm-content-card">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.CreditCard" />
+                <MudText Typo="Typo.h6">@HL["HelpPaymentsTitle"]</MudText>
+            </MudStack>
+
+            <MudText Typo="Typo.subtitle2" Class="mt-3">@HL["HelpStripeTitle"]</MudText>
+            <MudText Typo="Typo.body2" Class="mt-1">@HL["HelpStripeBody"]</MudText>
+
+            <MudText Typo="Typo.subtitle2" Class="mt-3">@HL["HelpPayPalTitle"]</MudText>
+            <MudText Typo="Typo.body2" Class="mt-1">@HL["HelpPayPalBody"]</MudText>
+
+            <MudText Typo="Typo.subtitle2" Class="mt-3">@HL["HelpPrepaidTitle"]</MudText>
+            <MudText Typo="Typo.body2" Class="mt-1">@HL["HelpPrepaidBody"]</MudText>
+
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mt-3">
+                @HL["HelpPaymentsNote"]
+            </MudAlert>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4 dm-content-card">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.Security" />
+                <MudText Typo="Typo.h6">@HL["HelpAccountTitle"]</MudText>
+            </MudStack>
+            <MudText Typo="Typo.body2" Class="mt-2">@HL["HelpAccountBody"]</MudText>
+            <MudList T="string" Dense="true">
+                <MudListItem T="string">@HL["HelpAccountReason1"]</MudListItem>
+                <MudListItem T="string">@HL["HelpAccountReason2"]</MudListItem>
+                <MudListItem T="string">@HL["HelpAccountReason3"]</MudListItem>
+                <MudListItem T="string">@HL["HelpAccountReason4"]</MudListItem>
+            </MudList>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="6" id="status">
+        <MudPaper Class="pa-4 dm-content-card">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.Timeline" />
+                <MudText Typo="Typo.h6">@HL["HelpStatusTitle"]</MudText>
+            </MudStack>
+            <MudList T="string" Dense="true">
+                <MudListItem T="string">@HL["HelpStatusItem1"]</MudListItem>
+                <MudListItem T="string">@HL["HelpStatusItem2"]</MudListItem>
+                <MudListItem T="string">@HL["HelpStatusItem3"]</MudListItem>
+                <MudListItem T="string">@HL["HelpStatusItem4"]</MudListItem>
+                <MudListItem T="string">@HL["HelpStatusItem5"]</MudListItem>
+                <MudListItem T="string">@HL["HelpStatusItem6"]</MudListItem>
+            </MudList>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12">
+        <MudPaper Class="pa-4 dm-content-card">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.NotificationsActive" />
+                <MudText Typo="Typo.h6">@HL["HelpShopTitle"]</MudText>
+            </MudStack>
+            <MudText Typo="Typo.body2" Class="mt-2">@HL["HelpShopBody1"]</MudText>
+            <MudText Typo="Typo.body2" Class="mt-2">@HL["HelpShopBody2"]</MudText>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="7" id="faq">
+        <MudPaper Class="pa-4 dm-content-card">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.LiveHelp" />
+                <MudText Typo="Typo.h6">@HL["HelpFaqTitle"]</MudText>
+            </MudStack>
+
+            <MudExpansionPanels Class="mt-2" Elevation="0">
+                <MudExpansionPanel Text="@HL["HelpFaqQ1"]">
+                    <MudText Typo="Typo.body2" Class="dm-muted">@HL["HelpFaqA1"]</MudText>
+                </MudExpansionPanel>
+                <MudExpansionPanel Text="@HL["HelpFaqQ2"]">
+                    <MudText Typo="Typo.body2" Class="dm-muted">@HL["HelpFaqA2"]</MudText>
+                </MudExpansionPanel>
+                <MudExpansionPanel Text="@HL["HelpFaqQ3"]">
+                    <MudText Typo="Typo.body2" Class="dm-muted">@HL["HelpFaqA3"]</MudText>
+                </MudExpansionPanel>
+                <MudExpansionPanel Text="@HL["HelpFaqQ4"]">
+                    <MudText Typo="Typo.body2" Class="dm-muted">@HL["HelpFaqA4"]</MudText>
+                </MudExpansionPanel>
+                <MudExpansionPanel Text="@HL["HelpFaqQ5"]">
+                    <MudText Typo="Typo.body2" Class="dm-muted">@HL["HelpFaqA5"]</MudText>
+                </MudExpansionPanel>
+                <MudExpansionPanel Text="@HL["HelpFaqQ6"]">
+                    <MudText Typo="Typo.body2" Class="dm-muted">@HL["HelpFaqA6"]</MudText>
+                </MudExpansionPanel>
+                <MudExpansionPanel Text="@HL["HelpFaqQ7"]">
+                    <MudText Typo="Typo.body2" Class="dm-muted">@HL["HelpFaqA7"]</MudText>
+                </MudExpansionPanel>
+            </MudExpansionPanels>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="5" id="support">
+        <MudPaper Class="pa-4 dm-content-card">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.ContactSupport" />
+                <MudText Typo="Typo.h6">@HL["HelpSupportTitle"]</MudText>
+            </MudStack>
+            <MudText Typo="Typo.body2" Class="mt-2">@HL["HelpSupportBody"]</MudText>
+
+            <MudDivider Class="my-3" />
+
+            <MudText Typo="Typo.body2"><strong>@HL["HelpSupportEmailLabel"]</strong> @HL["HelpSupportEmail"]</MudText>
+            <MudText Typo="Typo.body2" Class="mt-1"><strong>@HL["HelpSupportPhoneLabel"]</strong> @HL["HelpSupportPhone"]</MudText>
+            <MudText Typo="Typo.body2" Class="mt-1"><strong>@HL["HelpSupportHoursLabel"]</strong> @HL["HelpSupportHours"]</MudText>
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="ToggleSupportForm">
+                <MudIcon Icon="@Icons.Material.Filled.Email" Class="mr-2" />
+                @HL["HelpSupportCta"]
+            </MudButton>
+
+            <MudCollapse Expanded="@_supportOpen">
+                <MudPaper Class="mt-3 pa-3" Elevation="0">
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">@HL["HelpSupportFormTitle"]</MudText>
+                    <MudTextField T="string"
+                                  Label="@HL["HelpSupportNameLabel"]"
+                                  Variant="Variant.Outlined"
+                                  @bind-Value="_supportName" />
+                    <MudTextField T="string"
+                                  Label="@HL["HelpSupportEmailLabel"]"
+                                  Variant="Variant.Outlined"
+                                  Class="mt-2"
+                                  @bind-Value="_supportEmail" />
+                    <MudTextField T="string"
+                                  Label="@HL["HelpSupportSubjectLabel"]"
+                                  Variant="Variant.Outlined"
+                                  Class="mt-2"
+                                  @bind-Value="_supportSubject" />
+                    <MudTextField T="string"
+                                  Label="@HL["HelpSupportMessageLabel"]"
+                                  Variant="Variant.Outlined"
+                                  Class="mt-2"
+                                  Lines="4"
+                                  @bind-Value="_supportMessage" />
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Class="mt-3"
+                               Disabled="_supportSending"
+                               OnClick="SendSupportAsync">
+                        @if (_supportSending)
+                        {
+                            <MudProgressCircular Indeterminate="true" Style="width:16px;height:16px" Class="me-2" />
+                            <span>@HL["HelpSupportSending"]</span>
+                        }
+                        else
+                        {
+                            <span>@HL["HelpSupportSend"]</span>
+                        }
+                    </MudButton>
+                </MudPaper>
+            </MudCollapse>
+        </MudPaper>
+    </MudItem>
+
+</MudGrid>
+
+@code {
+    private bool _supportOpen;
+    private bool _supportSending;
+    private string _supportName = string.Empty;
+    private string _supportEmail = string.Empty;
+    private string _supportSubject = string.Empty;
+    private string _supportMessage = string.Empty;
+
+    private void ScrollTo(string id)
+    {
+        var baseUri = Nav.Uri.Split('#')[0];
+        Nav.NavigateTo($"{baseUri}#{id}", forceLoad: false);
+    }
+
+    private void ToggleSupportForm() => _supportOpen = !_supportOpen;
+
+    private async Task SendSupportAsync()
+    {
+        if (_supportSending)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_supportEmail) || string.IsNullOrWhiteSpace(_supportMessage))
+        {
+            Snackbar.Add(HL["HelpSupportRequired"], Severity.Warning);
+            return;
+        }
+
+        _supportSending = true;
+        try
+        {
+            var req = new SupportContactRequest(
+                _supportName.Trim(),
+                _supportEmail.Trim(),
+                _supportSubject.Trim(),
+                _supportMessage.Trim());
+
+            var res = await Http.PostAsJsonAsync("api/support/contact", req);
+            if (!res.IsSuccessStatusCode)
+            {
+                var body = await res.Content.ReadAsStringAsync();
+                var message = ExtractApiError(body);
+                throw new InvalidOperationException(string.IsNullOrWhiteSpace(message) ? HL["HelpSupportFailed"] : message);
+            }
+
+            Snackbar.Add(HL["HelpSupportSent"], Severity.Success);
+            _supportMessage = string.Empty;
+            _supportSubject = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _supportSending = false;
+        }
+    }
+
+    private sealed record SupportContactRequest(string Name, string Email, string Subject, string Message);
+
+    private static string ExtractApiError(string body)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            if (root.ValueKind == JsonValueKind.Object)
+            {
+                if (root.TryGetProperty("error", out var errorProp))
+                {
+                    return errorProp.GetString() ?? body;
+                }
+
+                if (root.TryGetProperty("title", out var titleProp))
+                {
+                    return titleProp.GetString() ?? body;
+                }
+
+                if (root.TryGetProperty("errors", out var errorsProp) && errorsProp.ValueKind == JsonValueKind.Object)
+                {
+                    foreach (var entry in errorsProp.EnumerateObject())
+                    {
+                        if (entry.Value.ValueKind == JsonValueKind.Array)
+                        {
+                            var first = entry.Value.EnumerateArray().FirstOrDefault();
+                            if (first.ValueKind == JsonValueKind.String)
+                            {
+                                return first.GetString() ?? body;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Ignore parse issues and fallback to raw body
+        }
+
+        return body;
+    }
+}

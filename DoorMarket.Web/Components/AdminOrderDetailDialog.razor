@@ -1,0 +1,123 @@
+@using System.Net.Http.Json
+@using MudBlazor
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        @if (_loading)
+        {
+            <MudSkeleton Height="36px" />
+            <MudSkeleton Height="200px" Class="mt-2" />
+        }
+        else if (_error is not null)
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_error</MudAlert>
+        }
+        else if (_detail is not null)
+        {
+            <MudText Typo="Typo.h6">@_detail.OrderNumber</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">@_detail.CustomerName (@_detail.CustomerPhone)</MudText>
+
+            <MudDivider Class="my-2" />
+
+            <MudText Typo="Typo.subtitle2">Status: @_detail.FulfillmentStatus | @(_detail.PaymentStatus)</MudText>
+            <MudText Typo="Typo.subtitle2">Total: @Fmt(_detail.GrandTotal) @_detail.Currency</MudText>
+            <MudText Typo="Typo.subtitle2">Delivery: @Fmt(_detail.DeliveryFee) @_detail.Currency</MudText>
+            <MudText Typo="Typo.subtitle2">Platform fee: @Fmt(_detail.PlatformFeeTotal) @_detail.Currency</MudText>
+
+            <MudDivider Class="my-2" />
+
+            <MudTable T="AdminOrderItemDetail" Items="_detail.Items" Dense="true" Bordered="true">
+                <HeaderContent>
+                    <MudTh>Product</MudTh>
+                    <MudTh>Qty</MudTh>
+                    <MudTh Align="Align.Right">Unit</MudTh>
+                    <MudTh Align="Align.Right">Fee</MudTh>
+                    <MudTh Align="Align.Right">Line</MudTh>
+                </HeaderContent>
+                <RowTemplate Context="i">
+                    <MudTd>@i.ProductName</MudTd>
+                    <MudTd>@i.Qty</MudTd>
+                    <MudTd Align="Align.Right">@Fmt(i.UnitPriceAtPurchase)</MudTd>
+                    <MudTd Align="Align.Right">@Fmt(i.PlatformFeeAtPurchase)</MudTd>
+                    <MudTd Align="Align.Right">@Fmt(i.LineTotal)</MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private MudBlazor.IMudDialogInstance Dialog { get; set; } = default!;
+    [Parameter] public Guid OrderId { get; set; }
+
+    private bool _loading = true;
+    private string? _error;
+    private AdminOrderDetail? _detail;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            _detail = await Http.GetFromJsonAsync<AdminOrderDetail>($"api/admin/orders/{OrderId}");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void Close() => Dialog.Close();
+
+    private static string Fmt(decimal value) => value.ToString("0.##");
+
+    private sealed record AdminOrderItemDetail(
+        Guid ProductId,
+        string ProductName,
+        int Qty,
+        decimal UnitPriceAtPurchase,
+        decimal PlatformFeeAtPurchase,
+        decimal LineTotal,
+        decimal PlatformFeeLine,
+        string Currency);
+
+    private sealed record AdminOrderDetail(
+        Guid OrderId,
+        string OrderNumber,
+        string CustomerName,
+        string CustomerPhone,
+        string DeliveryLine1,
+        string DeliveryCity,
+        string DeliveryCountry,
+        string Status,
+        string PaymentStatus,
+        string FulfillmentStatus,
+        DateTime? PaidAtUtc,
+        DateTime? DeliveredAtUtc,
+        decimal Subtotal,
+        decimal TotalItemsAmount,
+        decimal DeliveryFee,
+        decimal Discount,
+        decimal GrandTotal,
+        decimal PlatformFeeTotal,
+        string Currency,
+        string PaymentProvider,
+        string? CustomerEmail,
+        IReadOnlyList<AdminOrderItemDetail> Items);
+}

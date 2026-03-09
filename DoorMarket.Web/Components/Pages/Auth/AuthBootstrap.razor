@@ -1,0 +1,170 @@
+@using System.Net
+@using System.Net.Http.Headers
+@using System.IdentityModel.Tokens.Jwt
+@using DoorMarket.Application.DTOs.Me
+@using DoorMarket.Domain.Enums
+@using MudBlazor
+@inject DoorMarket.Web.Auth.TokenStore Tokens
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+@code {
+    private bool _done;
+    private static readonly TimeSpan BootstrapTimeout = TimeSpan.FromSeconds(5);
+    private int _roleMismatchSignOut;
+
+    protected override void OnInitialized()
+    {
+        // Keep UI usable even if interactive bootstrap fails.
+        Auth.SetUnauthenticated();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _done) return;
+        _done = true;
+
+        try
+        {
+            var tokenTask = Tokens.GetAsync();
+            var completed = await Task.WhenAny(tokenTask, Task.Delay(BootstrapTimeout));
+            if (completed != tokenTask)
+            {
+                Http.DefaultRequestHeaders.Authorization = null;
+                Auth.SetUnauthenticated();
+                return;
+            }
+
+            var token = await tokenTask;
+
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                Http.DefaultRequestHeaders.Authorization = null;
+                Auth.SetUnauthenticated();
+                return;
+            }
+
+            // ? ICI : le Bearer pour tout le circuit
+            Http.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", token);
+
+            var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
+
+            var role =
+                jwt.Claims.FirstOrDefault(c => c.Type == "role")?.Value ??
+                jwt.Claims.FirstOrDefault(c => c.Type.EndsWith("/role"))?.Value;
+
+            var email =
+                jwt.Claims.FirstOrDefault(c => c.Type == "email")?.Value ??
+                jwt.Claims.FirstOrDefault(c => c.Type.EndsWith("/emailaddress"))?.Value;
+
+            Auth.SetAuthenticated(role, email);
+            await EnsureRoleMatchesAsync(role);
+        }
+        catch
+        {
+            Http.DefaultRequestHeaders.Authorization = null;
+            Auth.SetUnauthenticated();
+        }
+    }
+
+    private async Task EnsureRoleMatchesAsync(string? tokenRole)
+    {
+        if (string.IsNullOrWhiteSpace(tokenRole))
+        {
+            return;
+        }
+
+        try
+        {
+            var me = await Http.GetFromJsonAsync<MeDto>("api/me");
+            if (me is null)
+            {
+                return;
+            }
+
+            var normalizedTokenRole = NormalizeRole(tokenRole);
+            var normalizedDbRole = NormalizeRole(me.Role);
+            if (!string.Equals(normalizedTokenRole, normalizedDbRole, StringComparison.OrdinalIgnoreCase))
+            {
+                await HandleRoleMismatchAsync();
+            }
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+        {
+            await TriggerRoleSignOutAsync();
+        }
+        catch
+        {
+            // Ignore transient errors to avoid blocking the UI.
+        }
+    }
+
+    private static string NormalizeRole(string? role)
+    {
+        var value = role?.Trim();
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        if (int.TryParse(value, out var roleId) && Enum.IsDefined(typeof(UserRole), roleId))
+        {
+            return ((UserRole)roleId).ToString();
+        }
+
+        return value;
+    }
+
+    private async Task HandleRoleMismatchAsync()
+    {
+        Snackbar.Add(SL["RoleChangedReLogin"], Severity.Warning);
+        _ = ShowReconnectDialogAsync();
+
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(2.5));
+        }
+        catch
+        {
+        }
+
+        await TriggerRoleSignOutAsync();
+    }
+
+    private async Task TriggerRoleSignOutAsync()
+    {
+        if (Interlocked.Exchange(ref _roleMismatchSignOut, 1) == 1)
+        {
+            return;
+        }
+
+        await Tokens.ClearAsync();
+        Http.DefaultRequestHeaders.Authorization = null;
+        Auth.SetUnauthenticated();
+        Nav.NavigateTo("/login", forceLoad: false);
+    }
+
+    private async Task ShowReconnectDialogAsync()
+    {
+        try
+        {
+            var result = await DialogService.ShowMessageBox(
+                SL["RoleChangedTitle"],
+                SL["RoleChangedReLogin"],
+                yesText: SL["RoleChangedReconnect"],
+                cancelText: SL["RoleChangedLater"]);
+
+            if (result == true)
+            {
+                await TriggerRoleSignOutAsync();
+            }
+        }
+        catch
+        {
+        }
+    }
+}

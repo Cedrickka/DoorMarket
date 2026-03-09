@@ -1,0 +1,86 @@
+﻿@if (TotalPages > 1)
+{
+    <div class="dm-pagination">
+        <button type="button"
+                class="dm-page-btn dm-page-nav"
+                disabled="@(CurrentPage <= 1)"
+                @onclick="() => ChangePage(CurrentPage - 1)">
+            Precedent
+        </button>
+
+        @foreach (var token in BuildPageTokens())
+        {
+            if (token < 0)
+            {
+                <span class="dm-page-ellipsis">...</span>
+            }
+            else
+            {
+                <button type="button"
+                        class="dm-page-btn @(token == CurrentPage ? "active" : string.Empty)"
+                        @onclick="() => ChangePage(token)">
+                    @token
+                </button>
+            }
+        }
+
+        <button type="button"
+                class="dm-page-btn dm-page-nav"
+                disabled="@(CurrentPage >= TotalPages)"
+                @onclick="() => ChangePage(CurrentPage + 1)">
+            Suivant
+        </button>
+    </div>
+}
+
+@code {
+    [Parameter] public int CurrentPage { get; set; } = 1;
+    [Parameter] public int TotalPages { get; set; } = 1;
+    [Parameter] public EventCallback<int> OnPageChanged { get; set; }
+    [Parameter] public int WindowSize { get; set; } = 2;
+
+    private async Task ChangePage(int page)
+    {
+        var safePage = Math.Clamp(page, 1, Math.Max(1, TotalPages));
+        if (safePage == CurrentPage)
+        {
+            return;
+        }
+
+        if (OnPageChanged.HasDelegate)
+        {
+            await OnPageChanged.InvokeAsync(safePage);
+        }
+    }
+
+    private IReadOnlyList<int> BuildPageTokens()
+    {
+        var pages = Math.Max(1, TotalPages);
+        var current = Math.Clamp(CurrentPage, 1, pages);
+
+        var set = new SortedSet<int> { 1, pages };
+        for (var i = current - WindowSize; i <= current + WindowSize; i++)
+        {
+            if (i >= 1 && i <= pages)
+            {
+                set.Add(i);
+            }
+        }
+
+        var tokens = new List<int>();
+        var previous = 0;
+        foreach (var page in set)
+        {
+            if (previous > 0 && page - previous > 1)
+            {
+                tokens.Add(-1);
+            }
+
+            tokens.Add(page);
+            previous = page;
+        }
+
+        return tokens;
+    }
+}
+

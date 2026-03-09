@@ -1,0 +1,55 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="stylesheet" href="bootstrap/bootstrap.min.css" />
+    <link rel="stylesheet" href="app.css" />
+    <link rel="stylesheet" href="DoorMarket.Web.styles.css" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link href="css/doormarket.css" rel="stylesheet" />
+
+    <HeadOutlet @rendermode="new InteractiveServerRenderMode(prerender: false)" />
+</head>
+
+<body>
+    <Routes @rendermode="new InteractiveServerRenderMode(prerender: false)" />
+    <script src="_framework/blazor.web.js"></script>
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <script src="js/doormarket.js"></script>
+    <script>
+        window.doorMarket = window.doorMarket || {};
+        window.doorMarket.isMobileViewport = window.doorMarket.isMobileViewport || function () {
+            return window.matchMedia("(max-width: 768px)").matches;
+        };
+        window.doorMarket.mediaProxyConfig = {
+            enabled: @MediaProxyEnabled.ToString().ToLowerInvariant(),
+            apiBaseUrl: "@ApiBaseUrl"
+        };
+        if (window.doorMarket.initMediaProxy) {
+            window.doorMarket.initMediaProxy(window.doorMarket.mediaProxyConfig);
+        }
+    </script>
+</body>
+
+</html>
+
+@code {
+    private string ApiBaseUrl => ApiBaseUrlResolver.Resolve(Config, Env);
+    private bool MediaProxyEnabled => Config.GetValue<bool?>("EnableMediaProxy")
+        ?? Config.GetValue<bool?>("MediaProxy:Enabled")
+        ?? true;
+}
+
+@using DoorMarket.Web.Utils
+@inject IConfiguration Config
+@inject IWebHostEnvironment Env

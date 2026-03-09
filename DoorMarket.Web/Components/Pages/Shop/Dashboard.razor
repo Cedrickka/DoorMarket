@@ -1,0 +1,277 @@
+﻿@page "/shop/dashboard"
+@using System.Text.Json
+@using MudBlazor
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject ISnackbar Snackbar
+
+<h1 class="dm-page-h1">@SL["Dashboard"]</h1>
+<div class="dm-page-sub">@SL["ShopDashboardPageSubtitle"]</div>
+
+<AuthGuard>
+    @if (!_bootstrapped)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudSkeleton Height="32px" Width="220px" Class="mb-2" />
+            <MudSkeleton Height="18px" Width="360px" />
+        </MudPaper>}
+    else if (_loading)
+    {<MudGrid Class="mt-3" Spacing="3">
+            @for (int i = 0; i < 4; i++)
+            {
+                <MudItem xs="12" sm="6" lg="3">
+                    <MudPaper Class="pa-4">
+                        <MudSkeleton Height="18px" Width="160px" />
+                        <MudSkeleton Height="40px" Width="120px" Class="mt-2" />
+                        <MudSkeleton Height="14px" Width="220px" Class="mt-2" />
+                    </MudPaper>
+                </MudItem>
+            }
+            <MudItem xs="12" lg="7">
+                <MudPaper Class="pa-4">
+                    <MudSkeleton Height="22px" Width="220px" />
+                    <MudSkeleton Height="14px" Width="280px" Class="mt-1" />
+                    <MudSkeleton Height="44px" Class="mt-3" />
+                    <MudSkeleton Height="44px" Class="mt-2" />
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" lg="5">
+                <MudPaper Class="pa-4">
+                    <MudSkeleton Height="22px" Width="200px" />
+                    <MudSkeleton Height="14px" Width="240px" Class="mt-1" />
+                    <MudSkeleton Height="18px" Class="mt-3" />
+                    <MudSkeleton Height="18px" Class="mt-2" />
+                    <MudSkeleton Height="18px" Class="mt-2" />
+                </MudPaper>
+            </MudItem>
+        </MudGrid>}
+    else if (_error is not null)
+    {<MudPaper Class="pa-4 mt-3">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">
+                @_error
+            </MudAlert>
+            <MudButton Variant="Variant.Outlined" Class="mt-3" OnClick="Reload">@SL["Retry"]</MudButton>
+        </MudPaper>}
+    else if (_summary is null)
+    {<MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-3">@SL["NoData"]</MudAlert>}
+    else
+    {<MudGrid Class="mt-3 dm-view-enter" Spacing="3">
+            <MudItem xs="12">
+                <MudPaper Class="pa-4 dm-shop-hero">
+                    <div class="dm-shop-hero-bg"></div>
+                    <div class="dm-shop-hero-content">
+                        <div>
+                            <MudText Typo="Typo.h5" Class="dm-shop-hero-title">@SL["ShopPilotTitle"]</MudText>
+                            <MudText Typo="Typo.body1" Class="dm-shop-hero-sub">@SL["ShopPilotSubtitle"]</MudText>
+                        </div>
+                        <MudStack Direction="Row" Spacing="2" Wrap="Wrap.Wrap">
+                            <MudButton Color="Color.Primary" Variant="Variant.Filled" Class="dm-action-btn dm-action-btn-primary" OnClick="@(() => Nav.NavigateTo("/shop/orders"))">
+                                @SL["Orders"]
+                            </MudButton>
+                            <MudButton Variant="Variant.Outlined" Class="dm-action-btn dm-action-btn-outline" OnClick="@(() => Nav.NavigateTo("/shop/products/new"))">
+                                @SL["NewProduct"]
+                            </MudButton>
+                        </MudStack>
+                    </div>
+                </MudPaper>
+            </MudItem>
+
+            <!-- KPI -->
+            <MudItem xs="12" sm="6" lg="3">
+                <MudCard Class="dm-shop-kpi-card dm-admin-kpi-card">
+                    <MudCardContent>
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <MudText Class="dm-kpi-label">@SL["OrdersToday"]</MudText>
+                                <MudText Class="dm-kpi-value">@_summary.OrdersToday</MudText>
+                                <MudText Class="dm-kpi-meta">@SL["OrderLinesWithProducts"]</MudText>
+                            </div>
+                            <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled" Label="true">@SL["Orders"]</MudChip>
+                        </div>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" lg="3">
+                <MudCard Class="dm-shop-kpi-card dm-admin-kpi-card dm-kpi-tone-success">
+                    <MudCardContent>
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <MudText Class="dm-kpi-label">@SL["RevenuePaid"]</MudText>
+                                <MudText Class="dm-kpi-value">
+                                    @_summary.RevenueToday.ToString("0.00")
+                                </MudText>
+                                <MudText Class="dm-kpi-meta">@SL["TotalPaidToday"]</MudText>
+                            </div>
+                            <MudChip T="string" Color="Color.Success" Variant="Variant.Filled" Label="true">@SL["Paid"]</MudChip>
+                        </div>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" lg="3">
+                <MudCard Class="dm-shop-kpi-card dm-admin-kpi-card">
+                    <MudCardContent>
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <MudText Class="dm-kpi-label">@SL["ActiveProducts"]</MudText>
+                                <MudText Class="dm-kpi-value">@_summary.ProductsActive</MudText>
+                                <MudText Class="dm-kpi-meta">@SL["VisibleInShop"]</MudText>
+                            </div>
+                            <MudChip T="string" Color="Color.Primary" Variant="Variant.Outlined" Label="true">@SL["Stock"]</MudChip>
+                        </div>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" lg="3">
+                <MudCard Class="dm-shop-kpi-card dm-admin-kpi-card dm-shop-kpi-card-alert dm-kpi-tone-danger">
+                    <MudCardContent>
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <MudText Class="dm-kpi-label">@SL["OutOfStock"]</MudText>
+                                <MudText Class="dm-kpi-value">@_summary.ProductsOutOfStock</MudText>
+                                <MudText Class="dm-kpi-meta">@SL["ActiveProductsStockZero"]</MudText>
+                            </div>
+                            <MudChip T="string" Color="Color.Error" Variant="Variant.Filled" Label="true">@SL["Alert"]</MudChip>
+                        </div>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- Quick actions -->
+            <MudItem xs="12" lg="7">
+                <MudPaper Class="pa-4 dm-content-card dm-admin-panel">
+                    <MudText Typo="Typo.h6" Class="mb-1">@SL["QuickActions"]</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@SL["QuickActionsHint"]</MudText>
+
+                    <MudDivider Class="my-3" />
+
+                    <MudStack Direction="Row" Spacing="2" Wrap="Wrap.Wrap">
+                        <MudButton Color="Color.Primary" Variant="Variant.Filled" Class="dm-action-btn dm-action-btn-primary" OnClick="@(() => Nav.NavigateTo("/shop/orders"))">
+                            @SL["ViewOrders"]
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" Class="dm-action-btn dm-action-btn-outline" OnClick="@(() => Nav.NavigateTo("/shop/products"))">
+                            @SL["ManageProducts"]
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" Class="dm-action-btn dm-action-btn-outline" OnClick="@(() => Nav.NavigateTo("/shop/categories"))">
+                            @SL["Categories"]
+                        </MudButton>
+                        <MudButton Color="Color.Secondary" Variant="Variant.Filled" Class="dm-action-btn dm-action-btn-primary" OnClick="@(() => Nav.NavigateTo("/shop/products/new"))">
+                            @SL["AddProduct"]
+                        </MudButton>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Shop health -->
+            <MudItem xs="12" lg="5">
+                <MudPaper Class="pa-4 dm-content-card dm-admin-panel">
+                    <MudText Typo="Typo.h6" Class="mb-1">@SL["ShopHealth"]</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">@SL["QuickSummary"]</MudText>
+
+                    <MudDivider Class="my-3" />
+
+                    <MudList T="string" Dense="true">
+                        <MudListItem>
+                            <MudText>@SL["StockIssues"]</MudText>
+                            <MudChip Class="ms-auto" Color="@(_summary.ProductsOutOfStock > 0 ? Color.Error : Color.Success)" Label="true">
+                                @(_summary.ProductsOutOfStock > 0 ? SL["ToFix"] : SL["Ok"])
+                            </MudChip>
+                        </MudListItem>
+                        <MudListItem>
+                            <MudText>@SL["Catalog"]</MudText>
+                            <MudChip Class="ms-auto" Color="Color.Success" Variant="Variant.Outlined" Label="true">@SL["Active"]</MudChip>
+                        </MudListItem>
+                        <MudListItem>
+                            <MudText>@SL["Orders"]</MudText>
+                            <MudChip Class="ms-auto" Color="Color.Primary" Variant="Variant.Outlined" Label="true">@SL["Tracking"]</MudChip>
+                        </MudListItem>
+                    </MudList>
+
+                    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="mt-3">
+                        <b>@SL["TipLabel"]:</b> @SL["StockUpdateTip"]</MudAlert>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</AuthGuard>
+
+@code {
+    private bool _bootstrapped;
+    private bool _loading;
+    private string? _error;
+    private ShopDashboardSummaryDto? _summary;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        while (!Auth.IsReady)
+            await Task.Delay(30);
+
+        if (!Auth.IsAuthenticated) { _bootstrapped = true; StateHasChanged(); return; }
+
+        if (!Auth.IsShop && !Auth.IsAdmin)
+        {
+            Nav.NavigateTo("/", forceLoad: false);
+            return;
+        }
+
+        _bootstrapped = true;
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    private async Task Reload()
+    {
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            var res = await Http.GetAsync("api/orders/shop/summary");
+            var body = await res.Content.ReadAsStringAsync();
+
+            if (!res.IsSuccessStatusCode)
+            {
+                _error = $"{SL["ApiError"]} {(int)res.StatusCode} : {body}";
+                Snackbar.Add(SL["DashboardLoadFailed"], Severity.Error);
+                return;
+            }
+
+            _summary = JsonSerializer.Deserialize<ShopDashboardSummaryDto>(
+                body,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+            );
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    public sealed record ShopDashboardSummaryDto(
+        int OrdersToday,
+        decimal RevenueToday,
+        int ProductsActive,
+        int ProductsOutOfStock
+    );
+}
+
+
+
+
+

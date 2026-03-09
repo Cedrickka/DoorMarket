@@ -1,0 +1,566 @@
+@page "/returns"
+@using System.Globalization
+@using System.Net
+@using MudBlazor
+@inject HttpClient Http
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>@T("Mes retours", "My returns")</PageTitle>
+
+<h1 class="dm-page-h1">@T("Mes retours", "My returns")</h1>
+<div class="dm-page-sub">@T("Demandez un retour et suivez son traitement", "Request a return and track its status")</div>
+
+<AuthGuard>
+    @if (!_bootstrapped)
+    {
+        <MudPaper Class="pa-4 mt-3 dm-content-card">
+            <MudSkeleton Height="26px" Width="220px" Class="mb-2" />
+            <MudSkeleton Height="16px" Width="360px" Class="mb-4" />
+            <MudSkeleton Height="200px" />
+        </MudPaper>
+    }
+    else if (_loadingForm || _loadingList)
+    {
+        <MudPaper Class="pa-4 mt-3 dm-content-card">
+            <MudSkeleton Height="180px" />
+            <MudSkeleton Height="44px" Class="mt-2" />
+            <MudSkeleton Height="44px" Class="mt-2" />
+        </MudPaper>
+    }
+    else if (_error is not null)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_error</MudAlert>
+            <MudButton Variant="Variant.Outlined" Class="mt-3" OnClick="ReloadAll">@SL["Retry"]</MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        <MudGrid Class="mt-3" Spacing="3">
+            <MudItem xs="12" lg="5">
+                <MudPaper Class="pa-4 dm-content-card">
+                    <MudText Typo="Typo.h6" Class="mb-2">@T("Demander un retour", "Request a return")</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                        @T("Seules les commandes payees et livrees sont eligibles.", "Only paid and delivered orders are eligible.")
+                    </MudText>
+
+                    @if (_eligibleOrders.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                            @T("Aucune commande eligible pour un retour.", "No eligible order for return.")
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <MudSelect T="Guid?" Label="@T("Commande", "Order")" Variant="Variant.Outlined"
+                                   Value="_selectedOrderId" ValueChanged="OnOrderChanged">
+                            <MudSelectItem T="Guid?" Value="@((Guid?)null)">@T("Selectionner", "Select")</MudSelectItem>
+                            @foreach (var o in _eligibleOrders)
+                            {
+                                <MudSelectItem T="Guid?" Value="@((Guid?)o.Id)">
+                                    @($"{o.DisplayCode} - {o.TotalAmount:0.00} {o.Currency} - {o.CreatedAtUtc.ToLocalTime():dd/MM/yyyy}")
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+
+                        @if (_reasons.Count > 0)
+                        {
+                            <MudSelect T="string"
+                                       Label="@T("Motif", "Reason code")"
+                                       Variant="Variant.Outlined"
+                                       Class="mt-3"
+                                       Value="_selectedReasonCode"
+                                       ValueChanged="OnReasonCodeChanged">
+                                @foreach (var reason in _reasons)
+                                {
+                                    <MudSelectItem T="string" Value="@reason.Code">@ReasonTitle(reason)</MudSelectItem>
+                                }
+                            </MudSelect>
+                            @if (!string.IsNullOrWhiteSpace(_selectedReasonCode))
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
+                                    @ReasonDescription(_selectedReasonCode!)
+                                </MudText>
+                            }
+                        }
+                        else
+                        {
+                            <MudTextField T="string"
+                                          Label="@T("Raison", "Reason")"
+                                          Variant="Variant.Outlined"
+                                          Immediate="true"
+                                          MaxLength="120"
+                                          Class="mt-3"
+                                          Value="_reason"
+                                          ValueChanged="OnReasonChanged" />
+                        }
+
+                        <MudTextField T="string"
+                                      Label="@T("Commentaire (optionnel)", "Comment (optional)")"
+                                      Variant="Variant.Outlined"
+                                      Lines="3"
+                                      Immediate="true"
+                                      MaxLength="1000"
+                                      Class="mt-3"
+                                      Value="_comment"
+                                      ValueChanged="OnCommentChanged" />
+
+                        <MudNumericField T="decimal?"
+                                         Label="@T("Montant demande (optionnel)", "Requested amount (optional)")"
+                                         Variant="Variant.Outlined"
+                                         Min="0"
+                                         Class="mt-3"
+                                         Value="_requestedAmount"
+                                         ValueChanged="OnRequestedAmountChanged" />
+
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Class="mt-3"
+                                   Disabled="_submitting"
+                                   OnClick="SubmitReturn">
+                            @if (_submitting)
+                            {
+                                <MudProgressCircular Indeterminate="true" Style="width:16px;height:16px" Class="me-1" />
+                                <span>@T("Envoi...", "Submitting...")</span>
+                            }
+                            else
+                            {
+                                <span>@T("Envoyer la demande", "Submit request")</span>
+                            }
+                        </MudButton>
+                    }
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" lg="7">
+                <MudPaper Class="pa-4 dm-content-card">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                        <MudText Typo="Typo.h6">@T("Suivi des retours", "Return tracking")</MudText>
+                        <MudButton Variant="Variant.Outlined" Disabled="_loadingList" OnClick="ReloadList">@SL["Refresh"]</MudButton>
+                    </div>
+
+                    @if (_returns is null || _returns.Items.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                            @T("Aucune demande de retour pour le moment.", "No return request yet.")
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <MudTable Items="_returns.Items" Dense="true" Hover="true" Bordered="true" Striped="true">
+                            <HeaderContent>
+                                <MudTh>@T("Date", "Date")</MudTh>
+                                <MudTh>@T("Commande", "Order")</MudTh>
+                                <MudTh>@T("Statut", "Status")</MudTh>
+                                <MudTh>@T("Raison", "Reason")</MudTh>
+                                <MudTh>@T("SLA", "SLA")</MudTh>
+                                <MudTh Align="right">@T("Montant", "Amount")</MudTh>
+                                <MudTh Align="right">@T("Timeline", "Timeline")</MudTh>
+                            </HeaderContent>
+
+                            <RowTemplate>
+                                <MudTd>@context.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</MudTd>
+                                <MudTd>@context.OrderNumber</MudTd>
+                                <MudTd>
+                                    <MudChip T="string" Variant="Variant.Outlined" Label="true" Color="@StatusColor(context.Status)">
+                                        @context.Status
+                                    </MudChip>
+                                </MudTd>
+                                <MudTd>
+                                    <div>@context.Reason</div>
+                                    @if (!string.IsNullOrWhiteSpace(context.ReasonCode))
+                                    {
+                                        <div class="dm-muted">@context.ReasonCode</div>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(context.AdminNote))
+                                    {
+                                        <div class="dm-muted">@T("Note admin", "Admin note"): @context.AdminNote</div>
+                                    }
+                                </MudTd>
+                                <MudTd>
+                                    @if (context.SlaTargetAtUtc.HasValue)
+                                    {
+                                        <div>@context.SlaTargetAtUtc.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                                        @if (context.IsSlaBreached)
+                                        {
+                                            <div class="dm-muted" style="color:#c62828">@T("Depassee", "Breached")</div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                </MudTd>
+                                <MudTd Align="Align.Right">
+                                    <div>@context.RequestedAmount.ToString("0.00") @context.Currency</div>
+                                    @if (context.ApprovedAmount.HasValue)
+                                    {
+                                        <div class="dm-muted">@T("Approuve", "Approved"): @context.ApprovedAmount.Value.ToString("0.00") @context.Currency</div>
+                                    }
+                                </MudTd>
+                                <MudTd Align="Align.Right">
+                                    <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => ShowTimelineAsync(context.Id))">
+                                        @T("Voir", "View")
+                                    </MudButton>
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+
+                        <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+                            <div class="dm-muted">@SL["Page"] @_page / @TotalPages()</div>
+                            <DmPager CurrentPage="_page" TotalPages="TotalPages()" OnPageChanged="OnPageChanged" />
+                        </div>
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</AuthGuard>
+
+@code {
+    [SupplyParameterFromQuery(Name = "orderId")]
+    public Guid? OrderIdQuery { get; set; }
+
+    private bool _bootstrapped;
+    private bool _loadingForm = true;
+    private bool _loadingList = true;
+    private bool _submitting;
+    private string? _error;
+
+    private List<EligibleOrderOption> _eligibleOrders = new();
+    private Guid? _selectedOrderId;
+    private string _reason = string.Empty;
+    private List<ReturnReasonRow> _reasons = new();
+    private string? _selectedReasonCode;
+    private string _comment = string.Empty;
+    private decimal? _requestedAmount;
+
+    private int _page = 1;
+    private const int _pageSize = 20;
+    private ReturnsPage? _returns;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        while (!Auth.IsReady)
+        {
+            await Task.Delay(30);
+        }
+
+        _bootstrapped = true;
+        if (!Auth.IsAuthenticated)
+        {
+            StateHasChanged();
+            return;
+        }
+
+        await ReloadAll();
+        StateHasChanged();
+    }
+
+    protected override Task OnParametersSetAsync()
+    {
+        if (OrderIdQuery.HasValue)
+        {
+            _selectedOrderId = OrderIdQuery.Value;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task ReloadAll()
+    {
+        _error = null;
+        _loadingForm = true;
+        _loadingList = true;
+
+        try
+        {
+            await LoadEligibleOrders();
+            await LoadReasons();
+            await LoadReturns();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loadingForm = false;
+            _loadingList = false;
+        }
+    }
+
+    private async Task LoadEligibleOrders()
+    {
+        var orders = await Http.GetFromJsonAsync<OrderPage>("api/orders/mine?page=1&pageSize=100")
+            ?? new OrderPage([], 0, 1, 100);
+
+        _eligibleOrders = orders.Items
+            .Where(IsEligible)
+            .OrderByDescending(o => o.CreatedAtUtc)
+            .Select(o => new EligibleOrderOption(
+                o.Id,
+                BuildOrderCode(o.Id),
+                o.TotalAmount,
+                o.Currency,
+                o.CreatedAtUtc))
+            .ToList();
+
+        if (!_selectedOrderId.HasValue || !_eligibleOrders.Any(x => x.Id == _selectedOrderId.Value))
+        {
+            _selectedOrderId = _eligibleOrders.FirstOrDefault()?.Id;
+        }
+    }
+
+    private async Task LoadReturns()
+    {
+        _returns = await Http.GetFromJsonAsync<ReturnsPage>($"api/returns/mine?page={_page}&pageSize={_pageSize}")
+            ?? new ReturnsPage([], 0, _page, _pageSize);
+    }
+
+    private async Task LoadReasons()
+    {
+        _reasons = await Http.GetFromJsonAsync<List<ReturnReasonRow>>("api/returns/reasons") ?? [];
+        _reasons = _reasons.OrderBy(x => x.SortOrder).ToList();
+        if (string.IsNullOrWhiteSpace(_selectedReasonCode) || !_reasons.Any(x => x.Code == _selectedReasonCode))
+        {
+            _selectedReasonCode = _reasons.FirstOrDefault()?.Code;
+        }
+    }
+
+    private async Task ReloadList()
+    {
+        _loadingList = true;
+        try
+        {
+            await LoadReturns();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loadingList = false;
+        }
+    }
+
+    private async Task SubmitReturn()
+    {
+        if (!_selectedOrderId.HasValue || _selectedOrderId.Value == Guid.Empty)
+        {
+            Snackbar.Add(T("Selectionnez une commande.", "Select an order."), Severity.Warning);
+            return;
+        }
+
+        var selectedReason = _reasons.FirstOrDefault(x => x.Code == _selectedReasonCode);
+        var normalizedReason = selectedReason is null
+            ? (_reason ?? string.Empty).Trim()
+            : ReasonTitle(selectedReason);
+        if (string.IsNullOrWhiteSpace(normalizedReason))
+        {
+            Snackbar.Add(T("Le motif est requis.", "Reason is required."), Severity.Warning);
+            return;
+        }
+
+        _submitting = true;
+        try
+        {
+            var payload = new CreateReturnRequest(
+                _selectedOrderId.Value,
+                selectedReason?.Code,
+                normalizedReason,
+                string.IsNullOrWhiteSpace(_comment) ? null : _comment.Trim(),
+                _requestedAmount);
+
+            var res = await Http.PostAsJsonAsync("api/returns", payload);
+            if (!res.IsSuccessStatusCode)
+            {
+                var body = await res.Content.ReadAsStringAsync();
+                throw new InvalidOperationException(string.IsNullOrWhiteSpace(body)
+                    ? $"API {(int)res.StatusCode}"
+                    : body);
+            }
+
+            _reason = string.Empty;
+            if (_reasons.Count > 0)
+            {
+                _selectedReasonCode = _reasons[0].Code;
+            }
+            _comment = string.Empty;
+            _requestedAmount = null;
+            _page = 1;
+            await LoadReturns();
+            Snackbar.Add(T("Demande envoyee.", "Request submitted."), Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        _page = Math.Max(1, page);
+        await ReloadList();
+    }
+
+    private int TotalPages()
+        => _returns is null ? 1 : Math.Max(1, (int)Math.Ceiling(_returns.Total / (double)_pageSize));
+
+    private static bool IsEligible(OrderRow o)
+    {
+        var isPaid = string.Equals(o.PaymentStatus, "Paid", StringComparison.OrdinalIgnoreCase);
+        var deliveredOrCompleted =
+            string.Equals(o.Status, "Delivered", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(o.Status, "Completed", StringComparison.OrdinalIgnoreCase);
+        return isPaid && deliveredOrCompleted;
+    }
+
+    private Task OnOrderChanged(Guid? value)
+    {
+        _selectedOrderId = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnReasonChanged(string value)
+    {
+        _reason = value ?? string.Empty;
+        return Task.CompletedTask;
+    }
+
+    private Task OnReasonCodeChanged(string? value)
+    {
+        _selectedReasonCode = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnCommentChanged(string value)
+    {
+        _comment = value ?? string.Empty;
+        return Task.CompletedTask;
+    }
+
+    private Task OnRequestedAmountChanged(decimal? value)
+    {
+        _requestedAmount = value;
+        return Task.CompletedTask;
+    }
+
+    private static string BuildOrderCode(Guid orderId) => $"DM{orderId.ToString("N")[..6].ToUpperInvariant()}";
+
+    private static Color StatusColor(string? status)
+    {
+        if (string.Equals(status, "Requested", StringComparison.OrdinalIgnoreCase))
+        {
+            return Color.Info;
+        }
+
+        if (string.Equals(status, "Approved", StringComparison.OrdinalIgnoreCase))
+        {
+            return Color.Warning;
+        }
+
+        if (string.Equals(status, "Refunded", StringComparison.OrdinalIgnoreCase))
+        {
+            return Color.Success;
+        }
+
+        if (string.Equals(status, "Rejected", StringComparison.OrdinalIgnoreCase))
+        {
+            return Color.Error;
+        }
+
+        if (string.Equals(status, "Cancelled", StringComparison.OrdinalIgnoreCase))
+        {
+            return Color.Default;
+        }
+
+        return Color.Default;
+    }
+
+    private static bool IsEnglish()
+        => string.Equals(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "en", StringComparison.OrdinalIgnoreCase);
+
+    private static string T(string fr, string en) => IsEnglish() ? en : fr;
+
+    private static string ReasonTitle(ReturnReasonRow reason)
+        => IsEnglish() ? reason.TitleEn : reason.TitleFr;
+
+    private string ReasonDescription(string code)
+    {
+        var reason = _reasons.FirstOrDefault(x => x.Code == code);
+        if (reason is null)
+        {
+            return string.Empty;
+        }
+
+        var desc = IsEnglish() ? reason.DescriptionEn : reason.DescriptionFr;
+        var suffix = reason.DefaultSlaHours > 0 ? $"SLA: {reason.DefaultSlaHours}h" : string.Empty;
+        if (string.IsNullOrWhiteSpace(desc))
+        {
+            return suffix;
+        }
+
+        return string.IsNullOrWhiteSpace(suffix) ? desc : $"{desc} | {suffix}";
+    }
+
+    private async Task ShowTimelineAsync(Guid returnId)
+    {
+        try
+        {
+            var timeline = await Http.GetFromJsonAsync<List<ReturnTimelineRow>>($"api/returns/{returnId}/timeline") ?? [];
+            var lines = timeline.Count == 0
+                ? T("Aucun evenement.", "No event.")
+                : string.Join("\n", timeline
+                    .OrderByDescending(x => x.ChangedAtUtc)
+                    .Select(x => $"{x.ChangedAtUtc.ToLocalTime():dd/MM/yyyy HH:mm} | {x.OldStatus} -> {x.NewStatus} | {(string.IsNullOrWhiteSpace(x.Note) ? "-" : x.Note)}"));
+            await DialogService.ShowMessageBox(
+                title: T("Timeline retour", "Return timeline"),
+                markupMessage: (MarkupString)$"<pre style='white-space:pre-wrap;font-family:inherit'>{WebUtility.HtmlEncode(lines)}</pre>",
+                yesText: T("Fermer", "Close"));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private sealed record OrderPage(List<OrderRow> Items, int Total, int Page, int PageSize);
+    private sealed record OrderRow(Guid Id, string Status, string PaymentStatus, decimal TotalAmount, string Currency, DateTime CreatedAtUtc);
+    private sealed record EligibleOrderOption(Guid Id, string DisplayCode, decimal TotalAmount, string Currency, DateTime CreatedAtUtc);
+    private sealed record CreateReturnRequest(Guid OrderId, string? ReasonCode, string Reason, string? Comment, decimal? RequestedAmount);
+    private sealed record ReturnsPage(List<ReturnRow> Items, int Total, int Page, int PageSize);
+    private sealed record ReturnRow(
+        Guid Id,
+        Guid OrderId,
+        string OrderNumber,
+        string Status,
+        string? ReasonCode,
+        string Reason,
+        string? Comment,
+        decimal RequestedAmount,
+        decimal? ApprovedAmount,
+        string Currency,
+        string? AdminNote,
+        DateTime CreatedAtUtc,
+        DateTime? ReviewedAtUtc,
+        DateTime? RefundedAtUtc,
+        DateTime? SlaTargetAtUtc,
+        DateTime? LastStatusChangedAtUtc,
+        bool IsSlaBreached);
+    private sealed record ReturnReasonRow(string Code, string TitleFr, string TitleEn, string? DescriptionFr, string? DescriptionEn, int DefaultSlaHours, int SortOrder);
+    private sealed record ReturnTimelineRow(Guid Id, string OldStatus, string NewStatus, string? Note, DateTime ChangedAtUtc, string? ChangedBy);
+}

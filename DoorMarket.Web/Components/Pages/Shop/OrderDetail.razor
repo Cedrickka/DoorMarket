@@ -1,0 +1,339 @@
+﻿@page "/shop/orders/{Id:guid}"
+
+@using System.Net.Http.Json
+@using MudBlazor
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+
+<h1 class="dm-page-h1">@SL["OrderDetailTitle"]</h1>
+<div class="dm-page-sub">@SL["ShopOrderDetailSubtitle"]</div>
+
+<AuthGuard>
+    @if (!_bootstrapped)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudSkeleton Height="26px" Width="220px" Class="mb-2" />
+            <MudSkeleton Height="18px" Width="420px" Class="mb-4" />
+            <MudSkeleton Height="140px" />
+        </MudPaper>}
+    else if (_loading)
+    {<MudPaper Class="pa-4 mt-3">
+            <MudSkeleton Height="46px" />
+            <MudSkeleton Height="46px" Class="mt-2" />
+            <MudSkeleton Height="46px" Class="mt-2" />
+        </MudPaper>}
+    else if (_error is not null)
+    {<MudPaper Class="pa-4 mt-3">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_error</MudAlert>
+            <MudButton Variant="Variant.Outlined" Class="mt-3" OnClick="BackToList">@SL["Back"]</MudButton>
+        </MudPaper>}
+    else if (_order is null)
+    {<MudPaper Class="pa-4 mt-3">
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@SL["OrderNotFound"]</MudAlert>
+            <MudButton Variant="Variant.Outlined" Class="mt-3" OnClick="BackToList">@SL["Back"]</MudButton>
+        </MudPaper>}
+    else
+    {<MudGrid Class="mt-3" Spacing="3">
+            <MudItem xs="12" lg="8">
+                <MudPaper Class="pa-4">
+                    <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                        <div>
+                            <MudText Typo="Typo.h6" Class="mb-1">@SL["Order"] #@ShortId(_order.Id)</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                @SL["CreatedAt"] : @_order.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                            </MudText>
+                        </div>
+
+                        <div class="d-flex gap-2 align-items-center flex-wrap">
+                            <MudChip T="string" Variant="Variant.Filled"
+                                     Color="@(_order.PaymentStatus == "Paid" ? Color.Success : _order.PaymentStatus == "Failed" ? Color.Error : Color.Warning)"
+                                     Label="true">
+                                @SL["Payment"]: @_order.PaymentStatus
+                            </MudChip>
+
+                            <MudChip T="string" Variant="Variant.Outlined"
+                                     Color="@StatusColor(_order.FulfillmentStatus)" Label="true">
+                                @_order.FulfillmentStatus
+                            </MudChip>
+                        </div>
+                    </div>
+
+                    <MudDivider Class="my-3" />
+
+                    <MudText Typo="Typo.subtitle1" Class="mb-2">@SL["ShopItems"]</MudText>
+
+                    <MudTable Items="_order.Items" Dense="true" Hover="true" Bordered="true" Striped="true">
+                        <HeaderContent>
+                            <MudTh>@SL["Product"]</MudTh>
+                            <MudTh Align="right">@SL["QtyShort"]</MudTh>
+                            <MudTh Align="right">@SL["UnitPriceLabel"]</MudTh>
+                            <MudTh Align="right">@SL["Total"]</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd>@context.ProductName</MudTd>
+                            <MudTd Align="Align.Right">@context.Qty</MudTd>
+                            <MudTd Align="Align.Right">@context.UnitPrice.ToString("0.00") @_order.Currency</MudTd>
+                            <MudTd Align="Align.Right">@context.LineTotal.ToString("0.00") @_order.Currency</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+
+                    <MudDivider Class="my-3" />
+
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12" sm="4">
+                            <MudPaper Class="pa-3" Outlined="true">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@SL["Subtotal"]</MudText>
+                                <MudText Typo="Typo.h6">@_order.Subtotal.ToString("0.00") @_order.Currency</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" sm="4">
+                            <MudPaper Class="pa-3" Outlined="true">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@SL["Delivery"]</MudText>
+                                <MudText Typo="Typo.h6">@_order.DeliveryFee.ToString("0.00") @_order.Currency</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" sm="4">
+                            <MudPaper Class="pa-3" Outlined="true">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@SL["Total"]</MudText>
+                                <MudText Typo="Typo.h6">@_order.TotalAmount.ToString("0.00") @_order.Currency</MudText>
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" lg="4">
+                <MudPaper Class="pa-4">
+                    <MudText Typo="Typo.subtitle1" Class="mb-2">@SL["CustomerDelivery"]</MudText>
+
+                    <MudList T="string" Dense="true">
+                        <MudListItem>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@SL["FullName"]</MudText>
+                            <MudText>@_order.Delivery.DeliveryName</MudText>
+                        </MudListItem>
+                        <MudListItem>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@SL["Phone"]</MudText>
+                            <MudText>@_order.Delivery.DeliveryPhone</MudText>
+                        </MudListItem>
+                        <MudListItem>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@SL["Address"]</MudText>
+                            <MudText>
+                                @_order.Delivery.DeliveryLine1<br />
+                                @_order.Delivery.DeliveryCity, @_order.Delivery.DeliveryCountry
+                            </MudText>
+                        </MudListItem>
+
+                        @if (!string.IsNullOrWhiteSpace(_order.Delivery.DeliveryNotes))
+                        {
+                            <MudListItem>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@SL["Notes"]</MudText>
+                                <MudText>@_order.Delivery.DeliveryNotes</MudText>
+                            </MudListItem>
+                        }
+                        @if (_order.PaymentMethodSnapshot is not null)
+                        {
+                            <MudListItem>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@SL["Payment"]</MudText>
+                                <MudText>@FormatPaymentSnapshot(_order.PaymentMethodSnapshot)</MudText>
+                            </MudListItem>
+                        }
+                    </MudList>
+
+                    <MudDivider Class="my-3" />
+
+                    <MudText Typo="Typo.subtitle1" Class="mb-2">@SL["Actions"]</MudText>
+
+                    <div class="d-grid gap-2">
+
+                        <MudButton Variant="Variant.Outlined" OnClick="BackToList" Disabled="@(_saving)">@SL["Back"]</MudButton>
+
+                        <MudButton Color="Color.Primary" Variant="Variant.Outlined"
+                                   Disabled="@(_saving)"
+                                   OnClick="Refresh">@SL["Refresh"]</MudButton>
+
+                        <MudDivider Class="my-2" />
+
+                        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                                   Disabled="@(!_canSetProcessing || _saving)"
+                                   OnClick="SetProcessing">@SL["StartProcessing"]</MudButton>
+
+                        <MudButton Color="Color.Secondary" Variant="Variant.Filled"
+                                   Disabled="@(!_canSetDelivered || _saving)"
+                                   OnClick="SetDelivered">@SL["MarkDelivered"]</MudButton>
+                    </div>
+
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
+                        @SL["FulfillmentTransitionsHint"]
+                    </MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</AuthGuard>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private bool _loading = true;
+    private bool _saving = false;
+
+    private string? _error;
+    private ShopOrderDetailDto? _order;
+
+    private bool _bootstrapped;
+    private bool _loadedOnce;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var t0 = DateTime.UtcNow;
+        while (!Auth.IsReady && (DateTime.UtcNow - t0).TotalSeconds < 6)
+            await Task.Delay(30);
+
+        if (!Auth.IsReady)
+        {
+            Auth.SetUnauthenticated();
+        }
+
+        if (!Auth.IsAuthenticated)
+        {
+            _bootstrapped = true;
+            StateHasChanged();
+            return;
+        }
+
+        if (!Auth.IsShop && !Auth.IsAdmin)
+        {
+            Nav.NavigateTo("/", forceLoad: false);
+            return;
+        }
+
+        _bootstrapped = true;
+        await EnsureLoadedAsync();
+        StateHasChanged();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!_bootstrapped) return;
+        await EnsureLoadedAsync(force: true);
+    }
+
+    private async Task EnsureLoadedAsync(bool force = false)
+    {
+        if (_loadedOnce && !force) return;
+        _loadedOnce = true;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            _order = await Http.GetFromJsonAsync<ShopOrderDetailDto>($"api/orders/shop/{Id}");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task Refresh()
+    {
+        await LoadAsync();
+        Snackbar.Add(SL["OrderRefreshed"], Severity.Info);
+    }
+
+    private bool _canSetProcessing =>
+        _order is not null && _order.PaymentStatus == "Paid" && _order.FulfillmentStatus == "PaidPending";
+
+    private bool _canSetDelivered =>
+        _order is not null && _order.PaymentStatus == "Paid" && _order.FulfillmentStatus == "Processing";
+
+    private async Task SetProcessing() => await SetStatus("Processing");
+    private async Task SetDelivered() => await SetStatus("Delivered");
+
+    private async Task SetStatus(string status)
+    {
+        if (_order is null) return;
+
+        var confirm = await Dialog.ShowMessageBox(
+            title: SL["Confirm"],
+            markupMessage: (MarkupString)string.Format(SL["ConfirmChangeStatus"].Value, status),
+            yesText: SL["Oui"],
+            cancelText: SL["Annuler"]);
+
+        if (confirm != true) return;
+
+        _saving = true;
+        try
+        {
+            var res = await Http.PatchAsJsonAsync(
+                $"api/shops/orders/{_order.Id}/fulfillment-status",
+                new FulfillmentStatusRequest(status, null));
+
+            if (!res.IsSuccessStatusCode)
+            {
+                var body = await res.Content.ReadAsStringAsync();
+                throw new InvalidOperationException($"{SL["ApiError"]} ({(int)res.StatusCode}) : {body}");
+            }
+
+            Snackbar.Add(string.Format(SL["StatusUpdated"].Value, status), Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void BackToList() => Nav.NavigateTo("/shop/orders");
+
+    private static string ShortId(Guid id) => id.ToString("N")[..8];
+
+    private static Color StatusColor(string status) => status switch
+    {
+        "PaidPending" => Color.Warning,
+        "Processing" => Color.Info,
+        "Delivered" => Color.Success,
+        "Cancelled" => Color.Error,
+        _ => Color.Default
+    };
+
+    private static string FormatPaymentSnapshot(DoorMarket.Web.Models.PaymentMethodSnapshotDto snapshot)
+    {
+        if (string.IsNullOrWhiteSpace(snapshot.CardBrand))
+        {
+            return snapshot.Provider;
+        }
+
+        var exp = snapshot.ExpMonth.HasValue && snapshot.ExpYear.HasValue
+            ? $" exp {snapshot.ExpMonth:00}/{snapshot.ExpYear:0000}"
+            : string.Empty;
+
+        var last4 = string.IsNullOrWhiteSpace(snapshot.Last4) ? string.Empty : $" **** {snapshot.Last4}";
+        return $"{snapshot.CardBrand.ToUpperInvariant()}{last4}{exp}";
+    }
+
+    private sealed record FulfillmentStatusRequest(string Status, string? Note);
+}
+
+
+
+
+

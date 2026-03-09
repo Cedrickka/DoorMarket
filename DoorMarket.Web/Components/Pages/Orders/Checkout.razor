@@ -1,0 +1,1415 @@
+﻿@page "/checkout"
+
+@using Blazored.SessionStorage
+@using System.Net.Http.Json
+@using MudBlazor
+@using DoorMarket.Application.DTOs.Cart
+@using DoorMarket.Application.DTOs.Delivery
+@using DoorMarket.Application.DTOs.Me
+@using AppCheckoutRequest = DoorMarket.Application.DTOs.Orders.CheckoutRequest
+@using AppOrderDto = DoorMarket.Application.DTOs.Orders.OrderDto
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+@inject HttpClient Http
+@inject DoorMarket.Web.Services.CartApiClient CartApi
+@inject ISessionStorageService SessionStorage
+
+<PageTitle>@SL["Checkout"]</PageTitle>
+
+<h1 class="dm-page-h1">@SL["Checkout"]</h1>
+<div class="dm-page-sub">@SL["CheckoutSubtitle"]</div>
+
+<AuthGuard>
+    @if (!_bootstrapped)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudSkeleton Height="26px" Width="260px" Class="mb-2" />
+            <MudSkeleton Height="18px" Width="420px" Class="mb-4" />
+            <MudSkeleton Height="220px" />
+        </MudPaper>}
+    else if (_loading)
+    {<MudPaper Class="pa-4 mt-3">
+            <MudSkeleton Height="54px" Class="mb-2" />
+            <MudSkeleton Height="54px" Class="mb-2" />
+            <MudSkeleton Height="54px" Class="mb-2" />
+        </MudPaper>}
+    else if (_error is not null)
+    {<MudPaper Class="pa-4 mt-3">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_error</MudAlert>
+            <MudButton Variant="Variant.Outlined" Class="mt-3" OnClick="Reload">@SL["Retry"]</MudButton>
+        </MudPaper>}
+    else if (_cart is null || _cart.Items.Count == 0)
+    {<MudPaper Class="pa-4 mt-3">
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@SL["CartEmpty"]</MudAlert>
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" Class="mt-3"
+                       OnClick="@(()=>Nav.NavigateTo("/cart"))">
+                @SL["BackToCart"]
+            </MudButton>
+        </MudPaper>}
+    else
+    {<MudGrid Class="mt-3" Spacing="3">
+            <MudItem xs="12" lg="7">
+                <MudPaper Class="pa-4 dm-content-card">
+                    <MudText Typo="Typo.h6" Class="mb-2">@SL["DeliveryAddress"]</MudText>
+
+                    @if (_addresses.Count > 0)
+                    {
+                        <MudSelect T="Guid?"
+                                   Label="@SL["ProfileAddress"]"
+                                   Variant="Variant.Outlined"
+                                   Value="_selectedAddressId"
+                                   ValueChanged="OnProfileAddressChanged">
+                            @foreach (var address in _addresses)
+                            {
+                                <MudSelectItem Value="@((Guid?)address.Id)">@AddressLabel(address)</MudSelectItem>
+                            }
+                        </MudSelect>
+
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2 mb-2">@SL["SelectOrEditAddressHint"]</MudText>
+
+                        <MudSelect T="Guid?"
+                                   Label="@SL["DeliveryZone"]"
+                                   Variant="Variant.Outlined"
+                                   Class="mb-2"
+                                   Value="_selectedZoneId"
+                                   ValueChanged="OnSelectedZoneChanged">
+                            @foreach (var zone in _zones)
+                            {
+                                <MudSelectItem Value="@((Guid?)zone.Id)">
+                                    @($"{zone.Code} - {zone.Name} ({zone.FeeUsd:0.00} USD)")
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+
+                        @if (!_selectedZoneId.HasValue)
+                        {
+                            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Dense="true" Class="mb-2">@SL["DeliveryZoneRequiredHint"]</MudAlert>
+                        }
+                    }
+
+                    @if (_toast is not null)
+                    {
+                        <MudAlert Severity="@(_toastType == "ok" ? Severity.Success : Severity.Error)"
+                                  Variant="Variant.Outlined"
+                                  Class="mb-3">
+                            @_toast
+                        </MudAlert>
+                    }
+
+                    <MudForm @ref="_form" Model="_model">
+                        <MudTextField T="string"
+                                      Label="@SL["FullName"]"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      For="@(() => _model.DeliveryName)"
+                                      @bind-Value="_model.DeliveryName"
+                                      Immediate="true" />
+
+                        <MudTextField T="string"
+                                      Label="@SL["Phone"]"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      For="@(() => _model.DeliveryPhone)"
+                                      @bind-Value="_model.DeliveryPhone"
+                                      Immediate="true"
+                                      Class="mt-3" />
+
+                        <MudTextField T="string"
+                                      Label="@SL["Address"]"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      For="@(() => _model.DeliveryLine1)"
+                                      @bind-Value="_model.DeliveryLine1"
+                                      Immediate="true"
+                                      Class="mt-3" />
+
+                        <MudGrid Class="mt-1" Spacing="2">
+                            <MudItem xs="12" sm="6">
+                                <MudTextField T="string"
+                                              Label="@SL["City"]"
+                                              Variant="Variant.Outlined"
+                                              Required="true"
+                                              For="@(() => _model.DeliveryCity)"
+                                              @bind-Value="_model.DeliveryCity"
+                                              Immediate="true" />
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudTextField T="string"
+                                              Label="@SL["Country"]"
+                                              Variant="Variant.Outlined"
+                                              Required="true"
+                                              For="@(() => _model.DeliveryCountry)"
+                                              @bind-Value="_model.DeliveryCountry"
+                                              Immediate="true" />
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudTextField T="string"
+                                      Label="@SL["NotesOptional"]"
+                                      Variant="Variant.Outlined"
+                                      Lines="3"
+                                      @bind-Value="_model.DeliveryNotes"
+                                      Immediate="true"
+                                      Class="mt-3" />
+
+                        <MudDivider Class="my-3" />
+
+                        <MudText Typo="Typo.subtitle1" Class="mb-2">@SL["PromoCodeTitle"]</MudText>
+
+                        <MudTextField T="string"
+                                      Placeholder="PROMO10"
+                                      Variant="Variant.Outlined"
+                                      Value="_model.PromoCode"
+                                      ValueChanged="OnPromoCodeChanged"
+                                      Immediate="true" />
+
+                        <div class="d-flex gap-2 mt-2">
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       Disabled="_validatingCoupon || string.IsNullOrWhiteSpace(_model.PromoCode)"
+                                       OnClick="ApplyPromoCodeAsync">
+                                @if (_validatingCoupon)
+                                {
+                                    <MudProgressCircular Indeterminate="true" Style="width:14px;height:14px" Class="me-1" />
+                                    <span>Validation...</span>
+                                }
+                                else
+                                {
+                                    <span>Appliquer</span>
+                                }
+                            </MudButton>
+                            <MudButton Variant="Variant.Outlined"
+                                       Disabled="_validatingCoupon || string.IsNullOrWhiteSpace(_model.PromoCode)"
+                                       OnClick="ClearPromoCodeAsync">
+                                Effacer
+                            </MudButton>
+                        </div>
+
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">@SL["PromoSimpleHint"]</MudText>
+                        @if (_couponValidation is not null && !string.IsNullOrWhiteSpace(_model.PromoCode))
+                        {
+                            <MudText Typo="Typo.caption" Color="@PromoFeedbackColor()" Class="mt-1">
+                                @_couponValidation.Message
+                            </MudText>
+                            @if (_couponValidation.Applied)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Success" Class="mt-1">
+                                    Remise: -@_couponValidation.Discount.ToString("0.00") @_couponValidation.Currency
+                                </MudText>
+                            }
+                        }
+                    </MudForm>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" lg="5">
+                <MudPaper Class="pa-4 dm-content-card">
+                    <MudText Typo="Typo.h6" Class="mb-2">@SL["Summary"]</MudText>
+
+                    @foreach (var item in _cart.Items)
+                    {
+                        <article class="dm-cart-item">
+                            <img src="@MediaCatalog.Product(item.MainImageUrl, item.ProductName, null, item.ProductId)"
+                                 alt="@item.ProductName"
+                                 class="dm-product-thumb-sm" />
+                            <div>
+                                <div class="dm-cart-item-name">@item.ProductName</div>
+                                <div class="dm-cart-item-meta">@SL["QtyShort"]: @item.Qty</div>
+                            </div>
+                            <div class="dm-cart-item-total">
+                                <div class="dm-cart-total-value">@item.LineTotal.ToString("0.00") @_cart.Currency</div>
+                            </div>
+                        </article>
+                    }
+
+                    <MudDivider Class="my-3" />
+
+                    <MudPaper Class="pa-3" Outlined="true">
+                        <div class="d-flex justify-content-between">
+                            <span class="dm-muted">@SL["Subtotal"]</span>
+                            <strong>@_cart.Subtotal.ToString("0.00") @_cart.Currency</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mt-2">
+                            <span class="dm-muted">@SL["Delivery"]</span>
+                            <strong>@_deliveryFee.ToString("0.00") @_deliveryCurrency</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mt-2">
+                            <span class="dm-muted">@SL["Discount"]</span>
+                            <strong>@DisplayDiscount()</strong>
+                        </div>
+                        <MudDivider Class="my-3" />
+                        <div class="d-flex justify-content-between">
+                            <span>@SL["Total"]</span>
+                            <strong>@ComputeEstimatedTotal().ToString("0.00") @_deliveryCurrency</strong>
+                        </div>
+                    </MudPaper>
+
+                    <MudDivider Class="my-3" />
+
+                    <MudText Typo="Typo.subtitle1" Class="mb-2">@SL["Payment"]</MudText>
+                    <MudGrid Spacing="2">
+                        <MudItem xs="12" sm="6" md="3">
+                            <MudPaper Class="pa-3" Outlined="true" Style="@MethodStyle("Stripe")" @onclick="@(() => SelectMethod("Stripe"))">
+                                <MudText Typo="Typo.subtitle2">Stripe</MudText>
+                                <MudText Typo="Typo.caption">@SL["CardPayment"]</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" sm="6" md="3">
+                            <MudPaper Class="pa-3" Outlined="true" Style="@MethodStyle("PayPal")" @onclick="@(() => SelectMethod("PayPal"))">
+                                <MudText Typo="Typo.subtitle2">PayPal</MudText>
+                                <MudText Typo="Typo.caption">@SL["ExternalPayment"]</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" sm="6" md="3">
+                            <MudPaper Class="pa-3" Outlined="true" Style="@MethodStyle("MobileMoney")" @onclick="@(() => SelectMethod("MobileMoney"))">
+                                <MudText Typo="Typo.subtitle2">Mobile Money</MudText>
+                                <MudText Typo="Typo.caption">Airtel / Orange / M-Pesa</MudText>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" sm="6" md="3">
+                            <MudPaper Class="pa-3" Outlined="true" Style="@MethodStyle("PrepaidCard")" @onclick="@(() => SelectMethod("PrepaidCard"))">
+                                <MudText Typo="Typo.subtitle2">@SL["Prepaid"]</MudText>
+                                <MudText Typo="Typo.caption">@SL["InternalVoucher"]</MudText>
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
+
+                    @if (IsMobileMoneySelected)
+                    {
+                        <MudSelect T="string"
+                                   Class="mt-2"
+                                   Label="Operateur"
+                                   Variant="Variant.Outlined"
+                                   Value="_model.MobileMoneyProvider"
+                                   ValueChanged="OnMobileMoneyProviderChanged">
+                            <MudSelectItem T="string" Value="@("AIRTEL")">Airtel Money</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("ORANGE")">Orange Money</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("MPESA")">M-Pesa</MudSelectItem>
+                        </MudSelect>
+                        <MudTextField T="string"
+                                      Class="mt-2"
+                                      Label="Numero Mobile Money"
+                                      Placeholder="+243..."
+                                      Variant="Variant.Outlined"
+                                      Immediate="true"
+                                      Value="_model.MobileMoneyPhone"
+                                      ValueChanged="OnMobileMoneyPhoneChanged" />
+                    }
+
+                    @if (IsPrepaidSelected)
+                    {
+                        <MudTextField T="string"
+                                      Class="mt-2"
+                                      Label="@SL["PrepaidCode"]"
+                                      Placeholder="DM-ABCD-1234"
+                                      Variant="Variant.Outlined"
+                                      Immediate="true"
+                                      Value="_model.PrepaidCardCode"
+                                      ValueChanged="OnPrepaidCodeChanged" />
+
+                        @if (!string.IsNullOrWhiteSpace(_model.PrepaidCardCode))
+                        {
+                            <MudText Typo="Typo.caption" Color="@(IsValidPrepaidInput(_model.PrepaidCardCode) ? Color.Success : Color.Error)">
+                                @(IsValidPrepaidInput(_model.PrepaidCardCode) ? SL["VoucherCodeValid"] : SL["VoucherCodeInvalid"])
+                            </MudText>
+                        }
+                    }
+
+                    <div class="d-grid gap-2 mt-3">
+                        <MudButton Variant="Variant.Outlined" Class="dm-action-btn dm-action-btn-outline" OnClick="@(() => Nav.NavigateTo("/cart"))" Disabled="_paying">
+                            @SL["BackToCart"]
+                        </MudButton>
+
+                        <MudButton Color="Color.Primary" Variant="Variant.Filled" Class="dm-action-btn dm-action-btn-primary" Disabled="@(_paying || !CanPay())" OnClick="PlaceOrderAndPay">
+                            @if (_paying)
+                            {
+                                <MudProgressCircular Indeterminate="true" Style="width:16px;height:16px" Class="me-2" />
+                                <span>@SL["Processing"]</span>}
+                            else
+                            {<span>@PayButtonLabel()</span>
+                            }
+                        </MudButton>
+                    </div>
+
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
+                        @PaymentHint()
+                    </MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</AuthGuard>
+
+@code {
+    private bool _bootstrapped;
+    private bool _loading = true;
+    private string? _error;
+
+    private CartDto? _cart;
+    private List<AddressDto>_addresses = new();
+    private List<DeliveryZoneDto> _zones = new();
+    private Guid? _selectedAddressId;
+    private Guid? _selectedZoneId;
+    private decimal _deliveryFee;
+    private string _deliveryCurrency = "USD";
+    private CouponValidationDto? _couponValidation;
+    private bool _validatingCoupon;
+
+    private MudForm? _form;
+    private CheckoutFormModel _model = new();
+
+    private bool _paying;
+    private bool _savingZone;
+    private string? _toast;
+    private string _toastType = "ok";
+    private string? _checkoutSessionId;
+    private string? _checkoutExperimentGroup;
+    private bool _checkoutTrackingReady;
+
+    private const string CheckoutAnalyticsSessionStorageKey = "dm_checkout_analytics_session_id";
+    private const string CheckoutExperimentGroupStorageKey = "dm_checkout_experiment_group";
+    private const string CheckoutExperimentName = "checkout_ux_v1";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        var t0 = DateTime.UtcNow;
+        while (!Auth.IsReady && (DateTime.UtcNow - t0).TotalSeconds < 5)
+        {
+            await Task.Delay(30);
+        }
+
+        if (!Auth.IsAuthenticated)
+        {
+            _bootstrapped = true;
+            StateHasChanged();
+
+            var returnUrl = Nav.ToBaseRelativePath(Nav.Uri);
+            if (string.IsNullOrWhiteSpace(returnUrl))
+            {
+                returnUrl = "/checkout";
+            }
+            else if (!returnUrl.StartsWith("/"))
+            {
+                returnUrl = "/" + returnUrl;
+            }
+
+            Nav.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}", forceLoad: false);
+            return;
+        }
+
+        _bootstrapped = true;
+        await EnsureCheckoutTrackingContextAsync();
+        await LoadAsync();
+        await TrackCheckoutEventSafeAsync(
+            eventName: "checkout_viewed",
+            paymentProvider: _model.PaymentMethod,
+            paymentChannel: ResolvePaymentChannel(_model.PaymentMethod),
+            success: true);
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            _cart = await CartApi.GetAsync() ?? new CartDto(Guid.Empty, new List<CartItemDto>(), 0m, "USD");
+            _addresses = await Http.GetFromJsonAsync<List<AddressDto>>("api/me/addresses") ?? new List<AddressDto>();
+            _zones = await Http.GetFromJsonAsync<List<DeliveryZoneDto>>("api/delivery/zones") ?? new List<DeliveryZoneDto>();
+            _deliveryCurrency = string.IsNullOrWhiteSpace(_cart.Currency) ? "USD" : _cart.Currency;
+
+            if (_addresses.Count > 0)
+            {
+                var preferred = _addresses.FirstOrDefault(x => x.IsDefault) ?? _addresses[0];
+                _selectedAddressId = preferred.Id;
+                ApplyAddress(preferred);
+            }
+            else
+            {
+                _selectedZoneId = null;
+            }
+
+            if (string.IsNullOrWhiteSpace(_model.DeliveryCity))
+            {
+                _model.DeliveryCity = "Kinshasa";
+            }
+
+            if (string.IsNullOrWhiteSpace(_model.DeliveryCountry))
+            {
+                _model.DeliveryCountry = "CD";
+            }
+
+            await RefreshDeliveryQuoteAsync();
+            await RefreshCouponValidationAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = WebErrorUx.ForException(
+                ex,
+                SL,
+                "Impossible de charger le checkout.",
+                "Unable to load checkout.");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private Task Reload() => LoadAsync();
+
+    private Task OnProfileAddressChanged(Guid? addressId)
+    {
+        _selectedAddressId = addressId;
+        var selected = _addresses.FirstOrDefault(x => x.Id == addressId);
+        if (selected is not null)
+        {
+            ApplyAddress(selected);
+        }
+
+        _ = RefreshDeliveryQuoteAsync();
+
+        return Task.CompletedTask;
+    }
+
+    private async Task OnSelectedZoneChanged(Guid? zoneId)
+    {
+        _selectedZoneId = zoneId;
+        var selectedAddress = _addresses.FirstOrDefault(x => x.Id == _selectedAddressId);
+        if (selectedAddress is not null && selectedAddress.DeliveryZoneId != zoneId)
+        {
+            await PersistAddressZoneAsync(selectedAddress, zoneId);
+        }
+
+        await RefreshDeliveryQuoteAsync();
+        await RefreshCouponValidationAsync(force: true);
+    }
+
+    private void ApplyAddress(AddressDto address)
+    {
+        _selectedZoneId = address.DeliveryZoneId;
+        _model.DeliveryName = address.FullName;
+        _model.DeliveryPhone = address.Phone;
+        _model.DeliveryLine1 = string.IsNullOrWhiteSpace(address.District)
+            ? address.Street
+            : $"{address.Street}, {address.District}";
+        _model.DeliveryCity = address.City;
+        _model.DeliveryCountry = address.Country;
+        _model.DeliveryNotes = string.IsNullOrWhiteSpace(address.Landmark)
+            ? _model.DeliveryNotes
+            : address.Landmark;
+    }
+
+    private async Task PersistAddressZoneAsync(AddressDto address, Guid? zoneId)
+    {
+        if (_savingZone)
+        {
+            return;
+        }
+
+        _savingZone = true;
+        try
+        {
+            var req = new UpdateAddressRequest(
+                Label: address.Label,
+                FullName: address.FullName,
+                Phone: address.Phone,
+                Country: address.Country,
+                City: address.City,
+                District: address.District,
+                DeliveryZoneId: zoneId,
+                Street: address.Street,
+                Landmark: address.Landmark,
+                IsDefault: address.IsDefault);
+
+            var res = await Http.PutAsJsonAsync($"api/me/addresses/{address.Id}", req);
+            if (!res.IsSuccessStatusCode)
+            {
+                var message = await WebErrorUx.ForHttpFailureAsync(
+                    res,
+                    SL,
+                    SL["AddressZoneUpdateFailed"],
+                    SL["AddressZoneUpdateFailed"]);
+                throw new InvalidOperationException(message);
+            }
+
+            var zoneName = _zones.FirstOrDefault(x => x.Id == zoneId)?.Name;
+            var updated = new AddressDto(
+                address.Id,
+                address.Label,
+                address.FullName,
+                address.Phone,
+                address.Country,
+                address.City,
+                address.District,
+                zoneId,
+                zoneName,
+                address.Street,
+                address.Landmark,
+                address.IsDefault);
+
+            var idx = _addresses.FindIndex(x => x.Id == address.Id);
+            if (idx >= 0)
+            {
+                _addresses[idx] = updated;
+            }
+
+            if (_selectedAddressId == updated.Id)
+            {
+                ApplyAddress(updated);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.ShowError(WebErrorUx.ForException(
+                ex,
+                SL,
+                "Mise a jour de la zone impossible.",
+                "Unable to update delivery zone."));
+        }
+        finally
+        {
+            _savingZone = false;
+        }
+    }
+
+    private static string AddressLabel(AddressDto address)
+    {
+        var line = string.IsNullOrWhiteSpace(address.District)
+            ? address.Street
+            : $"{address.Street}, {address.District}";
+
+        return $"{address.Label} - {address.FullName} - {line}";
+    }
+
+    private void SelectMethod(string method)
+    {
+        _model.PaymentMethod = method;
+        if (!IsPrepaidSelected)
+        {
+            _model.PrepaidCardCode = null;
+        }
+        if (!IsMobileMoneySelected)
+        {
+            _model.MobileMoneyPhone = null;
+        }
+
+        _ = TrackCheckoutEventSafeAsync(
+            eventName: "checkout_payment_method_selected",
+            paymentProvider: _model.PaymentMethod,
+            paymentChannel: ResolvePaymentChannel(_model.PaymentMethod),
+            success: true);
+    }
+
+    private Task OnPrepaidCodeChanged(string value)
+    {
+        _model.PrepaidCardCode = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnMobileMoneyProviderChanged(string value)
+    {
+        _model.MobileMoneyProvider = string.IsNullOrWhiteSpace(value) ? "AIRTEL" : value.Trim().ToUpperInvariant();
+        return Task.CompletedTask;
+    }
+
+    private Task OnMobileMoneyPhoneChanged(string value)
+    {
+        _model.MobileMoneyPhone = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnPromoCodeChanged(string value)
+    {
+        _model.PromoCode = value;
+        _couponValidation = null;
+        StateHasChanged();
+
+        return Task.CompletedTask;
+    }
+
+    private async Task ApplyPromoCodeAsync()
+    {
+        await RefreshCouponValidationAsync(force: true);
+    }
+
+    private Task ClearPromoCodeAsync()
+    {
+        _model.PromoCode = null;
+        _couponValidation = null;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private bool IsPrepaidSelected => string.Equals(_model.PaymentMethod, "PrepaidCard", StringComparison.OrdinalIgnoreCase);
+    private bool IsMobileMoneySelected => string.Equals(_model.PaymentMethod, "MobileMoney", StringComparison.OrdinalIgnoreCase);
+
+    private string MethodStyle(string method)
+    {
+        var isSelected = string.Equals(_model.PaymentMethod, method, StringComparison.OrdinalIgnoreCase);
+        return isSelected
+            ? "cursor:pointer;border:2px solid #FF7A00;background:#FFF8F1"
+            : "cursor:pointer;border:1px solid #EAEAEA;background:#FFFFFF";
+    }
+
+    private bool CanPay()
+    {
+        if (_cart is null || _cart.Items.Count == 0)
+        {
+            return false;
+        }
+
+        if (!_selectedZoneId.HasValue)
+        {
+            return false;
+        }
+
+        if (IsPrepaidSelected)
+        {
+            return IsValidPrepaidInput(_model.PrepaidCardCode);
+        }
+        if (IsMobileMoneySelected)
+        {
+            return !string.IsNullOrWhiteSpace(NormalizePhone(_model.MobileMoneyPhone));
+        }
+
+        return true;
+    }
+
+    private decimal ComputeDiscountAmount()
+    {
+        if (_couponValidation is null || !_couponValidation.Applied)
+        {
+            return 0m;
+        }
+
+        return _couponValidation.Discount;
+    }
+
+    private decimal ComputeEstimatedTotal()
+    {
+        if (_cart is null)
+        {
+            return _deliveryFee;
+        }
+
+        var subtotalAfterDiscount = Math.Max(0m, _cart.Subtotal - ComputeDiscountAmount());
+        return subtotalAfterDiscount + _deliveryFee;
+    }
+
+    private string DisplayDiscount()
+    {
+        var discount = ComputeDiscountAmount();
+        if (discount <= 0m)
+        {
+            return $"0.00 {_deliveryCurrency}";
+        }
+
+        return $"-{discount:0.00} {_deliveryCurrency}";
+    }
+
+    private string PayButtonLabel() => _model.PaymentMethod switch
+    {
+        "PayPal" => SL["PayWithPayPal"],
+        "MobileMoney" => "Payer Mobile Money",
+        "PrepaidCard" => SL["PayWithVoucher"],
+        _ => SL["PayWithStripe"]
+    };
+
+    private string PaymentHint() => _model.PaymentMethod switch
+    {
+        "PayPal" => SL["PaymentHintPayPal"],
+        "MobileMoney" => "Paiement local via Airtel/Orange/M-Pesa.",
+        "PrepaidCard" => SL["PaymentHintVoucher"],
+        _ => SL["PaymentHintStripe"]
+    };
+
+    private async Task PlaceOrderAndPay()
+    {
+        _toast = null;
+        _toastType = "ok";
+
+        if (_cart is null || _cart.Items.Count == 0)
+        {
+            _toastType = "err";
+            _toast = SL["CartEmpty"];
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_model.DeliveryName) ||
+            string.IsNullOrWhiteSpace(_model.DeliveryPhone) ||
+            string.IsNullOrWhiteSpace(_model.DeliveryLine1) ||
+            string.IsNullOrWhiteSpace(_model.DeliveryCity) ||
+            string.IsNullOrWhiteSpace(_model.DeliveryCountry))
+        {
+            _toastType = "err";
+            _toast = SL["RequiredFieldsWarning"];
+            return;
+        }
+
+        if (IsPrepaidSelected && !IsValidPrepaidInput(_model.PrepaidCardCode))
+        {
+            _toastType = "err";
+            _toast = SL["PrepaidCodeInvalid"];
+            return;
+        }
+
+        if (IsMobileMoneySelected && string.IsNullOrWhiteSpace(NormalizePhone(_model.MobileMoneyPhone)))
+        {
+            _toastType = "err";
+            _toast = "Numero Mobile Money requis.";
+            return;
+        }
+
+        if (!_selectedZoneId.HasValue)
+        {
+            _toastType = "err";
+            _toast = SL["DeliveryZoneRequiredHint"];
+            return;
+        }
+
+        var confirm = await Dialog.ShowMessageBox(
+            title: SL["Confirm"],
+            markupMessage: (MarkupString)string.Format(
+                SL["ConfirmPayTotalPrompt"].Value,
+                ComputeEstimatedTotal().ToString("0.00"),
+                _deliveryCurrency),
+            yesText: SL["Continue"],
+            cancelText: SL["Cancel"]);
+
+        if (confirm != true)
+        {
+            return;
+        }
+
+        _paying = true;
+
+        try
+        {
+            var paymentProvider = _model.PaymentMethod;
+            await TrackCheckoutEventSafeAsync(
+                eventName: "checkout_submit_clicked",
+                paymentProvider: paymentProvider,
+                paymentChannel: ResolvePaymentChannel(paymentProvider),
+                success: true);
+
+            var checkoutReq = new AppCheckoutRequest(
+                DeliveryName: _model.DeliveryName.Trim(),
+                DeliveryPhone: _model.DeliveryPhone.Trim(),
+                DeliveryLine1: _model.DeliveryLine1.Trim(),
+                DeliveryCity: _model.DeliveryCity.Trim(),
+                DeliveryCountry: _model.DeliveryCountry.Trim(),
+                DeliveryZoneId: _selectedZoneId,
+                DeliveryNotes: string.IsNullOrWhiteSpace(_model.DeliveryNotes) ? null : _model.DeliveryNotes.Trim(),
+                PromoCode: _couponValidation?.Applied == true ? _couponValidation.PromoCode : null,
+                PaymentProvider: paymentProvider,
+                PrepaidCardCode: IsPrepaidSelected ? NormalizePrepaidPayload(_model.PrepaidCardCode) : null
+            );
+
+            var orderRes = await Http.PostAsJsonAsync("api/orders/checkout", checkoutReq);
+            if (!orderRes.IsSuccessStatusCode)
+            {
+                var body = await orderRes.Content.ReadAsStringAsync();
+                var message = body.Contains("stock_insufficient", StringComparison.OrdinalIgnoreCase) ||
+                              body.Contains("Stock insuffisant", StringComparison.OrdinalIgnoreCase)
+                    ? SL["StockInsufficientFriendly"].Value
+                    : WebErrorUx.FromApiBody(
+                        orderRes.StatusCode,
+                        body,
+                        SL,
+                        "Creation de commande impossible.",
+                        "Unable to create order.");
+                _toastType = "err";
+                _toast = message;
+                Snackbar.ShowError(message);
+                return;
+            }
+
+            var order = await orderRes.Content.ReadFromJsonAsync<AppOrderDto>();
+            if (order is null)
+            {
+                throw new InvalidOperationException(SL["OrderInvalid"]);
+            }
+
+            await TrackCheckoutEventSafeAsync(
+                eventName: "checkout_order_created",
+                orderId: order.Id,
+                paymentProvider: paymentProvider,
+                paymentChannel: ResolvePaymentChannel(paymentProvider),
+                success: true);
+
+            if (string.Equals(paymentProvider, "Stripe", StringComparison.OrdinalIgnoreCase))
+            {
+                await StartStripeAsync(order.Id);
+                return;
+            }
+
+            if (string.Equals(paymentProvider, "PayPal", StringComparison.OrdinalIgnoreCase))
+            {
+                await StartPayPalAsync(order.Id);
+                return;
+            }
+
+            if (string.Equals(paymentProvider, "MobileMoney", StringComparison.OrdinalIgnoreCase))
+            {
+                await StartMobileMoneyAsync(order.Id);
+                Nav.NavigateTo($"/orders/{order.Id}");
+                return;
+            }
+
+            await PayWithPrepaidAsync(order.Id);
+            Nav.NavigateTo($"/orders/{order.Id}");
+        }
+        catch (Exception ex)
+        {
+            _toastType = "err";
+            _toast = WebErrorUx.ForException(
+                ex,
+                SL,
+                "Paiement impossible pour le moment.",
+                "Unable to process payment right now.");
+            Snackbar.ShowError(_toast);
+            await TrackCheckoutEventSafeAsync(
+                eventName: "checkout_payment_failed",
+                paymentProvider: _model.PaymentMethod,
+                paymentChannel: ResolvePaymentChannel(_model.PaymentMethod),
+                success: false,
+                errorCode: "checkout_flow_exception",
+                errorMessage: _toast);
+        }
+        finally
+        {
+            _paying = false;
+        }
+    }
+
+    private async Task StartStripeAsync(Guid orderId)
+    {
+        var payRes = await Http.PostAsync($"api/payments/stripe/checkout-session?orderId={orderId}", content: null);
+        if (!payRes.IsSuccessStatusCode)
+        {
+            var body = await payRes.Content.ReadAsStringAsync();
+            await TrackCheckoutEventSafeAsync(
+                eventName: "checkout_payment_redirect_failed",
+                orderId: orderId,
+                paymentProvider: "Stripe",
+                paymentChannel: "External",
+                success: false,
+                errorCode: $"http_{(int)payRes.StatusCode}",
+                errorMessage: body);
+            throw new InvalidOperationException(WebErrorUx.FromApiBody(
+                payRes.StatusCode,
+                body,
+                SL,
+                "Demarrage Stripe impossible.",
+                "Unable to start Stripe payment."));
+        }
+
+        var checkout = await payRes.Content.ReadFromJsonAsync<ExternalCheckoutResponse>();
+        if (checkout is null || string.IsNullOrWhiteSpace(checkout.Url))
+        {
+            await TrackCheckoutEventSafeAsync(
+                eventName: "checkout_payment_redirect_failed",
+                orderId: orderId,
+                paymentProvider: "Stripe",
+                paymentChannel: "External",
+                success: false,
+                errorCode: "stripe_url_invalid",
+                errorMessage: SL["StripeUrlInvalid"]);
+            throw new InvalidOperationException(SL["StripeUrlInvalid"]);
+        }
+
+        await TrackCheckoutEventSafeAsync(
+            eventName: "checkout_payment_redirect_opened",
+            orderId: orderId,
+            paymentProvider: "Stripe",
+            paymentChannel: "External",
+            success: true);
+
+        Nav.NavigateTo(checkout.Url, forceLoad: true);
+    }
+
+    private async Task StartPayPalAsync(Guid orderId)
+    {
+        var payRes = await Http.PostAsync($"api/payments/paypal/create-order?orderId={orderId}", content: null);
+        if (!payRes.IsSuccessStatusCode)
+        {
+            var body = await payRes.Content.ReadAsStringAsync();
+            await TrackCheckoutEventSafeAsync(
+                eventName: "checkout_payment_redirect_failed",
+                orderId: orderId,
+                paymentProvider: "PayPal",
+                paymentChannel: "External",
+                success: false,
+                errorCode: $"http_{(int)payRes.StatusCode}",
+                errorMessage: body);
+            throw new InvalidOperationException(WebErrorUx.FromApiBody(
+                payRes.StatusCode,
+                body,
+                SL,
+                "Demarrage PayPal impossible.",
+                "Unable to start PayPal payment."));
+        }
+
+        var checkout = await payRes.Content.ReadFromJsonAsync<ExternalCheckoutResponse>();
+        if (checkout is null || string.IsNullOrWhiteSpace(checkout.Url))
+        {
+            await TrackCheckoutEventSafeAsync(
+                eventName: "checkout_payment_redirect_failed",
+                orderId: orderId,
+                paymentProvider: "PayPal",
+                paymentChannel: "External",
+                success: false,
+                errorCode: "paypal_url_invalid",
+                errorMessage: SL["PayPalUrlInvalid"]);
+            throw new InvalidOperationException(SL["PayPalUrlInvalid"]);
+        }
+
+        await TrackCheckoutEventSafeAsync(
+            eventName: "checkout_payment_redirect_opened",
+            orderId: orderId,
+            paymentProvider: "PayPal",
+            paymentChannel: "External",
+            success: true);
+
+        Nav.NavigateTo(checkout.Url, forceLoad: true);
+    }
+
+    private async Task StartMobileMoneyAsync(Guid orderId)
+    {
+        var provider = string.IsNullOrWhiteSpace(_model.MobileMoneyProvider)
+            ? "AIRTEL"
+            : _model.MobileMoneyProvider.Trim().ToUpperInvariant();
+        var phone = NormalizePhone(_model.MobileMoneyPhone);
+
+        var initRes = await Http.PostAsJsonAsync(
+            "api/payments/mobile-money/initiate",
+            new MobileMoneyInitiateRequest(orderId, provider, phone, null));
+        if (!initRes.IsSuccessStatusCode)
+        {
+            var body = await initRes.Content.ReadAsStringAsync();
+            await TrackCheckoutEventSafeAsync(
+                eventName: "checkout_payment_initiation_failed",
+                orderId: orderId,
+                paymentProvider: provider,
+                paymentChannel: "MobileMoney",
+                success: false,
+                errorCode: $"http_{(int)initRes.StatusCode}",
+                errorMessage: body);
+            throw new InvalidOperationException(WebErrorUx.FromApiBody(
+                initRes.StatusCode,
+                body,
+                SL,
+                "Initiation Mobile Money impossible.",
+                "Unable to initiate Mobile Money payment."));
+        }
+
+        var init = await initRes.Content.ReadFromJsonAsync<MobileMoneyInitiateResponse>();
+        if (init is null)
+        {
+            throw new InvalidOperationException("Reponse Mobile Money invalide.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(init.CheckoutUrl))
+        {
+            await TrackCheckoutEventSafeAsync(
+                eventName: "checkout_payment_redirect_opened",
+                orderId: orderId,
+                paymentProvider: provider,
+                paymentChannel: "MobileMoney",
+                success: true,
+                metadata: new { init.TransactionId });
+            Nav.NavigateTo(init.CheckoutUrl, forceLoad: true);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(init.TransactionId))
+        {
+            Snackbar.ShowWarning("Paiement Mobile Money initie. Confirmez dans le detail commande.");
+            return;
+        }
+
+        var confirmRes = await Http.PostAsJsonAsync(
+            "api/payments/mobile-money/confirm",
+            new MobileMoneyConfirmRequest(orderId, provider, init.TransactionId));
+        if (!confirmRes.IsSuccessStatusCode)
+        {
+            var body = await confirmRes.Content.ReadAsStringAsync();
+            await TrackCheckoutEventSafeAsync(
+                eventName: "checkout_payment_failed",
+                orderId: orderId,
+                paymentProvider: provider,
+                paymentChannel: "MobileMoney",
+                success: false,
+                errorCode: $"http_{(int)confirmRes.StatusCode}",
+                errorMessage: body);
+            throw new InvalidOperationException(WebErrorUx.FromApiBody(
+                confirmRes.StatusCode,
+                body,
+                SL,
+                "Confirmation Mobile Money impossible.",
+                "Unable to confirm Mobile Money payment."));
+        }
+
+        var confirm = await confirmRes.Content.ReadFromJsonAsync<MobileMoneyConfirmResponse>();
+        if (confirm is not null)
+        {
+            await TrackCheckoutEventSafeAsync(
+                eventName: confirm.Paid ? "checkout_payment_confirmed" : "checkout_payment_failed",
+                orderId: orderId,
+                paymentProvider: provider,
+                paymentChannel: "MobileMoney",
+                success: confirm.Paid,
+                errorCode: confirm.Paid ? null : confirm.PaymentStatus,
+                errorMessage: confirm.Paid ? null : confirm.Message);
+        }
+        if (confirm is not null && !string.IsNullOrWhiteSpace(confirm.Message))
+        {
+            if (confirm.Paid)
+            {
+                Snackbar.ShowSuccess(confirm.Message);
+            }
+            else
+            {
+                Snackbar.ShowWarning(confirm.Message);
+            }
+        }
+    }
+
+    private async Task PayWithPrepaidAsync(Guid orderId)
+    {
+        var payload = new PrepaidPayRequest(orderId, NormalizePrepaidPayload(_model.PrepaidCardCode));
+        var payRes = await Http.PostAsJsonAsync("api/payments/prepaid/pay", payload);
+        if (!payRes.IsSuccessStatusCode)
+        {
+            var body = await payRes.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(WebErrorUx.FromApiBody(
+                payRes.StatusCode,
+                body,
+                SL,
+                SL["PrepaidPaymentFailed"],
+                SL["PrepaidPaymentFailed"]));
+        }
+
+        var result = await payRes.Content.ReadFromJsonAsync<PrepaidPayResponse>();
+        if (result is not null && !string.IsNullOrWhiteSpace(result.Message))
+        {
+            Snackbar.ShowSuccess(result.Message);
+        }
+    }
+
+    private static string NormalizePrepaidPayload(string? value)
+    {
+        return (value ?? string.Empty).Trim().ToUpperInvariant().Replace(" ", string.Empty, StringComparison.Ordinal);
+    }
+
+    private static string NormalizePhone(string? value)
+    {
+        return (value ?? string.Empty)
+            .Trim()
+            .Replace(" ", string.Empty, StringComparison.Ordinal)
+            .Replace("-", string.Empty, StringComparison.Ordinal)
+            .Replace("(", string.Empty, StringComparison.Ordinal)
+            .Replace(")", string.Empty, StringComparison.Ordinal);
+    }
+
+    private static bool IsValidPrepaidInput(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        var normalized = value.Trim().ToUpperInvariant();
+        if (!normalized.StartsWith("DM-", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (normalized.Length < 8 || normalized.Length > 40)
+        {
+            return false;
+        }
+
+        return normalized.All(c => char.IsLetterOrDigit(c) || c == '-');
+    }
+
+    private async Task RefreshDeliveryQuoteAsync()
+    {
+        if (_cart is null || _cart.Items.Count == 0)
+        {
+            _deliveryFee = 0m;
+            return;
+        }
+
+        if (!_selectedZoneId.HasValue)
+        {
+            _deliveryFee = 0m;
+            StateHasChanged();
+            return;
+        }
+
+        try
+        {
+            var quote = await Http.GetFromJsonAsync<DeliveryQuoteDto>(
+                $"api/delivery/quote?subtotal={_cart.Subtotal}&currency={_cart.Currency}&zoneId={_selectedZoneId.Value}");
+
+            if (quote is not null)
+            {
+                _deliveryFee = quote.DeliveryFee;
+                _deliveryCurrency = string.IsNullOrWhiteSpace(quote.Currency) ? _cart.Currency : quote.Currency;
+                StateHasChanged();
+            }
+        }
+        catch
+        {
+            _deliveryFee = 0m;
+        }
+    }
+
+    private async Task RefreshCouponValidationAsync(bool force = false)
+    {
+        if (_cart is null || _cart.Items.Count == 0)
+        {
+            _couponValidation = null;
+            return;
+        }
+
+        var code = (_model.PromoCode ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            _couponValidation = null;
+            StateHasChanged();
+            return;
+        }
+
+        if (!force &&
+            _couponValidation is not null &&
+            string.Equals(
+                NormalizeCouponCode(_couponValidation.PromoCode),
+                NormalizeCouponCode(code),
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        _validatingCoupon = true;
+        try
+        {
+            _couponValidation = await CartApi.ValidateCouponAsync(
+                new CouponValidationRequest(
+                    Code: code,
+                    DeliveryZoneId: _selectedZoneId,
+                    RequireDeliveryZone: false));
+        }
+        catch (Exception ex)
+        {
+            _couponValidation = new CouponValidationDto(
+                IsReady: false,
+                PromoCode: null,
+                Applied: false,
+                Message: WebErrorUx.ForException(
+                    ex,
+                    SL,
+                    "Validation du coupon impossible.",
+                    "Unable to validate coupon."),
+                Currency: _deliveryCurrency,
+                ItemCount: _cart.Items.Count,
+                Subtotal: _cart.Subtotal,
+                Discount: 0m,
+                DeliveryFee: _deliveryFee,
+                TotalEstimate: ComputeEstimatedTotal(),
+                BlockingIssues: Array.Empty<CheckoutIssueDto>(),
+                Warnings: Array.Empty<CheckoutIssueDto>());
+        }
+        finally
+        {
+            _validatingCoupon = false;
+        }
+
+        StateHasChanged();
+    }
+
+    private Color PromoFeedbackColor()
+    {
+        if (_couponValidation is null)
+        {
+            return Color.Secondary;
+        }
+
+        if (_couponValidation.Applied)
+        {
+            return Color.Success;
+        }
+
+        if (_couponValidation.Warnings.Count > 0)
+        {
+            return Color.Warning;
+        }
+
+        return Color.Error;
+    }
+
+    private static string NormalizeCouponCode(string? value)
+        => (value ?? string.Empty).Trim().ToUpperInvariant();
+
+    private static string ResolvePaymentChannel(string? provider)
+    {
+        var normalized = (provider ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return "Unknown";
+        }
+
+        if (string.Equals(normalized, "Stripe", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(normalized, "PayPal", StringComparison.OrdinalIgnoreCase))
+        {
+            return "External";
+        }
+
+        if (string.Equals(normalized, "MobileMoney", StringComparison.OrdinalIgnoreCase))
+        {
+            return "MobileMoney";
+        }
+
+        if (string.Equals(normalized, "PrepaidCard", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(normalized, "PrepaidInternal", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Prepaid";
+        }
+
+        return normalized;
+    }
+
+    private async Task EnsureCheckoutTrackingContextAsync()
+    {
+        if (_checkoutTrackingReady)
+        {
+            _checkoutSessionId ??= Guid.NewGuid().ToString("N");
+            _checkoutExperimentGroup ??= "A";
+            return;
+        }
+
+        _checkoutTrackingReady = true;
+        try
+        {
+            var existingSession = await SessionStorage.GetItemAsync<string>(CheckoutAnalyticsSessionStorageKey);
+            if (string.IsNullOrWhiteSpace(existingSession))
+            {
+                existingSession = Guid.NewGuid().ToString("N");
+                await SessionStorage.SetItemAsync(CheckoutAnalyticsSessionStorageKey, existingSession);
+            }
+            _checkoutSessionId = existingSession;
+
+            var existingGroup = await SessionStorage.GetItemAsync<string>(CheckoutExperimentGroupStorageKey);
+            if (string.IsNullOrWhiteSpace(existingGroup) ||
+                (!string.Equals(existingGroup, "A", StringComparison.OrdinalIgnoreCase) &&
+                 !string.Equals(existingGroup, "B", StringComparison.OrdinalIgnoreCase)))
+            {
+                existingGroup = (Random.Shared.Next(0, 2) == 0) ? "A" : "B";
+                await SessionStorage.SetItemAsync(CheckoutExperimentGroupStorageKey, existingGroup);
+            }
+
+            _checkoutExperimentGroup = existingGroup.ToUpperInvariant();
+        }
+        catch
+        {
+            _checkoutSessionId ??= Guid.NewGuid().ToString("N");
+            _checkoutExperimentGroup ??= (Random.Shared.Next(0, 2) == 0) ? "A" : "B";
+        }
+    }
+
+    private async Task TrackCheckoutEventSafeAsync(
+        string eventName,
+        Guid? orderId = null,
+        string? paymentProvider = null,
+        string? paymentChannel = null,
+        bool? success = null,
+        int? durationMs = null,
+        string? errorCode = null,
+        string? errorMessage = null,
+        object? metadata = null)
+    {
+        try
+        {
+            await EnsureCheckoutTrackingContextAsync();
+            await Http.PostAsJsonAsync(
+                "api/checkout/analytics/track",
+                new CheckoutAnalyticsEventRequest(
+                    EventName: eventName,
+                    OrderId: orderId,
+                    SessionId: _checkoutSessionId,
+                    PaymentProvider: paymentProvider,
+                    PaymentChannel: paymentChannel,
+                    ExperimentName: CheckoutExperimentName,
+                    ExperimentGroup: _checkoutExperimentGroup,
+                    Success: success,
+                    DurationMs: durationMs,
+                    ErrorCode: errorCode,
+                    ErrorMessage: errorMessage,
+                    Source: "Web",
+                    CountryTag: null,
+                    Metadata: metadata));
+        }
+        catch
+        {
+            // Tracking must not break checkout flow.
+        }
+    }
+
+    private sealed class CheckoutFormModel
+    {
+        public string DeliveryName { get; set; } = string.Empty;
+        public string DeliveryPhone { get; set; } = string.Empty;
+        public string DeliveryLine1 { get; set; } = string.Empty;
+        public string DeliveryCity { get; set; } = string.Empty;
+        public string DeliveryCountry { get; set; } = string.Empty;
+        public string? DeliveryNotes { get; set; }
+        public string? PromoCode { get; set; }
+        public string PaymentMethod { get; set; } = "Stripe";
+        public string? PrepaidCardCode { get; set; }
+        public string MobileMoneyProvider { get; set; } = "AIRTEL";
+        public string? MobileMoneyPhone { get; set; }
+    }
+
+    private sealed record DeliveryQuoteDto(decimal Subtotal, decimal DeliveryFee, string Currency);
+    private sealed record ExternalCheckoutResponse(string Url, string? SessionId, string? CheckoutId);
+    private sealed record PrepaidPayRequest(Guid OrderId, string VoucherCode);
+    private sealed record PrepaidPayResponse(bool Paid, Guid OrderId, string PaymentStatus, string Message);
+    private sealed record MobileMoneyInitiateRequest(Guid OrderId, string Provider, string PhoneNumber, string? CallbackUrl);
+    private sealed record MobileMoneyInitiateResponse(string Provider, string TransactionId, string Status, string? CheckoutUrl, string? Message);
+    private sealed record MobileMoneyConfirmRequest(Guid OrderId, string Provider, string TransactionId);
+    private sealed record MobileMoneyConfirmResponse(bool Paid, Guid OrderId, string PaymentStatus, string Provider, string TransactionId, string? RawStatus, string? Message);
+    private sealed record CheckoutAnalyticsEventRequest(
+        string EventName,
+        Guid? OrderId,
+        string? SessionId,
+        string? PaymentProvider,
+        string? PaymentChannel,
+        string? ExperimentName,
+        string? ExperimentGroup,
+        bool? Success,
+        int? DurationMs,
+        string? ErrorCode,
+        string? ErrorMessage,
+        string? Source,
+        string? CountryTag,
+        object? Metadata);
+}
+
+
+
+
+
+
+
+

@@ -1,0 +1,25 @@
+name: load-baseline
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "API base URL (ex: https://api.door-market.com)"
+        required: true
+        default: "https://api.door-market.com"
+        type: string
+
+jobs:
+  k6:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run k6 baseline
+        uses: grafana/run-k6-action@v1
+        with:
+          path: scripts/perf/dm60_api_baseline.k6.js
+        env:
+          BASE_URL: ${{ inputs.base_url }}

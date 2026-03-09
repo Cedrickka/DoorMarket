@@ -1,0 +1,343 @@
+﻿@page "/admin/categories"
+@using System.Net
+@using System.Net.Http.Json
+@using System.Text
+@using MudBlazor
+
+@inject HttpClient Http
+@inject DoorMarket.Web.Auth.AuthState Auth
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+
+<h1 class="dm-page-h1">@SL["CategoriesTitle"]</h1>
+<div class="dm-page-sub">@SL["CategoriesSubtitle"]</div>
+
+<AuthGuard>
+    @if (!_ready)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudSkeleton Height="32px" Width="220px" Class="mb-2" />
+            <MudSkeleton Height="18px" Width="380px" />
+        </MudPaper>
+    }
+    else if (!Auth.IsAdmin)
+    {
+        <MudPaper Class="pa-4 mt-3">
+            <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@SL["AdminOnlyAccess"]</MudAlert>
+            <MudButton Variant="Variant.Outlined" Class="mt-3" OnClick="@(() => Nav.NavigateTo("/shop/dashboard"))">@SL["Back"]</MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        <MudGrid Class="mt-3" Spacing="3">
+            <MudItem xs="12" md="4">
+                <MudPaper Class="pa-4 dm-content-card">
+                    <MudText Typo="Typo.h6" Class="mb-2">@SL["CreateCategory"]</MudText>
+                    <MudTextField T="string" Label="@SL["CategoryName"]" Variant="Variant.Outlined" @bind-Value="_createName" />
+                    <MudTextField T="string" Label="@SL["CategoryNameEn"]" Variant="Variant.Outlined" Class="mt-2" @bind-Value="_createNameEn" />
+                    <MudButton Color="Color.Primary" Variant="Variant.Filled" Class="mt-3" Disabled="_saving || string.IsNullOrWhiteSpace(_createName)" OnClick="CreateAsync">
+                        @SL["Create"]
+                    </MudButton>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" md="8">
+                <MudPaper Class="pa-4 dm-content-card">
+                    <MudText Typo="Typo.h6" Class="mb-2">@SL["CategoriesList"]</MudText>
+
+                    @if (_loading)
+                    {
+                        <MudSkeleton Height="42px" />
+                        <MudSkeleton Height="42px" Class="mt-2" />
+                    }
+                    else if (_error is not null)
+                    {
+                        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_error</MudAlert>
+                    }
+                    else if (_items.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">@SL["NoCategories"]</MudAlert>
+                    }
+                    else
+                    {
+                        <MudTable Items="_items" Dense="true" Hover="true" Bordered="true" Striped="true">
+                            <HeaderContent>
+                                <MudTh>@SL["CategoryName"]</MudTh>
+                                <MudTh>@SL["CategoryNameEn"]</MudTh>
+                                <MudTh>@SL["Slug"]</MudTh>
+                                <MudTh Align="Align.Right">@SL["Actions"]</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd>
+                                    @if (_editId == context.Id)
+                                    {
+                                        <MudTextField T="string" Dense="true" Variant="Variant.Outlined" @bind-Value="_editName" />
+                                    }
+                                    else
+                                    {
+                                        @context.Name
+                                    }
+                                </MudTd>
+                                <MudTd>
+                                    @if (_editId == context.Id)
+                                    {
+                                        <MudTextField T="string" Dense="true" Variant="Variant.Outlined" @bind-Value="_editNameEn" />
+                                    }
+                                    else
+                                    {
+                                        @(string.IsNullOrWhiteSpace(context.NameEn) ? "-" : context.NameEn)
+                                    }
+                                </MudTd>
+                                <MudTd>@context.Slug</MudTd>
+                                <MudTd Align="Align.Right">
+                                    @if (_editId == context.Id)
+                                    {
+                                        <div class="d-flex gap-2 justify-end flex-wrap">
+                                            <MudButton Variant="Variant.Outlined" Size="Size.Small" Disabled="_saving" OnClick="CancelEdit">@SL["Annuler"]</MudButton>
+                                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" Disabled="_saving || string.IsNullOrWhiteSpace(_editName)" OnClick="SaveEditAsync">@SL["Save"]</MudButton>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <AdminRowActionMenu Disabled="_saving" AriaLabel="@SL["Actions"]">
+                                            <MudMenuItem Icon="@Icons.Material.Filled.Edit"
+                                                         OnClick="@(() => StartEdit(context))">
+                                                @SL["Edit"]
+                                            </MudMenuItem>
+                                            <MudMenuItem Icon="@Icons.Material.Filled.Delete"
+                                                         OnClick="@(() => DeleteAsync(context))">
+                                                @SL["Delete"]
+                                            </MudMenuItem>
+                                        </AdminRowActionMenu>
+                                    }
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</AuthGuard>
+
+@code {
+    private bool _ready;
+    private bool _loading = true;
+    private bool _saving;
+    private string? _error;
+
+    private string _createName = string.Empty;
+    private string _createNameEn = string.Empty;
+    private List<CategoryDto> _items = new();
+
+    private Guid? _editId;
+    private string _editName = string.Empty;
+    private string _editNameEn = string.Empty;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        while (!Auth.IsReady)
+        {
+            await Task.Delay(30);
+        }
+
+        _ready = true;
+        if (!Auth.IsAuthenticated || !Auth.IsAdmin)
+        {
+            StateHasChanged();
+            return;
+        }
+
+        await LoadAsync();
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            _items = await Http.GetFromJsonAsync<List<CategoryDto>>("api/categories") ?? new();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _items = new();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task CreateAsync()
+    {
+        _saving = true;
+        try
+        {
+            var req = new CategoryWrite(_createName.Trim(), ToSlug(_createName), string.IsNullOrWhiteSpace(_createNameEn) ? null : _createNameEn.Trim());
+            var res = await Http.PostAsJsonAsync("api/categories", req);
+            if (!res.IsSuccessStatusCode)
+            {
+                throw await BuildApiError(res);
+            }
+
+            _createName = string.Empty;
+            _createNameEn = string.Empty;
+            Snackbar.Add(SL["CategoryCreated"], Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void StartEdit(CategoryDto c)
+    {
+        _editId = c.Id;
+        _editName = c.Name;
+        _editNameEn = c.NameEn ?? string.Empty;
+    }
+
+    private void CancelEdit()
+    {
+        _editId = null;
+        _editName = string.Empty;
+        _editNameEn = string.Empty;
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (_editId is null)
+        {
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            var req = new CategoryWrite(_editName.Trim(), ToSlug(_editName), string.IsNullOrWhiteSpace(_editNameEn) ? null : _editNameEn.Trim());
+            var res = await Http.PutAsJsonAsync($"api/categories/{_editId.Value}", req);
+            if (!res.IsSuccessStatusCode)
+            {
+                throw await BuildApiError(res);
+            }
+
+            CancelEdit();
+            Snackbar.Add(SL["CategoryUpdated"], Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task DeleteAsync(CategoryDto c)
+    {
+        var confirm = await Dialog.ShowMessageBox(
+            title: SL["Supprimer la categorie"],
+            markupMessage: (MarkupString)$"{SL["Supprimer"]} <b>{c.Name}</b> ?",
+            yesText: SL["Supprimer"],
+            cancelText: SL["Annuler"]);
+
+        if (confirm != true)
+        {
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            var res = await Http.DeleteAsync($"api/categories/{c.Id}");
+            if (!res.IsSuccessStatusCode)
+            {
+                throw await BuildApiError(res);
+            }
+
+            Snackbar.Add(SL["CategoryDeleted"], Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task<Exception> BuildApiError(HttpResponseMessage res)
+    {
+        var body = await res.Content.ReadAsStringAsync();
+        return res.StatusCode switch
+        {
+            HttpStatusCode.Unauthorized => new InvalidOperationException(SL["Non autorise (401)."]),
+            HttpStatusCode.Forbidden => new InvalidOperationException(SL["Acces refuse (403). Admin requis."]),
+            HttpStatusCode.NotFound => new InvalidOperationException(SL["Route introuvable (404)."]),
+            HttpStatusCode.Conflict => new InvalidOperationException(string.IsNullOrWhiteSpace(body) ? SL["Conflit (409)."] : body),
+            _ => new InvalidOperationException($"{SL["Erreur API"]} ({(int)res.StatusCode}) : {body}")
+        };
+    }
+
+    private static string ToSlug(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        var sb = new StringBuilder();
+        var wasDash = false;
+
+        foreach (var raw in value.Trim().ToLowerInvariant())
+        {
+            var c = raw switch
+            {
+                'à' or 'á' or 'â' or 'ä' or 'ã' or 'å' => 'a',
+                'ç' => 'c',
+                'è' or 'é' or 'ê' or 'ë' => 'e',
+                'ì' or 'í' or 'î' or 'ï' => 'i',
+                'ñ' => 'n',
+                'ò' or 'ó' or 'ô' or 'ö' or 'õ' => 'o',
+                'ù' or 'ú' or 'û' or 'ü' => 'u',
+                'ý' or 'ÿ' => 'y',
+                _ => raw
+            };
+
+            if (char.IsLetterOrDigit(c))
+            {
+                sb.Append(c);
+                wasDash = false;
+            }
+            else if (!wasDash)
+            {
+                sb.Append('-');
+                wasDash = true;
+            }
+        }
+
+        return sb.ToString().Trim('-');
+    }
+
+    private sealed record CategoryWrite(string Name, string Slug, string? NameEn);
+    public record CategoryDto(Guid Id, string Name, string Slug, DateTime CreatedAtUtc, string? NameEn);
+}
+
