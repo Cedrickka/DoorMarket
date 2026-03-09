@@ -67,10 +67,10 @@ workflows:
             --build-number="$PROJECT_BUILD_NUMBER" \
             --export-options-plist="$EXPORT_PLIST"
 
-          IPA_DIR="$FLUTTER_PROJECT_DIR/build/ios/ipa"
+          IPA_DIR="build/ios/ipa"
           if [ ! -d "$IPA_DIR" ] || [ -z "$(find "$IPA_DIR" -maxdepth 1 -name "*.ipa" | head -n 1)" ]; then
             echo "flutter build ipa did not export an IPA; trying manual xcodebuild export from xcarchive."
-            ARCHIVE_PATH="$FLUTTER_PROJECT_DIR/build/ios/archive/Runner.xcarchive"
+            ARCHIVE_PATH="build/ios/archive/Runner.xcarchive"
             mkdir -p "$IPA_DIR"
             xcodebuild -exportArchive \
               -archivePath "$ARCHIVE_PATH" \
