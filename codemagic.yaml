@@ -103,6 +103,4 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
-        # Keep upload-only for initial stabilization. Enable automated TestFlight
-        # submission later once uploads are confirmed visible in App Store Connect.
-        submit_to_testflight: false
+        submit_to_testflight: true
