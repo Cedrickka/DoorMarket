@@ -74,13 +74,3 @@ android {
 flutter {
     source = "../.."
 }
-
-// Workaround for Windows environments where NDK symbol stripping fails during bundleRelease.
-tasks.configureEach {
-    if (name.contains("strip", ignoreCase = true)
-        && name.contains("Release", ignoreCase = true)
-        && name.contains("DebugSymbols", ignoreCase = true)
-    ) {
-        enabled = false
-    }
-}
