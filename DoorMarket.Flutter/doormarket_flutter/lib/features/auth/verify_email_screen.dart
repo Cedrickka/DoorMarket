@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/models/auth.dart';
+import '../../core/i18n/app_strings.dart';
+import '../../core/network/api_exception.dart';
 import '../../core/providers.dart';
 import '../../core/theme/colors.dart';
 import '../../core/widgets/dm_primary_button.dart';
@@ -120,17 +122,29 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
   }
 
   Future<void> _verify() async {
+    final strings = ref.read(stringsProvider);
+    final code = _codeController.text.trim();
+    if (code.isEmpty) {
+      final message = strings.tr(
+        'Saisissez le code OTP recu par email.',
+        'Enter the OTP code sent by email.',
+      );
+      setState(() => _error = message);
+      await _speak(message);
+      return;
+    }
+
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
       await ref.read(authControllerProvider.notifier).verifyEmail(
-            VerifyEmailRequest(email: widget.email, code: _codeController.text.trim()),
+            VerifyEmailRequest(email: widget.email, code: code),
           );
       if (mounted) context.go('/login');
     } catch (e) {
-      final message = e.toString();
+      final message = _errorMessage(strings, e);
       setState(() => _error = message);
       await _speak(message);
     } finally {
@@ -139,6 +153,7 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
   }
 
   Future<void> _resend() async {
+    final strings = ref.read(stringsProvider);
     setState(() {
       _resending = true;
       _error = null;
@@ -148,15 +163,27 @@ class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
             ResendVerificationRequest(email: widget.email),
           );
       _startTimer();
-      final strings = ref.read(stringsProvider);
       await _speak(strings.verifySentTo(widget.email));
     } catch (e) {
-      final message = e.toString();
+      final message = _errorMessage(strings, e);
       setState(() => _error = message);
       await _speak(message);
     } finally {
       if (mounted) setState(() => _resending = false);
     }
+  }
+
+  String _errorMessage(AppStrings strings, Object error) {
+    if (error is ApiException) {
+      final message = error.message.trim();
+      if (message.isNotEmpty) {
+        return message;
+      }
+    }
+    return strings.tr(
+      'Une erreur est survenue. Reessayez.',
+      'Something went wrong. Please try again.',
+    );
   }
 
   Future<void> _speak(String message) async {

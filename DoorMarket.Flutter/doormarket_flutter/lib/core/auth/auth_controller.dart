@@ -28,15 +28,20 @@ class AuthController extends StateNotifier<AuthState> {
 
   Future<void> initialize() async {
     state = AuthState.loading();
-    final ok = await _session.initialize();
-    if (!ok) {
-      state = AuthState.unauthenticated();
-      return;
-    }
+    try {
+      final ok = await _session.initialize();
+      if (!ok) {
+        state = AuthState.unauthenticated();
+        return;
+      }
 
-    final me = await _safeLoadMe();
-    state = AuthState(isAuthenticated: true, isLoading: false, me: me);
-    await _syncPushRegistration();
+      final me = await _safeLoadMe();
+      state = AuthState(isAuthenticated: true, isLoading: false, me: me);
+      await _syncPushRegistration();
+    } catch (_) {
+      // Prevent startup crashes on unexpected bootstrap exceptions in release.
+      state = AuthState.unauthenticated();
+    }
   }
 
   Future<LoginResult> login(LoginRequest request) async {

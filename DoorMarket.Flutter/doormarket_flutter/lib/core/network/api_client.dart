@@ -38,20 +38,28 @@ class ApiClient {
 
   Future<Response<T>> get<T>(String path,
       {Map<String, dynamic>? queryParameters}) {
-    return _dio.get<T>(path, queryParameters: queryParameters);
+    return _guardRequest(() {
+      return _dio.get<T>(path, queryParameters: queryParameters);
+    });
   }
 
   Future<Response<T>> post<T>(String path, dynamic data) {
-    return _dio.post<T>(path, data: data);
+    return _guardRequest(() {
+      return _dio.post<T>(path, data: data);
+    });
   }
 
   Future<Response<T>> put<T>(String path, dynamic data) {
-    return _dio.put<T>(path, data: data);
+    return _guardRequest(() {
+      return _dio.put<T>(path, data: data);
+    });
   }
 
   Future<Response<T>> delete<T>(String path,
       {Map<String, dynamic>? queryParameters}) {
-    return _dio.delete<T>(path, queryParameters: queryParameters);
+    return _guardRequest(() {
+      return _dio.delete<T>(path, queryParameters: queryParameters);
+    });
   }
 
   Future<T> read<T>(
@@ -78,6 +86,15 @@ class ApiClient {
     final text = data is String ? data : jsonEncode(data ?? {});
     final parsed = _parseError(text, ex.response?.statusMessage);
     return ApiException(parsed.$1, statusCode: status, code: parsed.$2);
+  }
+
+  Future<Response<T>> _guardRequest<T>(
+      Future<Response<T>> Function() request) async {
+    try {
+      return await request();
+    } on DioException catch (ex) {
+      throw _mapError(ex);
+    }
   }
 
   static (String, String?) _parseError(String? text, String? fallback) {

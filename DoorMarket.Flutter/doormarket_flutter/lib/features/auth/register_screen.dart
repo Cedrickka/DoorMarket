@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/models/auth.dart';
+import '../../core/i18n/app_strings.dart';
+import '../../core/network/api_exception.dart';
 import '../../core/providers.dart';
 import '../../core/theme/colors.dart';
 import '../../core/widgets/dm_brand_mark.dart';
@@ -150,6 +152,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   Future<void> _onRegister() async {
     final strings = ref.read(stringsProvider);
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final phone = _phoneController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      setState(() {
+        _error = strings.tr(
+          'Saisissez au moins un email et un mot de passe.',
+          'Enter at least an email and a password.',
+        );
+      });
+      return;
+    }
+
     setState(() {
       _loading = true;
       _error = null;
@@ -161,18 +177,31 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       }
       await ref.read(authControllerProvider.notifier).register(
             RegisterRequest(
-              email: _emailController.text.trim(),
-              phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
-              password: _passwordController.text,
+              email: email,
+              phone: phone.isEmpty ? null : phone,
+              password: password,
             ),
           );
       if (mounted) {
-        context.push('/verify-email?email=${Uri.encodeComponent(_emailController.text.trim())}');
+        context.push('/verify-email?email=${Uri.encodeComponent(email)}');
       }
     } catch (e) {
-      setState(() => _error = e.toString());
+      setState(() => _error = _errorMessage(strings, e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  String _errorMessage(AppStrings strings, Object error) {
+    if (error is ApiException) {
+      final message = error.message.trim();
+      if (message.isNotEmpty) {
+        return message;
+      }
+    }
+    return strings.tr(
+      'Impossible de creer le compte pour le moment.',
+      'Unable to create account right now.',
+    );
   }
 }

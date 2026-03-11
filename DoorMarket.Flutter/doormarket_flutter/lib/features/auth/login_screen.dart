@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/models/auth.dart';
+import '../../core/i18n/app_strings.dart';
+import '../../core/network/api_exception.dart';
 import '../../core/providers.dart';
 import '../../core/theme/colors.dart';
 import '../../core/widgets/dm_brand_mark.dart';
@@ -146,6 +148,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _onLogin() async {
+    final strings = ref.read(stringsProvider);
+    final login = _loginController.text.trim();
+    final password = _passwordController.text;
+    if (login.isEmpty || password.isEmpty) {
+      final message = strings.tr(
+        'Saisissez votre email/telephone et votre mot de passe.',
+        'Enter your email/phone and password.',
+      );
+      setState(() => _error = message);
+      await _speak(message);
+      return;
+    }
+
     setState(() {
       _loading = true;
       _error = null;
@@ -153,8 +168,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     try {
       final result = await ref.read(authControllerProvider.notifier).login(
             LoginRequest(
-              login: _loginController.text.trim(),
-              password: _passwordController.text,
+              login: login,
+              password: password,
             ),
           );
       if (result.otpRequired) {
@@ -165,12 +180,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
       if (mounted) context.go('/');
     } catch (e) {
-      final message = e.toString();
+      final message = _errorMessage(strings, e);
       setState(() => _error = message);
       await _speak(message);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  String _errorMessage(AppStrings strings, Object error) {
+    if (error is ApiException) {
+      final message = error.message.trim();
+      if (message.isNotEmpty) {
+        return message;
+      }
+    }
+    return strings.tr(
+      'Impossible de se connecter. Verifiez vos informations puis reessayez.',
+      'Unable to sign in. Check your information and try again.',
+    );
   }
 
   Future<void> _speak(String message) async {
